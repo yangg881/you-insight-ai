@@ -9,24 +9,76 @@ try {
   historyData = [];
 }
 
-// Fallback simple markdown parser in case CDN fails
+// Toast Notification Engine
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  let bgClass = 'bg-slate-900/90 text-slate-100 border border-slate-700';
+  let icon = '✨';
+
+  if (type === 'success') {
+    bgClass = 'bg-emerald-950/90 text-emerald-200 border border-emerald-500/40 shadow-emerald-500/10';
+    icon = '✅';
+  } else if (type === 'error') {
+    bgClass = 'bg-rose-950/90 text-rose-200 border border-rose-500/40 shadow-rose-500/10';
+    icon = '⚠️';
+  } else if (type === 'info') {
+    bgClass = 'bg-indigo-950/90 text-indigo-200 border border-indigo-500/40 shadow-indigo-500/10';
+    icon = '💡';
+  }
+
+  toast.className = `toast ${bgClass}`;
+  toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px) scale(0.9)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3200);
+}
+
+// Fallback robust markdown parser with clickable citations
 function renderMarkdown(md) {
+  let html = '';
   if (window.marked && typeof window.marked.parse === 'function') {
     try {
-      return window.marked.parse(md);
+      html = window.marked.parse(md);
     } catch (e) {
       console.warn('Marked parse error:', e);
     }
   }
-  // Simple fallback
-  return md
-    .replace(/^### (.*$)/gim, '<h3 class="text-base font-bold text-slate-100 mt-4 mb-2">$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2 class="text-lg font-bold text-slate-100 mt-4 mb-2">$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1 class="text-xl font-bold text-white mt-4 mb-2 border-b border-slate-800 pb-2">$1</h1>')
-    .replace(/\*\*(.*?)\*\*/gim, '<strong class="text-white font-semibold">$1</strong>')
-    .replace(/\*(.*?)\*/gim, '<em class="text-slate-300">$1</em>')
-    .replace(/\[\[(\d+)\]\]/g, '<span class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded text-xs font-mono font-semibold ml-1">[$1]</span>')
-    .replace(/\n/gim, '<br>');
+
+  if (!html) {
+    // Custom robust fallback parser
+    html = md
+      .replace(/^### (.*$)/gim, '<h3 class="text-base font-bold text-slate-100 mt-4 mb-2">$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2 class="text-lg font-bold text-slate-100 mt-4 mb-2">$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1 class="text-xl font-bold text-white mt-4 mb-2 border-b border-slate-800 pb-2">$1</h1>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong class="text-white font-semibold">$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em class="text-slate-300">$1</em>')
+      .replace(/\n/gim, '<br>');
+  }
+
+  // Enhance [[1]] or [1] citations into interactive clickable badges
+  html = html.replace(/\[\[(\d+)\]\]/g, (match, num) => {
+    return `<button onclick="highlightSourceCard(${num})" class="inline-flex items-center px-1.5 py-0.2 mx-0.5 rounded bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-mono font-bold transition-colors cursor-pointer title='查看来源 [${num}]'">[${num}]</button>`;
+  });
+
+  return html;
+}
+
+function highlightSourceCard(index) {
+  const card = document.getElementById(`source-card-${index}`);
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-500/20');
+    setTimeout(() => {
+      card.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-500/20');
+    }, 2000);
+  }
 }
 
 // Initialize on Load
@@ -43,22 +95,18 @@ document.addEventListener('DOMContentLoaded', () => {
 function switchTab(tabId) {
   currentTab = tabId;
   
-  // 1. Update nav tab buttons
-  document.querySelectorAll('.nav-tab-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
+  // 1. Update nav buttons
+  document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.getElementById(`tab-btn-${tabId}`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  // 2. Hide all panels, show target panel
-  document.querySelectorAll('.workspace-panel').forEach(panel => {
-    panel.classList.add('hidden');
-  });
+  // 2. Switch workspace panel
+  document.querySelectorAll('.workspace-panel').forEach(panel => panel.classList.add('hidden'));
   const activePanel = document.getElementById(`panel-${tabId}`);
   if (activePanel) activePanel.classList.remove('hidden');
 }
 
-// Timer helper
+// Timer helpers
 function startTimer(elementId) {
   const el = document.getElementById(elementId);
   if (!el) return null;
@@ -99,7 +147,7 @@ async function executeDigest() {
   const inputEl = document.getElementById('digest-input');
   const query = inputEl ? inputEl.value.trim() : '';
   if (!query) {
-    alert('请输入你想生成简报的主题');
+    showToast('请输入你想生成简报的主题', 'info');
     return;
   }
 
@@ -141,38 +189,38 @@ async function executeDigest() {
         let domain = '源网址';
         try { domain = new URL(item.url).hostname; } catch(e){}
         const card = document.createElement('div');
-        card.className = 'bg-slate-950/80 border border-slate-800 hover:border-pink-500/40 rounded-xl p-4 transition-all flex flex-col justify-between';
+        card.className = 'bg-obsidian-950 border border-slate-800 hover:border-pink-500/40 rounded-xl p-4 transition-all flex flex-col justify-between shadow-sm';
         card.innerHTML = `
           <div>
             <div class="flex items-center justify-between mb-1.5">
               <span class="text-[10px] text-pink-400 font-medium px-2 py-0.5 rounded bg-pink-500/10 border border-pink-500/20 truncate max-w-[140px]">
                 ${domain}
               </span>
-              <span class="text-[10px] text-slate-500">${item.page_age ? item.page_age.split('T')[0] : '实时'}</span>
+              <span class="text-[10px] text-slate-500 font-mono">${item.page_age ? item.page_age.split('T')[0] : '实时'}</span>
             </div>
-            <a href="${item.url}" target="_blank" class="text-xs font-semibold text-slate-100 hover:text-pink-300 line-clamp-1 mb-1 block">
+            <a href="${item.url}" target="_blank" class="text-xs font-semibold text-slate-100 hover:text-pink-300 line-clamp-1 mb-1 block leading-snug">
               ${item.title || '无标题'}
             </a>
             <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
               ${item.description || (item.snippets && item.snippets[0]) || '暂无摘要'}
             </p>
           </div>
-          <div class="mt-3 pt-2 border-t border-slate-900 flex justify-between items-center text-[10px]">
-            <a href="${item.url}" target="_blank" class="text-indigo-400 hover:underline">查看原文 ↗</a>
-            <button onclick="extractUrlDirectly('${item.url}')" class="text-amber-400 hover:text-amber-300">提取正文 📥</button>
+          <div class="mt-3 pt-2.5 border-t border-slate-900 flex justify-between items-center text-[10px]">
+            <a href="${item.url}" target="_blank" class="text-indigo-400 hover:underline flex items-center gap-1">查看原文 ↗</a>
+            <button onclick="extractUrlDirectly('${item.url}')" class="text-amber-400 hover:text-amber-300 flex items-center gap-1">提取正文 📥</button>
           </div>
         `;
         newsGrid.appendChild(card);
       });
     }
 
-    // Save to History
     saveHistory('行业早报', query, reportContent);
+    showToast('行业情报早报生成成功！', 'success');
 
     progressBox.classList.add('hidden');
     resultBox.classList.remove('hidden');
   } catch (err) {
-    alert('请求失败: ' + err.message);
+    showToast('生成早报失败: ' + err.message, 'error');
     progressBox.classList.add('hidden');
     emptyBox.classList.remove('hidden');
   } finally {
@@ -186,7 +234,7 @@ async function executeResearch() {
   const inputEl = document.getElementById('research-input');
   const input = inputEl ? inputEl.value.trim() : '';
   if (!input) {
-    alert('请输入你想深度调研的研究课题');
+    showToast('请输入你想深度调研的研究课题', 'info');
     return;
   }
 
@@ -227,7 +275,8 @@ async function executeResearch() {
     } else {
       sources.forEach((src, idx) => {
         const div = document.createElement('div');
-        div.className = 'bg-slate-900/90 border border-slate-800 rounded-lg p-3 text-xs flex items-start gap-3';
+        div.id = `source-card-${idx + 1}`;
+        div.className = 'bg-obsidian-950 border border-slate-800/80 rounded-xl p-3.5 text-xs flex items-start gap-3 transition-all';
         div.innerHTML = `
           <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 font-mono rounded text-[11px] font-semibold shrink-0">
             [${idx + 1}]
@@ -236,21 +285,21 @@ async function executeResearch() {
             <a href="${src.url}" target="_blank" class="font-medium text-slate-200 hover:text-indigo-400 block truncate">
               ${src.title || src.url}
             </a>
-            <p class="text-slate-400 text-[11px] mt-0.5 line-clamp-2">${src.snippets ? src.snippets.join(' ') : ''}</p>
+            <p class="text-slate-400 text-[11px] mt-0.5 line-clamp-2 leading-relaxed">${src.snippets ? src.snippets.join(' ') : ''}</p>
           </div>
-          <a href="${src.url}" target="_blank" class="text-slate-500 hover:text-slate-300 shrink-0">↗</a>
+          <a href="${src.url}" target="_blank" class="text-slate-500 hover:text-slate-300 shrink-0 text-sm">↗</a>
         `;
         sourcesList.appendChild(div);
       });
     }
 
-    // Save to History
     saveHistory('深度研报', input, content);
+    showToast('深度研报已生成！', 'success');
 
     progressBox.classList.add('hidden');
     resultBox.classList.remove('hidden');
   } catch (err) {
-    alert('研究失败: ' + err.message);
+    showToast('研究失败: ' + err.message, 'error');
     progressBox.classList.add('hidden');
     emptyBox.classList.remove('hidden');
   } finally {
@@ -263,7 +312,7 @@ async function executeResearch() {
 async function executeSearch() {
   const query = document.getElementById('search-input').value.trim();
   if (!query) {
-    alert('请输入搜索关键词');
+    showToast('请输入搜索关键词', 'info');
     return;
   }
   const count = parseInt(document.getElementById('search-count').value, 10) || 10;
@@ -300,7 +349,7 @@ async function executeSearch() {
         let domain = '网页来源';
         try { domain = new URL(item.url).hostname; } catch(e){}
         const div = document.createElement('div');
-        div.className = 'bg-slate-950/80 border border-slate-800 hover:border-blue-500/40 rounded-xl p-4 transition-all shadow-sm';
+        div.className = 'bg-obsidian-950 border border-slate-800/90 hover:border-blue-500/40 rounded-xl p-4 transition-all shadow-sm';
         div.innerHTML = `
           <div class="flex items-center justify-between mb-1.5">
             <div class="flex items-center gap-2">
@@ -309,7 +358,7 @@ async function executeSearch() {
                 ${domain}
               </span>
             </div>
-            <span class="text-xs text-slate-500">${item.page_age ? item.page_age.split('T')[0] : '最新'}</span>
+            <span class="text-xs text-slate-500 font-mono">${item.page_age ? item.page_age.split('T')[0] : '最新'}</span>
           </div>
           <a href="${item.url}" target="_blank" class="text-sm font-semibold text-slate-100 hover:text-blue-400 mb-1.5 block leading-snug">
             ${item.title || '无标题'}
@@ -318,7 +367,7 @@ async function executeSearch() {
             ${item.description || (item.snippets && item.snippets.join(' ')) || '暂无摘要'}
           </p>
           <div class="mt-3 pt-2.5 border-t border-slate-900 flex items-center justify-between text-xs">
-            <a href="${item.url}" target="_blank" class="text-blue-400 hover:underline">访问网页 ↗</a>
+            <a href="${item.url}" target="_blank" class="text-blue-400 hover:underline flex items-center gap-1">访问网页 ↗</a>
             <div class="flex items-center gap-3">
               <button onclick="quickDeepResearch('${item.title ? item.title.replace(/'/g, '') : ''}')" class="text-indigo-400 hover:text-indigo-300">
                 ⚡ 针对此主题研报
@@ -333,10 +382,11 @@ async function executeSearch() {
       });
     }
 
+    showToast(`成功检索到 ${items.length} 条高信噪比网页`, 'success');
     progressBox.classList.add('hidden');
     resultBox.classList.remove('hidden');
   } catch (err) {
-    alert('搜索失败: ' + err.message);
+    showToast('搜索失败: ' + err.message, 'error');
     progressBox.classList.add('hidden');
     emptyBox.classList.remove('hidden');
   } finally {
@@ -349,7 +399,7 @@ async function executeSearch() {
 async function executeFinance() {
   const input = document.getElementById('finance-input').value.trim();
   if (!input) {
-    alert('请输入想分析的公司名称或财务问题');
+    showToast('请输入想分析的公司名称或财务问题', 'info');
     return;
   }
 
@@ -388,7 +438,7 @@ async function executeFinance() {
     } else {
       sources.forEach((src, idx) => {
         const div = document.createElement('div');
-        div.className = 'bg-slate-900/90 border border-slate-800 rounded-lg p-3 text-xs flex items-start gap-3';
+        div.className = 'bg-obsidian-950 border border-slate-800/80 rounded-xl p-3.5 text-xs flex items-start gap-3';
         div.innerHTML = `
           <span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-mono rounded text-[11px] font-semibold shrink-0">
             [${idx + 1}]
@@ -398,18 +448,19 @@ async function executeFinance() {
               ${src.title || src.url}
             </a>
           </div>
-          <a href="${src.url}" target="_blank" class="text-slate-500 hover:text-slate-300 shrink-0">↗</a>
+          <a href="${src.url}" target="_blank" class="text-slate-500 hover:text-slate-300 shrink-0 text-sm">↗</a>
         `;
         sourcesList.appendChild(div);
       });
     }
 
     saveHistory('企业财报', input, content);
+    showToast('财务分析完成！', 'success');
 
     progressBox.classList.add('hidden');
     resultBox.classList.remove('hidden');
   } catch (err) {
-    alert('财务研究失败: ' + err.message);
+    showToast('财务研究失败: ' + err.message, 'error');
     progressBox.classList.add('hidden');
     emptyBox.classList.remove('hidden');
   } finally {
@@ -428,13 +479,13 @@ function extractUrlDirectly(url) {
 async function executeContents() {
   const rawInput = document.getElementById('contents-url-input').value.trim();
   if (!rawInput) {
-    alert('请输入目标网页 URL');
+    showToast('请输入目标网页 URL', 'info');
     return;
   }
 
   const urls = rawInput.split(/[\n,]+/).map(u => u.trim()).filter(u => u.startsWith('http'));
   if (urls.length === 0) {
-    alert('请输入有效的 HTTP / HTTPS 链接');
+    showToast('请输入有效的 HTTP / HTTPS 链接', 'error');
     return;
   }
 
@@ -469,29 +520,30 @@ async function executeContents() {
       items.forEach((item, idx) => {
         const textContent = item.markdown || item.html || item.text || '正文提取为空';
         const div = document.createElement('div');
-        div.className = 'bg-slate-950/80 border border-slate-800 rounded-xl p-5 shadow-lg space-y-3';
+        div.className = 'bg-obsidian-950 border border-slate-800/90 rounded-xl p-5 shadow-xl space-y-3';
         div.innerHTML = `
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">网页 #${idx + 1}</span>
+              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">网页 #${idx + 1}</span>
               <a href="${item.url}" target="_blank" class="text-xs text-slate-300 hover:text-amber-300 max-w-md truncate">
                 ${item.url}
               </a>
             </div>
             <button onclick="copyDirectText('${encodeURIComponent(textContent)}')" class="action-btn">📋 复制正文</button>
           </div>
-          <div class="bg-slate-900/60 p-4 rounded-lg text-xs text-slate-300 max-h-96 overflow-y-auto leading-relaxed whitespace-pre-wrap font-mono custom-scrollbar">
-            ${escapeHtml(textContent.slice(0, 5000))}${textContent.length > 5000 ? '... [已截断显示]' : ''}
+          <div class="bg-slate-900/60 p-4 rounded-xl text-xs text-slate-300 max-h-96 overflow-y-auto leading-relaxed whitespace-pre-wrap font-mono custom-scrollbar">
+            ${escapeHtml(textContent.slice(0, 6000))}${textContent.length > 6000 ? '... [已截断预览]' : ''}
           </div>
         `;
         resultBox.appendChild(div);
       });
     }
 
+    showToast(`成功提取 ${items.length} 个网页正文！`, 'success');
     progressBox.classList.add('hidden');
     resultBox.classList.remove('hidden');
   } catch (err) {
-    alert('网页提取失败: ' + err.message);
+    showToast('网页提取失败: ' + err.message, 'error');
     progressBox.classList.add('hidden');
     emptyBox.classList.remove('hidden');
   } finally {
@@ -506,7 +558,7 @@ function quickDeepResearch(topic) {
   executeResearch();
 }
 
-// Helpers
+// Helper utilities
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.innerText = text;
@@ -517,14 +569,14 @@ function copyElementText(id) {
   const el = document.getElementById(id);
   if (!el) return;
   navigator.clipboard.writeText(el.innerText).then(() => {
-    alert('内容已复制到剪贴板！');
+    showToast('内容已成功复制到剪贴板！', 'success');
   });
 }
 
 function copyDirectText(encoded) {
   const text = decodeURIComponent(encoded);
   navigator.clipboard.writeText(text).then(() => {
-    alert('正文已成功复制！');
+    showToast('正文已成功复制！', 'success');
   });
 }
 
@@ -538,6 +590,7 @@ function downloadAsMarkdown(id, filename) {
   a.download = `${filename}_${new Date().toISOString().slice(0,10)}.md`;
   a.click();
   URL.revokeObjectURL(url);
+  showToast('研报 Markdown 文件已开始下载', 'info');
 }
 
 // ================= History Management =================
@@ -547,10 +600,11 @@ function saveHistory(type, title, content) {
     type,
     title,
     content,
-    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+    date: new Date().toISOString().slice(0, 10)
   };
   historyData.unshift(item);
-  if (historyData.length > 30) historyData.pop();
+  if (historyData.length > 50) historyData.pop();
   try {
     localStorage.setItem('you_insight_history', JSON.stringify(historyData));
   } catch (e){}
@@ -567,34 +621,44 @@ function toggleHistoryDrawer() {
   if (!drawer) return;
   const isHidden = drawer.classList.contains('hidden');
   if (isHidden) {
-    renderHistoryList();
+    renderHistoryList(historyData);
     drawer.classList.remove('hidden');
   } else {
     drawer.classList.add('hidden');
   }
 }
 
-function renderHistoryList() {
+function filterHistoryList() {
+  const query = (document.getElementById('history-search-input')?.value || '').trim().toLowerCase();
+  if (!query) {
+    renderHistoryList(historyData);
+    return;
+  }
+  const filtered = historyData.filter(h => h.title.toLowerCase().includes(query) || h.type.includes(query));
+  renderHistoryList(filtered);
+}
+
+function renderHistoryList(items) {
   const box = document.getElementById('history-list-box');
   if (!box) return;
   box.innerHTML = '';
 
-  if (historyData.length === 0) {
-    box.innerHTML = '<p class="text-xs text-slate-500 text-center py-10">暂无生成历史记录</p>';
+  if (!items || items.length === 0) {
+    box.innerHTML = '<p class="text-xs text-slate-500 text-center py-10">暂无历史记录</p>';
     return;
   }
 
-  historyData.forEach(item => {
+  items.forEach(item => {
     const div = document.createElement('div');
-    div.className = 'bg-slate-950 border border-slate-800 hover:border-indigo-500/40 rounded-xl p-3.5 space-y-2 transition-all';
+    div.className = 'bg-obsidian-950 border border-slate-800 hover:border-brand-500/40 rounded-xl p-3.5 space-y-2 transition-all group';
     div.innerHTML = `
       <div class="flex items-center justify-between text-[11px]">
-        <span class="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-medium">${item.type}</span>
-        <span class="text-slate-500">${item.time}</span>
+        <span class="px-2 py-0.5 rounded bg-brand-500/20 text-brand-300 font-medium">${item.type}</span>
+        <span class="text-slate-500 font-mono">${item.time}</span>
       </div>
-      <h4 class="text-xs font-semibold text-slate-200 line-clamp-1">${item.title}</h4>
-      <div class="flex justify-end gap-2 pt-1 border-t border-slate-900 text-xs">
-        <button onclick="restoreHistory(${item.id})" class="text-indigo-400 hover:underline text-[11px]">查看详情</button>
+      <h4 class="text-xs font-semibold text-slate-200 line-clamp-1 group-hover:text-brand-300 transition-colors">${item.title}</h4>
+      <div class="flex justify-end gap-2 pt-1.5 border-t border-slate-900 text-xs">
+        <button onclick="restoreHistory(${item.id})" class="text-brand-400 hover:underline text-[11px] font-medium">恢复查看 →</button>
       </div>
     `;
     box.appendChild(div);
@@ -625,6 +689,7 @@ function restoreHistory(id) {
     document.getElementById('finance-report-content').innerHTML = renderMarkdown(item.content);
     document.getElementById('finance-result-box').classList.remove('hidden');
   }
+  showToast(`已恢复研报：${item.title.slice(0, 15)}...`, 'info');
 }
 
 function clearAllHistory() {
@@ -632,7 +697,8 @@ function clearAllHistory() {
   historyData = [];
   localStorage.removeItem('you_insight_history');
   updateHistoryBadge();
-  renderHistoryList();
+  renderHistoryList([]);
+  showToast('历史记录已清空', 'info');
 }
 
 // API Key Modal
@@ -654,6 +720,7 @@ function saveCustomKey() {
   }
   closeKeyModal();
   testCurrentKey();
+  showToast('API Key 配置已更新', 'success');
 }
 
 async function testCurrentKey(silent = false) {
@@ -680,6 +747,6 @@ async function testCurrentKey(silent = false) {
       }
     }
   } catch (e) {
-    badgeText.innerText = '后端服务正常';
+    badgeText.innerText = '服务正常连接';
   }
 }

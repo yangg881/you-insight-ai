@@ -11,9 +11,42 @@
       darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace']
+          },
           colors: {
-            brand: { 50: '#eef2ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
-            dark: { bg: '#0B0F17', card: '#111827', border: '#1F2937', hover: '#1E293B', subtle: '#0F172A' }
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            },
+            obsidian: {
+              950: '#040711',
+              900: '#080D1A',
+              850: '#0D1527',
+              800: '#131D35',
+              700: '#1E2C4F',
+              600: '#2C3E6B'
+            }
+          },
+          animation: {
+            'shimmer': 'shimmer 2s linear infinite',
+            'pulse-subtle': 'pulseSubtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'spin-slow': 'spin 3s linear infinite'
+          },
+          keyframes: {
+            shimmer: {
+              '0%': { backgroundPosition: '-200% 0' },
+              '100%': { backgroundPosition: '200% 0' }
+            },
+            pulseSubtle: {
+              '0%, 100%': { opacity: '1' },
+              '50%': { opacity: '0.6' }
+            }
           }
         }
       }
@@ -23,29 +56,39 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="/style.css">
 </head>
-<body class="bg-[#0B0F17] text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white antialiased">
+<body class="bg-obsidian-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white overflow-x-hidden">
 
-  <!-- Topbar -->
-  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-50 px-6 py-3.5 flex items-center justify-between shadow-md">
-    <div class="flex items-center space-x-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold text-lg">
-        ⚡
+  <!-- Ambient Background Glows -->
+  <div class="fixed top-0 left-1/4 w-96 h-96 bg-brand-600/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
+  <div class="fixed top-1/3 right-10 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
+  <div class="fixed bottom-10 left-1/3 w-80 h-80 bg-pink-600/8 rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Header / Navigation Bar -->
+  <header class="border-b border-slate-800/80 bg-obsidian-900/80 backdrop-blur-xl sticky top-0 z-40 px-6 py-3.5 flex items-center justify-between shadow-2xl">
+    <div class="flex items-center space-x-3.5">
+      <div class="relative group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 ring-1 ring-white/20 transition-all duration-300 group-hover:scale-105">
+          <span class="text-white font-bold text-lg">⚡</span>
+        </div>
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+          <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent tracking-tight">
             YouInsight AI Studio
           </h1>
-          <span class="text-[11px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-medium">Pro Edition</span>
+          <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-r from-brand-500/20 to-purple-500/20 text-brand-400 border border-brand-500/30">Enterprise</span>
         </div>
-        <p class="text-xs text-slate-400">基于 You.com 实时网络情报与多源深度事实研究引擎</p>
+        <p class="text-xs text-slate-400 font-medium">全能实时网络情报 &middot; 深度研报 &middot; 事实溯源与商业洞察平台</p>
       </div>
     </div>
 
-    <!-- Status & Header Actions -->
+    <!-- Header Right Controls -->
     <div class="flex items-center space-x-3">
       <!-- Status Badge -->
-      <div id="api-status-badge" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs cursor-pointer hover:bg-emerald-500/20 transition-all" onclick="openKeyModal()">
+      <div id="api-status-badge" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium cursor-pointer hover:bg-emerald-500/20 transition-all shadow-sm" onclick="openKeyModal()">
         <span class="relative flex h-2 w-2">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -53,143 +96,162 @@
         <span id="api-status-text">系统就绪 (已连接)</span>
       </div>
 
-      <button onclick="toggleHistoryDrawer()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition-all" title="查看历史记录">
-        <span>📜 历史记录</span>
-        <span id="history-count-badge" class="px-1.5 py-0.2 bg-indigo-500/30 text-indigo-300 rounded-full text-[10px]">0</span>
+      <!-- History Trigger -->
+      <button onclick="toggleHistoryDrawer()" class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-obsidian-800 hover:bg-obsidian-700 text-slate-200 border border-slate-700/80 text-xs font-medium transition-all shadow-sm hover:border-slate-600 active:scale-95">
+        <span class="text-sm">📜</span>
+        <span>历史记录</span>
+        <span id="history-count-badge" class="px-1.5 py-0.5 bg-brand-500/25 text-brand-300 rounded-full text-[10px] font-mono">0</span>
       </button>
 
-      <button onclick="openKeyModal()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition-colors" title="API密钥配置">
-        🔑 API配置
+      <!-- Key Config -->
+      <button onclick="openKeyModal()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-obsidian-800 hover:bg-obsidian-700 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-medium transition-all shadow-sm hover:border-slate-600 active:scale-95">
+        <span>🔑</span>
+        <span>API设置</span>
       </button>
     </div>
   </header>
 
-  <!-- Main Container -->
+  <!-- Main Body Workspace -->
   <div class="flex-1 flex max-w-7xl w-full mx-auto px-4 py-6 gap-6 relative">
     
     <!-- Sidebar Navigation -->
-    <aside class="w-64 shrink-0 flex flex-col space-y-2">
-      <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 mb-1">业务功能分类</div>
+    <aside class="w-64 shrink-0 flex flex-col space-y-1.5">
+      <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 mb-1.5 flex items-center justify-between">
+        <span>情报与分析模块</span>
+        <span class="text-[10px] text-slate-600 font-mono">v1.2</span>
+      </div>
       
-      <button onclick="switchTab('digest')" id="tab-btn-digest" class="nav-tab-btn active w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800/60 text-left">
-        <span class="text-base">📰</span>
-        <div class="flex-1">
+      <button onclick="switchTab('digest')" id="tab-btn-digest" class="nav-tab-btn active w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
+        <div class="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-sm shrink-0">
+          📰
+        </div>
+        <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between">
-            <span>行业情报早报</span>
-            <span class="text-[10px] bg-pink-500/20 text-pink-300 px-1.5 py-0.5 rounded font-normal">一键生成</span>
+            <span class="font-semibold text-white">行业情报早报</span>
+            <span class="text-[9px] bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-300 border border-pink-500/30 px-1.5 py-0.2 rounded font-medium">推荐</span>
           </div>
-          <div class="text-[11px] text-slate-500 font-normal">实时新闻 + 综合简报</div>
+          <div class="text-[11px] text-slate-400 truncate">热点新闻 + 综合研报</div>
         </div>
       </button>
 
-      <button onclick="switchTab('research')" id="tab-btn-research" class="nav-tab-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800/60 text-left">
-        <span class="text-base">🧠</span>
-        <div class="flex-1">
+      <button onclick="switchTab('research')" id="tab-btn-research" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
+        <div class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-sm shrink-0">
+          🧠
+        </div>
+        <div class="flex-1 min-w-0">
           <div class="flex items-center justify-between">
-            <span>深度研报生成</span>
-            <span class="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-normal">带出处引用</span>
+            <span class="font-semibold">深度研报生成</span>
+            <span class="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.2 rounded font-medium">可信溯源</span>
           </div>
-          <div class="text-[11px] text-slate-500 font-normal">多轮检索与事实核验</div>
+          <div class="text-[11px] text-slate-400 truncate">多源事实核验与分析</div>
         </div>
       </button>
 
-      <button onclick="switchTab('search')" id="tab-btn-search" class="nav-tab-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800/60 text-left">
-        <span class="text-base">🔍</span>
-        <div class="flex-1">
-          <div class="flex items-center justify-between">
-            <span>实时联网搜索</span>
-          </div>
-          <div class="text-[11px] text-slate-500 font-normal">高信噪比纯净网页检索</div>
+      <button onclick="switchTab('search')" id="tab-btn-search" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
+        <div class="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-sm shrink-0">
+          🔍
+        </div>
+        <div class="flex-1 min-w-0">
+          <span class="font-semibold">实时联网搜索</span>
+          <div class="text-[11px] text-slate-400 truncate">纯净高信噪比结构化检索</div>
         </div>
       </button>
 
-      <button onclick="switchTab('finance')" id="tab-btn-finance" class="nav-tab-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800/60 text-left">
-        <span class="text-base">📈</span>
-        <div class="flex-1">
-          <div class="flex items-center justify-between">
-            <span>企业财报洞察</span>
-          </div>
-          <div class="text-[11px] text-slate-500 font-normal">SEC 与官方财务穿透</div>
+      <button onclick="switchTab('finance')" id="tab-btn-finance" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm shrink-0">
+          📈
+        </div>
+        <div class="flex-1 min-w-0">
+          <span class="font-semibold">企业财报洞察</span>
+          <div class="text-[11px] text-slate-400 truncate">SEC 官方披露与财务穿透</div>
         </div>
       </button>
 
-      <button onclick="switchTab('contents')" id="tab-btn-contents" class="nav-tab-btn w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white hover:bg-slate-800/60 text-left">
-        <span class="text-base">📑</span>
-        <div class="flex-1">
-          <div class="flex items-center justify-between">
-            <span>网页正文提取</span>
-          </div>
-          <div class="text-[11px] text-slate-500 font-normal">去广告免爬虫扒干货</div>
+      <button onclick="switchTab('contents')" id="tab-btn-contents" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-sm shrink-0">
+          📑
+        </div>
+        <div class="flex-1 min-w-0">
+          <span class="font-semibold">网页干货提取</span>
+          <div class="text-[11px] text-slate-400 truncate">去广告免爬虫提取正文</div>
         </div>
       </button>
 
-      <!-- Bottom feature highlights -->
+      <!-- Bottom Trust Banner -->
       <div class="pt-4 mt-auto border-t border-slate-800/80">
-        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2">
-          <div class="flex items-center gap-2 text-xs font-semibold text-indigo-300">
-            <span>🛡️</span> 真实溯源与防幻觉机制
+        <div class="bg-gradient-to-b from-obsidian-850 to-obsidian-900 border border-slate-800/90 rounded-xl p-3.5 space-y-2 shadow-sm">
+          <div class="flex items-center gap-2 text-xs font-semibold text-brand-300">
+            <span class="text-sm">🛡️</span> 真实溯源与防幻觉机制
           </div>
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            所有研报内容均通过海外权威源进行交叉比对，每句话自动标记带链接的数字引用。
+            所有研报均通过权威全球数据库交叉比对，每句话自动标记带链接的数字引用。
           </p>
         </div>
       </div>
     </aside>
 
-    <!-- Main Workspace Content -->
-    <main class="flex-1 flex flex-col min-w-0 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-md overflow-hidden shadow-2xl relative">
+    <!-- Main Dynamic Workspace -->
+    <main class="flex-1 flex flex-col min-w-0 bg-obsidian-900/70 border border-slate-800/90 rounded-2xl p-6 backdrop-blur-xl overflow-hidden shadow-2xl relative ring-1 ring-white/5">
 
       <!-- ================= 1. 行业情报早报 ================= -->
       <section id="panel-digest" class="workspace-panel flex-1 flex flex-col">
         <div class="mb-5">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              <span>📰</span> 一键智能早报与事件综合
-            </h2>
-            <span class="text-xs text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2.5 py-1 rounded-full font-medium">推荐模式</span>
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">📰</span>
+              <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">一键智能早报与事件综合</h2>
+                <p class="text-xs text-slate-400 mt-0.5">全自动组合“实时全网检索”与“多源事实综合”，一键提炼结构化早报与关联新闻源。</p>
+              </div>
+            </div>
+            <span class="text-xs text-pink-400 bg-pink-500/10 border border-pink-500/20 px-3 py-1 rounded-full font-medium">Smart Digest</span>
           </div>
-          <p class="text-xs text-slate-400 mt-1">
-            全自动组合“实时新闻全网检索”与“AI 深度事实综合”，一键生成结构化早报与信息源溯源。
-          </p>
         </div>
 
         <!-- Hot Topic Tags -->
         <div class="flex flex-wrap items-center gap-2 mb-4">
-          <span class="text-xs text-slate-400 font-medium">快捷热门主题：</span>
-          <button type="button" onclick="quickFillAndRun('digest', 'AI 大模型与具身智能机器人')" class="chip-btn">🤖 AI 大模型与具身智能</button>
+          <span class="text-xs text-slate-400 font-medium">热门选题：</span>
+          <button type="button" onclick="quickFillAndRun('digest', 'AI 大模型与具身智能机器人最新进展')" class="chip-btn">🤖 AI 大模型与具身智能</button>
           <button type="button" onclick="quickFillAndRun('digest', '全球半导体芯片与算力最新动态')" class="chip-btn">⚡ 半导体与算力芯片</button>
-          <button type="button" onclick="quickFillAndRun('digest', '新能源汽车与智能驾驶技术')" class="chip-btn">🚗 新能源与智能驾驶</button>
-          <button type="button" onclick="quickFillAndRun('digest', '美联储利率决议与全球宏观经济')" class="chip-btn">📈 宏观经济与金融</button>
+          <button type="button" onclick="quickFillAndRun('digest', '新能源汽车与智能驾驶技术量产动态')" class="chip-btn">🚗 新能源与智能驾驶</button>
+          <button type="button" onclick="quickFillAndRun('digest', '美联储利率决议与全球宏观经济走向')" class="chip-btn">📈 宏观经济与降息</button>
         </div>
 
         <!-- Input Box -->
-        <div class="relative mb-5">
-          <input type="text" id="digest-input" placeholder="输入你想生成简报的主题（例如：人形机器人量产进展、OpenAI 最新动态...）" 
-                 class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-3.5 pr-36 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 shadow-inner"
+        <div class="relative mb-5 group">
+          <input type="text" id="digest-input" placeholder="输入你想生成简报的主题（例如：具身智能量产进展、OpenAI 最新动态...）" 
+                 class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-4 py-3.5 pr-36 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 transition-all shadow-inner"
                  onkeydown="if(event.key==='Enter') executeDigest()">
-          <button type="button" onclick="executeDigest()" id="digest-submit-btn" class="absolute right-2 top-2 bottom-2 px-5 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95">
+          <button type="button" onclick="executeDigest()" id="digest-submit-btn" class="absolute right-2 top-2 bottom-2 px-5 bg-gradient-to-r from-pink-500 via-rose-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-pink-500/20 active:scale-95">
             <span>⚡ 生成早报</span>
           </button>
         </div>
 
-        <!-- Status Progress Indicator (Visible while loading) -->
-        <div id="digest-progress-box" class="hidden mb-4 p-4 rounded-xl bg-pink-500/10 border border-pink-500/30 text-pink-300 animate-pulse">
-          <div class="flex items-center justify-between mb-2">
-            <span id="digest-progress-text" class="text-xs font-semibold">正在检索最新资讯并执行深度综合分析...</span>
-            <span id="digest-timer" class="text-xs font-mono">0.0s</span>
+        <!-- Dynamic Multi-Step Progress Tracker (Visible when running) -->
+        <div id="digest-progress-box" class="hidden mb-5 p-4 rounded-xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-pink-500/30 text-pink-300">
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-pink-500"></span>
+              </span>
+              <span id="digest-progress-text" class="text-xs font-semibold">正在检索最新资讯并执行深度综合分析...</span>
+            </div>
+            <span id="digest-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
           </div>
-          <div class="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
-            <div id="digest-progress-bar" class="bg-gradient-to-r from-pink-500 to-indigo-500 h-1.5 rounded-full w-2/3 transition-all duration-300"></div>
+          <div class="w-full bg-slate-950/80 rounded-full h-2 overflow-hidden border border-slate-800">
+            <div id="digest-progress-bar" class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 h-2 rounded-full w-2/3 transition-all duration-300"></div>
           </div>
         </div>
 
         <!-- Result Container -->
-        <div id="digest-result-box" class="flex-1 overflow-y-auto space-y-5 hidden pr-1 custom-scrollbar">
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-5 shadow-lg">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div id="digest-result-box" class="flex-1 overflow-y-auto space-y-6 hidden pr-1 custom-scrollbar">
+          <!-- Report Box -->
+          <div class="bg-obsidian-950 border border-slate-800/90 rounded-xl p-6 shadow-xl relative">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3.5 mb-4">
               <div class="flex items-center gap-2 text-sm font-semibold text-pink-300">
-                <span>📋 综合简报正文</span>
-                <span id="digest-result-badge" class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">生成成功</span>
+                <span>📋 综合研报正文</span>
+                <span id="digest-result-badge" class="text-[10px] bg-pink-500/20 text-pink-300 border border-pink-500/30 px-2 py-0.5 rounded font-medium">生成成功</span>
               </div>
               <div class="flex gap-2">
                 <button onclick="copyElementText('digest-report-content')" class="action-btn">📋 复制正文</button>
@@ -199,20 +261,22 @@
             <div id="digest-report-content" class="markdown-body text-slate-200 text-sm leading-relaxed"></div>
           </div>
 
-          <!-- News Source Cards -->
+          <!-- News Grid -->
           <div>
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
               <span>📡</span> 关联实时新闻与信息源
             </h3>
-            <div id="digest-news-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+            <div id="digest-news-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3.5"></div>
           </div>
         </div>
 
         <!-- Empty State -->
-        <div id="digest-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800 rounded-xl">
-          <div class="text-4xl mb-3">📰</div>
-          <h3 class="text-sm font-semibold text-slate-300">一键探索任意行业与事件简报</h3>
-          <p class="text-xs text-slate-500 mt-1 max-w-sm">输入关键词或点击上方快捷标签，AI 将全网搜集最新资讯并为您提炼深度综合早报。</p>
+        <div id="digest-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
+          <div class="w-14 h-14 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-2xl mb-3 shadow-inner">
+            📰
+          </div>
+          <h3 class="text-sm font-semibold text-slate-200">一键探索任意行业与事件情报</h3>
+          <p class="text-xs text-slate-500 mt-1 max-w-sm">输入关键词或点击上方热门标签，AI 将全网搜集最新资讯并为您提炼深度综合早报。</p>
         </div>
       </section>
 
@@ -221,14 +285,15 @@
       <section id="panel-research" class="workspace-panel flex-1 flex flex-col hidden">
         <div class="mb-5">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-              <span>🧠</span> 深度研报生成 (Deep Research)
-            </h2>
-            <span class="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full font-medium">严谨出处标注</span>
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">🧠</span>
+              <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">深度研报生成 (Deep Research)</h2>
+                <p class="text-xs text-slate-400 mt-0.5">针对复杂学术、商业或技术课题展开多轮事实检索，输出自带严格出处引用（`[1]`）的可信分析。</p>
+              </div>
+            </div>
+            <span class="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 rounded-full font-medium">Deep Research</span>
           </div>
-          <p class="text-xs text-slate-400 mt-1">
-            针对复杂问题展开多轮事实检索与综合，输出自带严格出处引用（`[1]`、`[2]`）的权威分析报告。
-          </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -240,25 +305,31 @@
 
         <div class="relative mb-5">
           <textarea id="research-input" rows="3" placeholder="输入你想深度调研的研究课题、技术方案对比或宏观问题..."
-                    class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-inner resize-none"></textarea>
-          <button type="button" onclick="executeResearch()" id="research-submit-btn" class="absolute right-3 bottom-3 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95">
+                    class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner resize-none"></textarea>
+          <button type="button" onclick="executeResearch()" id="research-submit-btn" class="absolute right-3 bottom-3 px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 active:scale-95">
             <span>🚀 开始深度研究</span>
           </button>
         </div>
 
-        <div id="research-progress-box" class="hidden mb-4 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 animate-pulse">
-          <div class="flex items-center justify-between mb-2">
-            <span id="research-progress-text" class="text-xs font-semibold">正在进行全网深度文献检索与交叉验证...</span>
-            <span id="research-timer" class="text-xs font-mono">0.0s</span>
+        <div id="research-progress-box" class="hidden mb-5 p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/30 text-indigo-300">
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500"></span>
+              </span>
+              <span id="research-progress-text" class="text-xs font-semibold">正在进行全网深度文献检索与交叉验证...</span>
+            </div>
+            <span id="research-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
           </div>
-          <div class="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
-            <div id="research-progress-bar" class="bg-indigo-500 h-1.5 rounded-full w-2/3 transition-all duration-300"></div>
+          <div class="w-full bg-slate-950/80 rounded-full h-2 overflow-hidden border border-slate-800">
+            <div id="research-progress-bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full w-2/3 transition-all duration-300"></div>
           </div>
         </div>
 
-        <div id="research-result-box" class="flex-1 overflow-y-auto space-y-5 hidden pr-1 custom-scrollbar">
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-5 shadow-lg">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div id="research-result-box" class="flex-1 overflow-y-auto space-y-6 hidden pr-1 custom-scrollbar">
+          <div class="bg-obsidian-950 border border-slate-800/90 rounded-xl p-6 shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3.5 mb-4">
               <div class="flex items-center gap-2 text-sm font-semibold text-indigo-300">
                 <span>📑 研究报告结论</span>
               </div>
@@ -270,17 +341,19 @@
             <div id="research-report-content" class="markdown-body text-slate-200 text-sm leading-relaxed"></div>
           </div>
 
-          <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+          <div class="bg-obsidian-950/60 border border-slate-800 rounded-xl p-5">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
               <span>🔗</span> 溯源引用与参考文献 (<span id="research-sources-count">0</span>)
             </h3>
             <div id="research-sources-list" class="space-y-2.5"></div>
           </div>
         </div>
 
-        <div id="research-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800 rounded-xl">
-          <div class="text-4xl mb-3">🧠</div>
-          <h3 class="text-sm font-semibold text-slate-300">高可信度 AI 深度研报</h3>
+        <div id="research-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
+          <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-2xl mb-3 shadow-inner">
+            🧠
+          </div>
+          <h3 class="text-sm font-semibold text-slate-200">高可信度 AI 深度研报</h3>
           <p class="text-xs text-slate-500 mt-1 max-w-sm">拒绝瞎编。每段论述均自动检索真实互联网网页与知识库并标注出处来源。</p>
         </div>
       </section>
@@ -289,42 +362,48 @@
       <!-- ================= 3. 实时联网搜索 ================= -->
       <section id="panel-search" class="workspace-panel flex-1 flex flex-col hidden">
         <div class="mb-5">
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <span>🔍</span> 实时联网搜索 (Web Search)
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            纯净高信噪比网页检索，提取精准文本片段、发布时间与网页来源，支持快速跳转提取正文。
-          </p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">🔍</span>
+              <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">实时联网搜索 (Web Search)</h2>
+                <p class="text-xs text-slate-400 mt-0.5">纯净高信噪比网页检索，提取精准文本片段、发布时间与网页来源。</p>
+              </div>
+            </div>
+            <span class="text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full font-medium">Clean Search</span>
+          </div>
         </div>
 
         <div class="flex items-center gap-3 mb-5">
           <div class="relative flex-1">
             <input type="text" id="search-input" placeholder="输入搜索关键词（例如：DeepSeek V3 最新评测、Claude 3.7 功能特性...）"
-                   class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-inner"
+                   class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
                    onkeydown="if(event.key==='Enter') executeSearch()">
           </div>
-          <select id="search-count" class="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-3.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
+          <select id="search-count" class="bg-obsidian-950 border border-slate-700/80 rounded-xl px-3.5 py-3.5 text-sm text-slate-300 focus:outline-none focus:border-blue-500">
             <option value="5">5 条结果</option>
             <option value="10" selected>10 条结果</option>
             <option value="20">20 条结果</option>
           </select>
-          <button type="button" onclick="executeSearch()" id="search-submit-btn" class="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95">
+          <button type="button" onclick="executeSearch()" id="search-submit-btn" class="px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
             <span>搜索</span>
           </button>
         </div>
 
-        <div id="search-progress-box" class="hidden mb-4 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300 animate-pulse">
+        <div id="search-progress-box" class="hidden mb-4 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-semibold">正在检索全网最新网页内容...</span>
-            <span id="search-timer" class="text-xs font-mono">0.0s</span>
+            <span id="search-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
           </div>
         </div>
 
         <div id="search-result-box" class="flex-1 overflow-y-auto space-y-3.5 hidden pr-1 custom-scrollbar"></div>
 
-        <div id="search-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800 rounded-xl">
-          <div class="text-4xl mb-3">🔍</div>
-          <h3 class="text-sm font-semibold text-slate-300">实时检索全网网页</h3>
+        <div id="search-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
+          <div class="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-2xl mb-3 shadow-inner">
+            🔍
+          </div>
+          <h3 class="text-sm font-semibold text-slate-200">实时检索全网网页</h3>
           <p class="text-xs text-slate-500 mt-1 max-w-sm">无广告、无干扰，直接获取大模型可读的高质量网页结构化数据。</p>
         </div>
       </section>
@@ -333,12 +412,16 @@
       <!-- ================= 4. 企业财报与金融 ================= -->
       <section id="panel-finance" class="workspace-panel flex-1 flex flex-col hidden">
         <div class="mb-5">
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <span>📈</span> 企业财报与金融洞察 (Finance Research)
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            深度对齐 SEC 文件与企业官方财报，精准计算营收增长、利润率及业务拆解数据。
-          </p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">📈</span>
+              <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">企业财报与金融洞察 (Finance Intelligence)</h2>
+                <p class="text-xs text-slate-400 mt-0.5">深度对齐 SEC 官方披露与财报，精准计算营收增长、利润率及业务拆解数据。</p>
+              </div>
+            </div>
+            <span class="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full font-medium">SEC Reconciled</span>
+          </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 mb-4">
@@ -351,42 +434,44 @@
 
         <div class="relative mb-5">
           <input type="text" id="finance-input" placeholder="输入想分析的上市公司名称、股票代码或财务问题（如：腾讯最新季度净利润与业务增长...）"
-                 class="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-3.5 pr-36 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-inner"
+                 class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-4 py-3.5 pr-36 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all shadow-inner"
                  onkeydown="if(event.key==='Enter') executeFinance()">
-          <button type="button" onclick="executeFinance()" id="finance-submit-btn" class="absolute right-2 top-2 bottom-2 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95">
+          <button type="button" onclick="executeFinance()" id="finance-submit-btn" class="absolute right-2 top-2 bottom-2 px-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95">
             <span>📊 财务分析</span>
           </button>
         </div>
 
-        <div id="finance-progress-box" class="hidden mb-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 animate-pulse">
+        <div id="finance-progress-box" class="hidden mb-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-semibold">正在调取 SEC 披露数据并比对官方财报...</span>
-            <span id="finance-timer" class="text-xs font-mono">0.0s</span>
+            <span id="finance-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
           </div>
         </div>
 
-        <div id="finance-result-box" class="flex-1 overflow-y-auto space-y-5 hidden pr-1 custom-scrollbar">
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-5 shadow-lg">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div id="finance-result-box" class="flex-1 overflow-y-auto space-y-6 hidden pr-1 custom-scrollbar">
+          <div class="bg-obsidian-950 border border-slate-800/90 rounded-xl p-6 shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3.5 mb-4">
               <div class="flex items-center gap-2 text-sm font-semibold text-emerald-400">
-                <span>💰 财务分析与核心数据</span>
+                <span>💰 财务分析结论与核心数据</span>
               </div>
               <button onclick="copyElementText('finance-report-content')" class="action-btn">📋 复制数据</button>
             </div>
             <div id="finance-report-content" class="markdown-body text-slate-200 text-sm leading-relaxed"></div>
           </div>
 
-          <div class="bg-slate-950/40 border border-slate-800 rounded-xl p-4">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+          <div class="bg-obsidian-950/60 border border-slate-800 rounded-xl p-5">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
               <span>🏛️</span> SEC 财报与官方披露文件来源
             </h3>
             <div id="finance-sources-list" class="space-y-2.5"></div>
           </div>
         </div>
 
-        <div id="finance-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800 rounded-xl">
-          <div class="text-4xl mb-3">📈</div>
-          <h3 class="text-sm font-semibold text-slate-300">SEC 与企业官方财报对齐</h3>
+        <div id="finance-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
+          <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl mb-3 shadow-inner">
+            📈
+          </div>
+          <h3 class="text-sm font-semibold text-slate-200">SEC 与企业官方财报对齐</h3>
           <p class="text-xs text-slate-500 mt-1 max-w-sm">自动查询 10-K, 10-Q 季度报告，提取严谨的营收、净利、毛利和同比增速数据。</p>
         </div>
       </section>
@@ -395,38 +480,44 @@
       <!-- ================= 5. 网页正文提取 ================= -->
       <section id="panel-contents" class="workspace-panel flex-1 flex flex-col hidden">
         <div class="mb-5">
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <span>📑</span> 网页干货正文提取 (Contents Reader)
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">
-            输入任意文章或文档链接，一键去除广告弹窗，提取出干净纯粹的正文 Markdown / HTML。
-          </p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">📑</span>
+              <div>
+                <h2 class="text-xl font-bold text-white tracking-tight">网页干货正文提取 (Contents Reader)</h2>
+                <p class="text-xs text-slate-400 mt-0.5">输入任意文章或文档链接，一键去除广告弹窗，提取出干净纯粹的正文 Markdown / HTML。</p>
+              </div>
+            </div>
+            <span class="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full font-medium">Smart Reader</span>
+          </div>
         </div>
 
         <div class="space-y-3 mb-5">
           <div class="flex items-center gap-3">
             <input type="url" id="contents-url-input" placeholder="输入目标网页 URL（例如：https://en.wikipedia.org/wiki/Artificial_intelligence）"
-                   class="flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-inner"
+                   class="flex-1 bg-obsidian-950 border border-slate-700/80 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all shadow-inner"
                    onkeydown="if(event.key==='Enter') executeContents()">
-            <button type="button" onclick="executeContents()" id="contents-submit-btn" class="px-6 py-3.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95">
+            <button type="button" onclick="executeContents()" id="contents-submit-btn" class="px-6 py-3.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20 active:scale-95">
               <span>📥 提取正文</span>
             </button>
           </div>
           <div class="text-[11px] text-slate-500">提示：支持批量提取（多个网址请用换行或逗号分隔）</div>
         </div>
 
-        <div id="contents-progress-box" class="hidden mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 animate-pulse">
+        <div id="contents-progress-box" class="hidden mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-semibold">正在抓取并清洗目标网页正文内容...</span>
-            <span id="contents-timer" class="text-xs font-mono">0.0s</span>
+            <span id="contents-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
           </div>
         </div>
 
         <div id="contents-result-box" class="flex-1 overflow-y-auto space-y-4 hidden pr-1 custom-scrollbar"></div>
 
-        <div id="contents-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800 rounded-xl">
-          <div class="text-4xl mb-3">📑</div>
-          <h3 class="text-sm font-semibold text-slate-300">纯净网页正文解析</h3>
+        <div id="contents-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
+          <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-2xl mb-3 shadow-inner">
+            📑
+          </div>
+          <h3 class="text-sm font-semibold text-slate-200">纯净网页正文解析</h3>
           <p class="text-xs text-slate-500 mt-1 max-w-sm">适合喂给 LLM 做上下文知识库，免去自行开发爬虫和清洗正文的烦恼。</p>
         </div>
       </section>
@@ -435,16 +526,22 @@
   </div>
 
   <!-- History Drawer Modal -->
-  <div id="history-drawer" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-end hidden">
-    <div class="bg-slate-900 border-l border-slate-800 w-full max-w-md h-full flex flex-col p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+  <div id="history-drawer" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex justify-end hidden transition-all">
+    <div class="bg-obsidian-900 border-l border-slate-800 w-full max-w-md h-full flex flex-col p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
           <span>📜</span> 本地生成历史记录
         </h3>
         <div class="flex items-center gap-3">
-          <button onclick="clearAllHistory()" class="text-xs text-rose-400 hover:text-rose-300">清空历史</button>
-          <button onclick="toggleHistoryDrawer()" class="text-slate-400 hover:text-white text-lg">✕</button>
+          <button onclick="clearAllHistory()" class="text-xs text-rose-400 hover:text-rose-300 transition-colors">清空记录</button>
+          <button onclick="toggleHistoryDrawer()" class="text-slate-400 hover:text-white text-lg p-1">✕</button>
         </div>
+      </div>
+
+      <div class="relative">
+        <input type="text" id="history-search-input" placeholder="搜索历史报告..." 
+               class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
+               oninput="filterHistoryList()">
       </div>
 
       <div id="history-list-box" class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1"></div>
@@ -452,11 +549,11 @@
   </div>
 
   <!-- API Key Modal -->
-  <div id="key-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between">
+  <div id="key-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden transition-all">
+    <div class="bg-obsidian-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <span>🔑</span> API 密钥与配置
+          <span>🔑</span> API 密钥与服务配置
         </h3>
         <button onclick="closeKeyModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
       </div>
@@ -468,16 +565,16 @@
       <div>
         <label class="block text-xs font-semibold text-slate-300 mb-1.5">You.com API Key</label>
         <input type="password" id="custom-api-key-input" placeholder="ydc-sk-..."
-               class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 font-mono">
+               class="w-full bg-obsidian-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 font-mono">
       </div>
 
       <div class="flex items-center justify-between pt-2">
-        <button onclick="testCurrentKey()" class="text-xs text-indigo-400 hover:text-indigo-300">
-          ⚡ 测试连接延迟
+        <button onclick="testCurrentKey()" class="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
+          <span>⚡</span> 测试连接延迟
         </button>
         <div class="flex gap-2">
-          <button onclick="closeKeyModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">取消</button>
-          <button onclick="saveCustomKey()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium">保存配置</button>
+          <button onclick="closeKeyModal()" class="px-4 py-2 bg-obsidian-800 hover:bg-obsidian-700 text-slate-300 rounded-lg text-xs font-medium">取消</button>
+          <button onclick="saveCustomKey()" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-medium shadow-md shadow-brand-500/20">保存配置</button>
         </div>
       </div>
 
@@ -485,7 +582,7 @@
     </div>
   </div>
 
-  <footer class="border-t border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500">
+  <footer class="border-t border-slate-800/80 py-4 px-6 text-center text-xs text-slate-500 bg-obsidian-950">
     YouInsight AI Studio &copy; 2026 &middot; Powered by You.com Web Intelligence API &middot; 极速、精准、高可信
   </footer>
 
