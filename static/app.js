@@ -88,12 +88,20 @@ document.addEventListener('DOMContentLoaded', () => {
 function switchTab(tabId) {
   currentTab = tabId;
   
-  // 1. Update nav buttons
+  // 1. Update desktop nav buttons
   document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active'));
   const activeBtn = document.getElementById(`tab-btn-${tabId}`);
   if (activeBtn) activeBtn.classList.add('active');
 
-  // 2. Switch workspace panel
+  // 2. Update mobile nav buttons
+  document.querySelectorAll('.mobile-tab-btn').forEach(btn => btn.classList.remove('active'));
+  const activeMobileBtn = document.getElementById(`m-tab-btn-${tabId}`);
+  if (activeMobileBtn) {
+    activeMobileBtn.classList.add('active');
+    activeMobileBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
+
+  // 3. Switch workspace panel
   document.querySelectorAll('.workspace-panel').forEach(panel => panel.classList.add('hidden'));
   const activePanel = document.getElementById(`panel-${tabId}`);
   if (activePanel) activePanel.classList.remove('hidden');
