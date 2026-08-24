@@ -32,21 +32,6 @@
               700: '#1E2C4F',
               600: '#2C3E6B'
             }
-          },
-          animation: {
-            'shimmer': 'shimmer 2s linear infinite',
-            'pulse-subtle': 'pulseSubtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            'spin-slow': 'spin 3s linear infinite'
-          },
-          keyframes: {
-            shimmer: {
-              '0%': { backgroundPosition: '-200% 0' },
-              '100%': { backgroundPosition: '200% 0' }
-            },
-            pulseSubtle: {
-              '0%, 100%': { opacity: '1' },
-              '50%': { opacity: '0.6' }
-            }
           }
         }
       }
@@ -88,12 +73,12 @@
     <!-- Header Right Controls -->
     <div class="flex items-center space-x-3">
       <!-- Status Badge -->
-      <div id="api-status-badge" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium cursor-pointer hover:bg-emerald-500/20 transition-all shadow-sm" onclick="openKeyModal()">
+      <div id="api-status-badge" class="flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium shadow-sm">
         <span class="relative flex h-2 w-2">
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
         </span>
-        <span id="api-status-text">系统就绪 (已连接)</span>
+        <span id="api-status-text">全球情报网就绪 (在线)</span>
       </div>
 
       <!-- History Trigger -->
@@ -101,12 +86,6 @@
         <span class="text-sm">📜</span>
         <span>历史记录</span>
         <span id="history-count-badge" class="px-1.5 py-0.5 bg-brand-500/25 text-brand-300 rounded-full text-[10px] font-mono">0</span>
-      </button>
-
-      <!-- Key Config -->
-      <button onclick="openKeyModal()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-obsidian-800 hover:bg-obsidian-700 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-medium transition-all shadow-sm hover:border-slate-600 active:scale-95">
-        <span>🔑</span>
-        <span>API设置</span>
       </button>
     </div>
   </header>
@@ -201,7 +180,7 @@
               <span class="text-2xl">📰</span>
               <div>
                 <h2 class="text-xl font-bold text-white tracking-tight">一键智能早报与事件综合</h2>
-                <p class="text-xs text-slate-400 mt-0.5">全自动组合“实时全网检索”与“多源事实综合”，一键提炼结构化早报与关联新闻源。</p>
+                <p class="text-xs text-slate-400 mt-0.5">全自动组合“实时全网检索”与“多源事实综合”，一键提炼结构化早报与信息源溯源。</p>
               </div>
             </div>
             <span class="text-xs text-pink-400 bg-pink-500/10 border border-pink-500/20 px-3 py-1 rounded-full font-medium">Smart Digest</span>
@@ -227,7 +206,7 @@
           </button>
         </div>
 
-        <!-- Dynamic Multi-Step Progress Tracker (Visible when running) -->
+        <!-- Dynamic Progress Tracker -->
         <div id="digest-progress-box" class="hidden mb-5 p-4 rounded-xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-indigo-500/10 border border-pink-500/30 text-pink-300">
           <div class="flex items-center justify-between mb-2.5">
             <div class="flex items-center gap-2">
@@ -253,9 +232,12 @@
                 <span>📋 综合研报正文</span>
                 <span id="digest-result-badge" class="text-[10px] bg-pink-500/20 text-pink-300 border border-pink-500/30 px-2 py-0.5 rounded font-medium">生成成功</span>
               </div>
-              <div class="flex gap-2">
-                <button onclick="copyElementText('digest-report-content')" class="action-btn">📋 复制正文</button>
-                <button onclick="downloadAsMarkdown('digest-report-content', '行业早报')" class="action-btn">💾 导出.md</button>
+              <!-- Export Action Toolbar -->
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="copyElementText('digest-report-content')" class="action-btn" title="复制纯文本内容">📋 复制</button>
+                <button onclick="exportAsWord('digest-report-content', '行业早报')" class="action-btn text-blue-400 hover:text-blue-300 border-blue-500/30 bg-blue-500/10" title="导出为 Word (.doc) 文件">📄 导出Word</button>
+                <button onclick="exportAsPDF('digest-report-content', '行业早报')" class="action-btn text-emerald-400 hover:text-emerald-300 border-emerald-500/30 bg-emerald-500/10" title="导出为 PDF 文件">📑 导出PDF</button>
+                <button onclick="downloadAsMarkdown('digest-report-content', '行业早报')" class="action-btn" title="导出为 Markdown 文件">💾 导出MD</button>
               </div>
             </div>
             <div id="digest-report-content" class="markdown-body text-slate-200 text-sm leading-relaxed"></div>
@@ -333,9 +315,11 @@
               <div class="flex items-center gap-2 text-sm font-semibold text-indigo-300">
                 <span>📑 研究报告结论</span>
               </div>
-              <div class="flex gap-2">
-                <button onclick="copyElementText('research-report-content')" class="action-btn">📋 复制内容</button>
-                <button onclick="downloadAsMarkdown('research-report-content', '深度研报')" class="action-btn">💾 导出.md</button>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="copyElementText('research-report-content')" class="action-btn" title="复制纯文本内容">📋 复制</button>
+                <button onclick="exportAsWord('research-report-content', '深度研报')" class="action-btn text-blue-400 hover:text-blue-300 border-blue-500/30 bg-blue-500/10" title="导出为 Word (.doc) 文件">📄 导出Word</button>
+                <button onclick="exportAsPDF('research-report-content', '深度研报')" class="action-btn text-emerald-400 hover:text-emerald-300 border-emerald-500/30 bg-emerald-500/10" title="导出为 PDF 文件">📑 导出PDF</button>
+                <button onclick="downloadAsMarkdown('research-report-content', '深度研报')" class="action-btn" title="导出为 Markdown 文件">💾 导出MD</button>
               </div>
             </div>
             <div id="research-report-content" class="markdown-body text-slate-200 text-sm leading-relaxed"></div>
@@ -454,7 +438,12 @@
               <div class="flex items-center gap-2 text-sm font-semibold text-emerald-400">
                 <span>💰 财务分析结论与核心数据</span>
               </div>
-              <button onclick="copyElementText('finance-report-content')" class="action-btn">📋 复制数据</button>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="copyElementText('finance-report-content')" class="action-btn" title="复制纯文本内容">📋 复制</button>
+                <button onclick="exportAsWord('finance-report-content', '财务研报')" class="action-btn text-blue-400 hover:text-blue-300 border-blue-500/30 bg-blue-500/10" title="导出为 Word (.doc) 文件">📄 导出Word</button>
+                <button onclick="exportAsPDF('finance-report-content', '财务研报')" class="action-btn text-emerald-400 hover:text-emerald-300 border-emerald-500/30 bg-emerald-500/10" title="导出为 PDF 文件">📑 导出PDF</button>
+                <button onclick="downloadAsMarkdown('finance-report-content', '财务研报')" class="action-btn" title="导出为 Markdown 文件">💾 导出MD</button>
+              </div>
             </div>
             <div id="finance-report-content" class="markdown-body text-slate-200 text-sm leading-relaxed"></div>
           </div>
@@ -545,40 +534,6 @@
       </div>
 
       <div id="history-list-box" class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-1"></div>
-    </div>
-  </div>
-
-  <!-- API Key Modal -->
-  <div id="key-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden transition-all">
-    <div class="bg-obsidian-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-base font-bold text-white flex items-center gap-2">
-          <span>🔑</span> API 密钥与服务配置
-        </h3>
-        <button onclick="closeKeyModal()" class="text-slate-400 hover:text-white text-lg">✕</button>
-      </div>
-
-      <p class="text-xs text-slate-400 leading-relaxed">
-        系统当前已内置并验证有效 API Key。您也可以在此填入自己的 You.com 密钥进行替换。
-      </p>
-
-      <div>
-        <label class="block text-xs font-semibold text-slate-300 mb-1.5">You.com API Key</label>
-        <input type="password" id="custom-api-key-input" placeholder="ydc-sk-..."
-               class="w-full bg-obsidian-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-brand-500 font-mono">
-      </div>
-
-      <div class="flex items-center justify-between pt-2">
-        <button onclick="testCurrentKey()" class="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1">
-          <span>⚡</span> 测试连接延迟
-        </button>
-        <div class="flex gap-2">
-          <button onclick="closeKeyModal()" class="px-4 py-2 bg-obsidian-800 hover:bg-obsidian-700 text-slate-300 rounded-lg text-xs font-medium">取消</button>
-          <button onclick="saveCustomKey()" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-medium shadow-md shadow-brand-500/20">保存配置</button>
-        </div>
-      </div>
-
-      <div id="key-test-feedback" class="text-xs mt-2 p-2.5 rounded-lg hidden"></div>
     </div>
   </div>
 

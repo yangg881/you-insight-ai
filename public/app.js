@@ -1,6 +1,5 @@
 // Global State
 let currentTab = 'digest';
-let customApiKey = localStorage.getItem('you_custom_api_key') || '';
 let historyData = [];
 
 try {
@@ -52,7 +51,6 @@ function renderMarkdown(md) {
   }
 
   if (!html) {
-    // Custom robust fallback parser
     html = md
       .replace(/^### (.*$)/gim, '<h3 class="text-base font-bold text-slate-100 mt-4 mb-2">$1</h3>')
       .replace(/^## (.*$)/gim, '<h2 class="text-lg font-bold text-slate-100 mt-4 mb-2">$1</h2>')
@@ -84,11 +82,6 @@ function highlightSourceCard(index) {
 // Initialize on Load
 document.addEventListener('DOMContentLoaded', () => {
   updateHistoryBadge();
-  if (customApiKey) {
-    const keyInput = document.getElementById('custom-api-key-input');
-    if (keyInput) keyInput.value = customApiKey;
-  }
-  testCurrentKey(true);
 });
 
 // Tab Switcher
@@ -121,10 +114,6 @@ function startTimer(elementId) {
 
 function stopTimer(interval) {
   if (interval) clearInterval(interval);
-}
-
-function getApiKeyHeader() {
-  return customApiKey ? { 'x-api-key': customApiKey } : {};
 }
 
 // Quick Fill and Run
@@ -166,7 +155,7 @@ async function executeDigest() {
   try {
     const res = await fetch('/api/digest', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getApiKeyHeader() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ topic: query })
     });
 
@@ -253,7 +242,7 @@ async function executeResearch() {
   try {
     const res = await fetch('/api/research', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getApiKeyHeader() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input })
     });
 
@@ -332,7 +321,7 @@ async function executeSearch() {
   try {
     const res = await fetch('/api/search', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getApiKeyHeader() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, count })
     });
 
@@ -418,7 +407,7 @@ async function executeFinance() {
   try {
     const res = await fetch('/api/finance', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getApiKeyHeader() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input })
     });
 
@@ -504,7 +493,7 @@ async function executeContents() {
   try {
     const res = await fetch('/api/contents', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...getApiKeyHeader() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ urls })
     });
 
@@ -558,7 +547,8 @@ function quickDeepResearch(topic) {
   executeResearch();
 }
 
-// Helper utilities
+// ================= Export Engines (PDF, Word, Markdown, Copy) =================
+
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.innerText = text;
@@ -569,7 +559,7 @@ function copyElementText(id) {
   const el = document.getElementById(id);
   if (!el) return;
   navigator.clipboard.writeText(el.innerText).then(() => {
-    showToast('内容已成功复制到剪贴板！', 'success');
+    showToast('研报正文已成功复制到剪贴板！', 'success');
   });
 }
 
@@ -590,7 +580,115 @@ function downloadAsMarkdown(id, filename) {
   a.download = `${filename}_${new Date().toISOString().slice(0,10)}.md`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('研报 Markdown 文件已开始下载', 'info');
+  showToast('Markdown 文件下载已启动', 'info');
+}
+
+// Word (.doc / .docx compatible HTML-Word format) Export
+function exportAsWord(elementId, title) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const contentHtml = el.innerHTML;
+
+  const wordTemplate = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>${title}</title>
+      <style>
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; line-height: 1.8; color: #333333; }
+        h1 { font-size: 20pt; color: #1e1b4b; border-bottom: 2pt solid #6366f1; padding-bottom: 6pt; margin-top: 18pt; margin-bottom: 12pt; }
+        h2 { font-size: 15pt; color: #312e81; margin-top: 14pt; margin-bottom: 8pt; }
+        h3 { font-size: 12pt; color: #4338ca; margin-top: 10pt; margin-bottom: 6pt; }
+        p { margin-bottom: 10pt; font-size: 11pt; }
+        ul, ol { margin-left: 20pt; margin-bottom: 10pt; }
+        li { margin-bottom: 4pt; }
+        blockquote { border-left: 3pt solid #6366f1; background-color: #f8fafc; padding: 6pt 12pt; margin: 10pt 0; color: #475569; }
+        .doc-header { text-align: center; margin-bottom: 24pt; border-bottom: 1pt solid #e2e8f0; padding-bottom: 12pt; }
+        .doc-meta { font-size: 9.5pt; color: #64748b; margin-top: 4pt; }
+      </style>
+    </head>
+    <body>
+      <div class='doc-header'>
+        <h1 style='border:none;margin-bottom:4pt;'>${title}</h1>
+        <div class='doc-meta'>YouInsight AI 商业研报智库 &middot; 生成日期：${dateStr}</div>
+      </div>
+      <div>
+        ${contentHtml}
+      </div>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff' + wordTemplate], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title}_${new Date().toISOString().slice(0,10)}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Word 研报文档已成功导出！', 'success');
+}
+
+// PDF Export via Dedicated Printable Window
+function exportAsPDF(elementId, title) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+
+  const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    showToast('请允许浏览器弹出打印窗口以导出 PDF', 'error');
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+      <meta charset="UTF-8">
+      <title>${title} - YouInsight AI</title>
+      <style>
+        @page { size: A4; margin: 20mm; }
+        body { font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif; line-height: 1.8; color: #1e293b; background: #fff; margin: 0; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #6366f1; padding-bottom: 12px; margin-bottom: 24px; }
+        .title { font-size: 24px; font-weight: 700; color: #0f172a; margin: 0 0 6px 0; }
+        .meta { font-size: 12px; color: #64748b; }
+        h1, h2, h3 { color: #0f172a; font-weight: 700; margin-top: 20px; margin-bottom: 10px; }
+        h1 { font-size: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; }
+        h2 { font-size: 16px; border-left: 4px solid #6366f1; padding-left: 8px; }
+        h3 { font-size: 14px; }
+        p { margin-bottom: 12px; font-size: 13px; text-align: justify; }
+        ul, ol { margin-left: 20px; margin-bottom: 12px; font-size: 13px; }
+        li { margin-bottom: 4px; }
+        strong { color: #0f172a; font-weight: 600; }
+        blockquote { border-left: 3px solid #6366f1; background: #f8fafc; padding: 8px 14px; margin: 14px 0; color: #475569; font-style: italic; }
+        code { background: #f1f5f9; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #4f46e5; }
+        .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center; font-size: 10px; color: #94a3b8; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="title">${title}</div>
+        <div class="meta">YouInsight AI 商业研报智库 &middot; 生成日期：${dateStr}</div>
+      </div>
+      <div>
+        ${el.innerHTML}
+      </div>
+      <div class="footer">
+        本文档由 YouInsight AI 实时网络情报与事实溯源研报引擎自动生成 &middot; 全球权威信源对齐
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  showToast('正在调起 PDF 打印/导出视图...', 'info');
 }
 
 // ================= History Management =================
@@ -699,54 +797,4 @@ function clearAllHistory() {
   updateHistoryBadge();
   renderHistoryList([]);
   showToast('历史记录已清空', 'info');
-}
-
-// API Key Modal
-function openKeyModal() {
-  document.getElementById('key-modal').classList.remove('hidden');
-}
-
-function closeKeyModal() {
-  document.getElementById('key-modal').classList.add('hidden');
-}
-
-function saveCustomKey() {
-  const val = document.getElementById('custom-api-key-input').value.trim();
-  customApiKey = val;
-  if (val) {
-    localStorage.setItem('you_custom_api_key', val);
-  } else {
-    localStorage.removeItem('you_custom_api_key');
-  }
-  closeKeyModal();
-  testCurrentKey();
-  showToast('API Key 配置已更新', 'success');
-}
-
-async function testCurrentKey(silent = false) {
-  const feedback = document.getElementById('key-test-feedback');
-  const badgeText = document.getElementById('api-status-text');
-
-  try {
-    const res = await fetch('/api/test-key', { headers: getApiKeyHeader() });
-    const data = await res.json();
-
-    if (data.valid) {
-      badgeText.innerText = `系统就绪 (${data.latency_ms}ms)`;
-      if (!silent && feedback) {
-        feedback.className = 'text-xs mt-2 p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-        feedback.innerText = `连接成功！响应延迟: ${data.latency_ms} ms`;
-        feedback.classList.remove('hidden');
-      }
-    } else {
-      badgeText.innerText = 'API 异常 / 未连接';
-      if (!silent && feedback) {
-        feedback.className = 'text-xs mt-2 p-2.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20';
-        feedback.innerText = '连接测试失败: ' + (data.message || '未知错误');
-        feedback.classList.remove('hidden');
-      }
-    }
-  } catch (e) {
-    badgeText.innerText = '服务正常连接';
-  }
 }
