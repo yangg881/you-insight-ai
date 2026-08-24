@@ -153,7 +153,7 @@ async function executeDigest() {
   const timer = startTimer('digest-timer');
 
   try {
-    const res = await fetch('/api/digest', {
+    const res = await fetch('api/digest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ topic: query })
@@ -240,7 +240,7 @@ async function executeResearch() {
   const timer = startTimer('research-timer');
 
   try {
-    const res = await fetch('/api/research', {
+    const res = await fetch('api/research', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input })
@@ -319,7 +319,7 @@ async function executeSearch() {
   const timer = startTimer('search-timer');
 
   try {
-    const res = await fetch('/api/search', {
+    const res = await fetch('api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, count })
@@ -405,7 +405,7 @@ async function executeFinance() {
   const timer = startTimer('finance-timer');
 
   try {
-    const res = await fetch('/api/finance', {
+    const res = await fetch('api/finance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input })
@@ -491,7 +491,7 @@ async function executeContents() {
   const timer = startTimer('contents-timer');
 
   try {
-    const res = await fetch('/api/contents', {
+    const res = await fetch('api/contents', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ urls })
