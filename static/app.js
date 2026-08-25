@@ -1,3 +1,16 @@
+function cleanSnippetText(text) {
+  if (!text) return '';
+  return text
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
 // ==================== YouInsight AI Studio Frontend Core ====================
 
 // 兼容根路径(Vercel/本地8200)与反向代理子路径(/you-insight/)两种部署入口：
@@ -1029,8 +1042,8 @@ async function executeDigest() {
           <span class="text-xs text-pink-400 font-medium">${escapeHtml(safeHostname(item.url))}</span>
           <span class="text-xs text-[var(--text-muted)]">${item.page_age ? escapeHtml(String(item.page_age).split('T')[0]) : '实时'}</span>
         </div>
-        <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-medium text-white hover:text-indigo-400 line-clamp-2 block mb-1">${escapeHtml(item.title || '无标题')}</a>
-        <p class="text-xs text-[var(--text-secondary)] line-clamp-2">${escapeHtml(item.description || item.snippets?.[0] || '')}</p>
+        <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-medium text-white hover:text-indigo-400 line-clamp-2 block mb-1">${escapeHtml(cleanSnippetText(item.title || '无标题'))}</a>
+        <p class="text-xs text-[var(--text-secondary)] line-clamp-2">${escapeHtml(cleanSnippetText(item.description || item.snippets?.[0] || ''))}</p>
       </div>
     `).join('');
 
@@ -1207,8 +1220,8 @@ function renderWebItems(items) {
         </div>
         <span class="text-xs text-[var(--text-muted)]">${item.page_age ? escapeHtml(String(item.page_age).split('T')[0]) : '实时'}</span>
       </div>
-      <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-bold text-white hover:text-indigo-400 block mb-1.5">${escapeHtml(item.title || '无标题')}</a>
-      <p class="text-xs text-[var(--text-secondary)] line-clamp-3">${escapeHtml(item.description || item.snippets?.[0] || '')}</p>
+      <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-bold text-white hover:text-indigo-400 block mb-1.5">${escapeHtml(cleanSnippetText(item.title || '无标题'))}</a>
+      <p class="text-xs text-[var(--text-secondary)] line-clamp-3">${escapeHtml(cleanSnippetText(item.description || item.snippets?.[0] || ''))}</p>
     </div>
   `).join('');
 }
@@ -1255,8 +1268,8 @@ function renderNewsItems(items) {
         <span class="text-xs text-pink-400 font-medium">${escapeHtml(safeHostname(item.url))}</span>
         <span class="text-xs text-[var(--text-muted)]">${item.page_age ? escapeHtml(String(item.page_age).split('T')[0]) : '最新'}</span>
       </div>
-      <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-medium text-white hover:text-indigo-400 line-clamp-2 block mb-1">${escapeHtml(item.title || '无标题')}</a>
-      <p class="text-xs text-[var(--text-secondary)] line-clamp-2">${escapeHtml(item.description || item.snippets?.[0] || '')}</p>
+      <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-medium text-white hover:text-indigo-400 line-clamp-2 block mb-1">${escapeHtml(cleanSnippetText(item.title || '无标题'))}</a>
+      <p class="text-xs text-[var(--text-secondary)] line-clamp-2">${escapeHtml(cleanSnippetText(item.description || item.snippets?.[0] || ''))}</p>
     </div>
   `).join('');
 }

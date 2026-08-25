@@ -368,7 +368,7 @@ class TTLCache:
             self._data.pop(oldest, None)
         self._data[key] = (time.time(), value)
 
-async def fetch_brave_web_search(query: str, count: int = 10, freshness: Optional[str] = None) -> Optional[Dict[str, Any]]:
+async def fetch_brave_web_search(query: str, count: int = 10, freshness: Optional[str] = None, lang: Optional[str] = 'zh') -> Optional[Dict[str, Any]]:
     key = get_current_brave_api_key()
     if not key:
         return None
@@ -378,11 +378,25 @@ async def fetch_brave_web_search(query: str, count: int = 10, freshness: Optiona
         "Accept-Encoding": "gzip",
         "X-Subscription-Token": key
     }
+    
+    # 智能中文优先处理
+    q_final = query
+    if lang == 'zh':
+        # 若是纯英文检索词且无中文，添加中文意图提示
+        if not any('\u4e00' <= char <= '\u9fff' for char in query):
+            q_final = f"{query} 中文 最新 评测 资讯"
+            
     params = {
-        "q": query,
+        "q": q_final,
         "count": min(20, count),
         "extra_snippets": "true"
     }
+    if lang == 'zh':
+        params["search_lang"] = "zh-hans"
+        params["country"] = "cn"
+    elif lang == 'en':
+        params["search_lang"] = "en"
+        
     if freshness:
         params["freshness"] = freshness
         
@@ -410,7 +424,7 @@ async def fetch_brave_web_search(query: str, count: int = 10, freshness: Optiona
         print(f"Brave search error: {e}")
     return None
 
-async def fetch_brave_news_search(query: str, count: int = 10) -> Optional[Dict[str, Any]]:
+async def fetch_brave_news_search(query: str, count: int = 10, lang: Optional[str] = 'zh') -> Optional[Dict[str, Any]]:
     key = get_current_brave_api_key()
     if not key:
         return None
@@ -420,7 +434,13 @@ async def fetch_brave_news_search(query: str, count: int = 10) -> Optional[Dict[
         "Accept-Encoding": "gzip",
         "X-Subscription-Token": key
     }
-    params = {"q": query, "count": min(20, count)}
+    q_final = query
+    if lang == 'zh' and not any('\u4e00' <= char <= '\u9fff' for char in query):
+        q_final = f"{query} 中文 快讯"
+    params = {"q": q_final, "count": min(20, count)}
+    if lang == 'zh':
+        params["search_lang"] = "zh-hans"
+        params["country"] = "cn" 
     try:
         async with client(timeout=10.0) as c:
             r = await c.get(url, headers=headers, params=params)
@@ -1151,6 +1171,7 @@ class SearchRequest(BaseModel):
     query: str
     count: Optional[int] = 10
     freshness: Optional[str] = None
+    lang: Optional[str] = 'zh' # 'zh' 中文优先, 'en' 全球原版, 'all' 全部
 
 class ResearchRequest(BaseModel):
     input: str
@@ -1170,6 +1191,7 @@ class DigestRequest(BaseModel):
 class NewsRequest(BaseModel):
     query: str
     count: Optional[int] = 10
+    lang: Optional[str] = 'zh'
 
 class HistorySave(BaseModel):
     type: str
@@ -1209,7 +1231,7 @@ async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[s
         return {'status': 'success', 'data': hit, 'cached': True, 'quota': quota_res}
     
     # 优先走 Brave 毫秒级极速通道，异常自动降级至 You.com 备用通道
-    data = await fetch_brave_web_search(req.query, req.count or 10, req.freshness)
+    data = await fetch_brave_web_search(req.query, req.count or 10, req.freshness, req.lang or 'zh')
     if not data:
         async with client() as c:
             params = {'query': req.query, 'count': req.count}
@@ -1243,7 +1265,7 @@ async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, 
         return {'status': 'success', 'data': hit, 'cached': True, 'quota': quota_res}
     
     # 优先走 Brave News 极速通道，异常自动降级至备用通道
-    data = await fetch_brave_news_search(req.query, req.count or 10)
+    data = await fetch_brave_news_search(req.query, req.count or 10, req.lang or 'zh')
     if not data:
         async with client() as c:
             resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': get_current_you_api_key()})
