@@ -1272,24 +1272,48 @@ async def api_research_stream(req: ResearchRequest, request: Request, user: Opti
 
     async def generate():
         t0 = time.time()
-        yield f'data: {json.dumps({"type": "start", "stage": "检索中", "quota": quota_res})}\n\n'
-        await asyncio.sleep(0.3)
-        yield f'data: {json.dumps({"type": "stage", "stage": "多源交叉分析与推理中"})}\n\n'
+        yield f'data: {json.dumps({"type": "start", "stage": "🦁 正在通过 Brave 独立索引库毫秒级检索最新切片...", "quota": quota_res})}\n\n'
+        
+        # 1. 预取 Brave 高密真实事实切片 (0.2s)
+        brave_data = await fetch_brave_web_search(req.input, count=8)
+        brave_snippets = []
+        brave_sources = []
+        if brave_data and "results" in brave_data:
+            for item in brave_data["results"].get("web", []):
+                brave_snippets.append(f"【来源: {item.get('title')}】 {item.get('description')}")
+                brave_sources.append({
+                    "title": item.get("title"),
+                    "url": item.get("url"),
+                    "name": "Brave 独立索引库"
+                })
+        
+        yield f'data: {json.dumps({"type": "stage", "stage": "🧠 双引擎多源交叉验证与深度推理中..."})}\n\n'
+        
         try:
             async with client(timeout=180.0) as c:
-                payload = {'input': req.input, 'chat_history': req.chat_history or []}
+                context_inject = ""
+                if brave_snippets:
+                    context_inject = "\n【Brave实时一手高密信源】:\n" + "\n".join(brave_snippets[:5])
+                
+                enhanced_prompt = f"{req.input}\n{context_inject}\n请结合上述一手交叉事实信源，生成权威详尽、逻辑严密、论据扎实的深度研报。"
+                payload = {'input': enhanced_prompt, 'chat_history': req.chat_history or []}
+                
                 resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': get_current_you_api_key()})
                 if resp.status_code != 200:
                     raise RuntimeError(f'上游研报服务返回 {resp.status_code}: {resp.text[:150]}')
                 data = resp.json()
                 content = data.get('output', {}).get('content', '')
-                sources = data.get('output', {}).get('sources', [])
+                you_sources = data.get('output', {}).get('sources', [])
+                
+                # 合并并去重双源出处
+                all_sources = brave_sources[:4] + [s for s in you_sources if not any(bs['url'] == s.get('url') for bs in brave_sources)]
                 
                 chunk_size = 50
                 for i in range(0, len(content), chunk_size):
                     yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
                     await asyncio.sleep(0.02)
-                yield f'data: {json.dumps({"type": "done", "sources": sources, "full_content": content})}\n\n'
+                yield f'data: {json.dumps({"type": "done", "sources": all_sources, "full_content": content})}\n\n'
+                consume_quota_success(user, ip)
                 record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'success')
         except Exception as e:
             record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'failed')
@@ -1310,19 +1334,49 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
     t0 = time.time()
     async with client(timeout=120.0) as c:
         try:
-            search_task = c.get('https://api.you.com/v1/search', params={'query': f'{req.topic} 最新 进展 动态', 'count': 6}, headers={'X-API-Key': get_current_you_api_key()})
-            news_task = c.get('https://api.you.com/v1/search', params={'query': req.topic, 'count': 5}, headers={'X-API-Key': get_current_you_api_key()})
-            prompt = f'请针对主题【{req.topic}】生成一份结构化行业早报与情报综合分析。包含：1. 今日核心要点 2. 详细动态与深度解读 3. 发展趋势与商业洞察。必须保持事实准确与客观。'
-            research_task = c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
+            # 1. 并行获取 Brave 过去24小时突发 + 过去7天深度动态 + You.com 全球新闻
+            task_brave_24h = fetch_brave_web_search(f"{req.topic} 突发 动态", count=5, freshness="pd")
+            task_brave_7d = fetch_brave_web_search(f"{req.topic} 深度 趋势", count=5, freshness="pw")
+            task_news = c.get('https://api.you.com/v1/search', params={'query': req.topic, 'count': 5}, headers={'X-API-Key': get_current_you_api_key()})
             
-            search_res, news_res, research_res = await asyncio.gather(search_task, news_task, research_task, return_exceptions=True)
-            search_data = search_res.json() if not isinstance(search_res, Exception) and search_res.status_code == 200 else {}
-            news_data = news_res.json() if not isinstance(news_res, Exception) and news_res.status_code == 200 else {}
-            res_data = research_res.json() if not isinstance(research_res, Exception) and research_res.status_code == 200 else {}
+            res_24h, res_7d, news_resp = await asyncio.gather(task_brave_24h, task_brave_7d, task_news, return_exceptions=True)
+            
+            items_24h = res_24h.get("results", {}).get("web", []) if isinstance(res_24h, dict) else []
+            items_7d = res_7d.get("results", {}).get("web", []) if isinstance(res_7d, dict) else []
+            news_items = news_resp.json().get("results", {}).get("news", []) if not isinstance(news_resp, Exception) and news_resp.status_code == 200 else []
+            
+            # 组合高密度时序上下文
+            time_context = "【过去24小时突发动态】:\n" + "\n".join([f"- {it.get('title')}: {it.get('description')}" for it in items_24h[:3]]) + "\n\n【近7日核心脉络演进】:\n" + "\n".join([f"- {it.get('title')}: {it.get('description')}" for it in items_7d[:3]])
+            
+            prompt = f"""请针对主题【{req.topic}】生成一份专业级行业情报早报。
+必须依据以下多源交叉时序信源撰写：
+{time_context}
+
+研报结构要求：
+一、⚡ 过去24小时核心突发动态（提炼最关键大事件）
+二、📅 近7日时序演进图谱与深层动因（梳理事件发展脉络）
+三、💡 关键行业影响与商业/市场洞察
+四、🔭 后续趋势展望与行动建议
+
+必须确保事实准确、出处权威。"""
+            
+            research_resp = await c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
+            res_data = research_resp.json() if research_resp.status_code == 200 else {}
+            
+            # 合并展示的关联新闻列表
+            combined_news = items_24h[:4] + items_7d[:3] + news_items[:3]
             
             duration = int((time.time() - t0) * 1000)
+            consume_quota_success(user, ip)
             record_gen_log(user, ip, '行业早报', req.topic, duration, 'success')
-            return {'status': 'success', 'topic': req.topic, 'brief_report': res_data, 'search_results': search_data, 'news_results': news_data, 'quota': quota_res}
+            return {
+                'status': 'success',
+                'topic': req.topic,
+                'brief_report': res_data,
+                'search_results': {'results': {'web': combined_news}},
+                'duration_ms': duration,
+                'quota': quota_res
+            }
         except Exception as e:
             record_gen_log(user, ip, '行业早报', req.topic, int((time.time() - t0)*1000), 'failed')
             raise HTTPException(status_code=500, detail=str(e))

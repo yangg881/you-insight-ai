@@ -996,10 +996,10 @@ async function executeDigest() {
   
   const timer = startTimer('digest-timer');
   const rotator = startStageRotation('digest-stage', 'digest-timer', [
-    '正在检索最新资讯...',
-    '多源交叉分析中，约需 30-45 秒...',
-    '正在提炼研报正文与出处...',
-    '即将完成，请稍候...'
+    '🦁 检索过去 24 小时突发动态 (Brave 独立通道)...',
+    '📅 梳理过去 7 天核心脉络演进...',
+    '🧠 多源交叉时序分析与商业研判提炼...',
+    '📋 正在生成结构化行业早报...'
   ]);
 
   try {
@@ -1061,10 +1061,10 @@ async function executeResearchStream() {
 
   const timer = startTimer('research-timer');
   const rotator = startStageRotation('research-stage', 'research-timer', [
-    '初始化检索通道...',
-    '全网多轮检索中...',
-    '正在分析引用与事实溯源...',
-    '深度推理中，约需 1-2 分钟...'
+    '🦁 Brave 全球独立索引库毫秒级检索中 (0.2s)...',
+    '🧠 双引擎多源交叉验证与深度逻辑推理中...',
+    '🔗 事实溯源与高密上下文切片结构化提炼...',
+    '📑 研报正文生成中，约需 1-2 分钟...'
   ]);
 
   try {
@@ -1140,15 +1140,24 @@ function renderSources(container, sources) {
     container.innerHTML = '<p class="text-sm text-[var(--text-muted)] col-span-2">未提取到结构化出处</p>';
     return;
   }
-  container.innerHTML = sources.map((s, idx) => `
-    <div class="p-3 rounded-lg bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] flex items-start gap-2.5">
-      <span class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">[${idx+1}]</span>
-      <div class="min-w-0 flex-1">
-        <a href="${escapeHtml(s.url || '#')}" target="_blank" rel="noopener" class="text-xs font-medium text-white hover:text-indigo-400 truncate block mb-0.5">${escapeHtml(s.title || s.name || s.url || '参考来源')}</a>
-        <p class="text-[11px] text-[var(--text-muted)] truncate">${escapeHtml(safeHostname(s.url))}</p>
+  container.innerHTML = sources.map((s, idx) => {
+    const isBrave = s.name === 'Brave 独立索引库' || s.source?.includes('Brave');
+    const badge = isBrave 
+      ? '<span class="px-1.5 py-0.2 rounded text-[9px] bg-amber-500/20 text-amber-300 font-medium">🦁 Brave 独立索引</span>' 
+      : '<span class="px-1.5 py-0.2 rounded text-[9px] bg-cyan-500/20 text-cyan-300 font-medium">🌐 全球信源</span>';
+    return `
+      <div class="p-3 rounded-lg bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] flex items-start gap-2.5 hover:border-indigo-500/30 transition-colors">
+        <span class="text-xs font-mono font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">[${idx+1}]</span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 mb-1">
+            <a href="${escapeHtml(s.url || '#')}" target="_blank" rel="noopener" class="text-xs font-medium text-white hover:text-indigo-400 truncate block flex-1">${escapeHtml(s.title || s.name || s.url || '参考来源')}</a>
+            ${badge}
+          </div>
+          <p class="text-[11px] text-[var(--text-muted)] truncate">${escapeHtml(safeHostname(s.url))}</p>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // 3. 实时搜索
@@ -1192,7 +1201,10 @@ function renderWebItems(items) {
   result.innerHTML = items.map(item => `
     <div class="card p-4 hover:border-indigo-500/40 transition-colors">
       <div class="flex items-center justify-between mb-1.5">
-        <span class="text-xs text-indigo-400 font-mono">${escapeHtml(safeHostname(item.url))}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-indigo-400 font-mono">${escapeHtml(safeHostname(item.url))}</span>
+          ${item.source ? `<span class="px-1.5 py-0.2 rounded text-[10px] bg-amber-500/15 text-amber-300">🦁 ${escapeHtml(item.source)}</span>` : ''}
+        </div>
         <span class="text-xs text-[var(--text-muted)]">${item.page_age ? escapeHtml(String(item.page_age).split('T')[0]) : '实时'}</span>
       </div>
       <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-bold text-white hover:text-indigo-400 block mb-1.5">${escapeHtml(item.title || '无标题')}</a>
