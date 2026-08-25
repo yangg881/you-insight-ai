@@ -1528,16 +1528,48 @@ async def api_contents(req: ContentsRequest, request: Request, user: Optional[Di
         raise HTTPException(status_code=403, detail="体验额度已用完，请登录后继续！" if quota_res["is_guest"] else "今日额度已达上限")
 
     t0 = time.time()
-    async with client() as c:
-        resp = await c.post('https://api.you.com/v1/contents', json={'urls': req.urls}, headers={'X-API-Key': get_current_you_api_key()})
-        if resp.status_code != 200:
-            record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'failed')
-            detail_msg = resp.text[:200]
-            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
-                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
-            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
-        record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'success')
-        return {'status': 'success', 'data': resp.json(), 'quota': quota_res}
+    results = []
+    
+    async with client(timeout=30.0) as c:
+        for u in req.urls[:3]:
+            try:
+                # 1. 优先直接爬取真实网页并深度提取排版正文
+                r = await c.get(u, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'})
+                if r.status_code == 200 and len(r.text) > 200:
+                    item = extract_clean_article_markdown(r.text, u)
+                    results.append(item)
+                else:
+                    # 2. 备用降级：调用 You.com Contents API
+                    you_resp = await c.post('https://api.you.com/v1/contents', json={'urls': [u]}, headers={'X-API-Key': get_current_you_api_key()})
+                    if you_resp.status_code == 200:
+                        raw_data = you_resp.json()
+                        first_content = raw_data.get('contents', [{}])[0] if isinstance(raw_data, dict) else {}
+                        raw_html = first_content.get('html') or first_content.get('markdown') or ''
+                        item = extract_clean_article_markdown(raw_html, u)
+                        results.append(item)
+                    else:
+                        results.append({
+                            "url": u, "domain": "", "title": "提取失败",
+                            "markdown": f"> ⚠️ 该网页无法直接抓取 (HTTP {r.status_code})", "word_count": 0
+                        })
+            except Exception as e:
+                # 异常时尝试 You.com
+                try:
+                    you_resp = await c.post('https://api.you.com/v1/contents', json={'urls': [u]}, headers={'X-API-Key': get_current_you_api_key()})
+                    if you_resp.status_code == 200:
+                        raw_data = you_resp.json()
+                        first_content = raw_data.get('contents', [{}])[0] if isinstance(raw_data, dict) else {}
+                        raw_html = first_content.get('html') or first_content.get('markdown') or ''
+                        item = extract_clean_article_markdown(raw_html, u)
+                        results.append(item)
+                    else:
+                        results.append({"url": u, "domain": "", "title": "抓取失败", "markdown": f"> ⚠️ 抓取异常: {str(e)}", "word_count": 0})
+                except Exception as e2:
+                    results.append({"url": u, "domain": "", "title": "抓取失败", "markdown": f"> ⚠️ 抓取异常: {str(e2)}", "word_count": 0})
+                
+    consume_quota_success(user, ip)
+    record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'success')
+    return {'status': 'success', 'data': results, 'quota': quota_res}
 
 # ==================== 历史记录 (用户隔离) ====================
 
