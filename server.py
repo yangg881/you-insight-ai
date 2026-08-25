@@ -396,8 +396,10 @@ def get_client_ip(request: Request) -> str:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "127.0.0.1"
 
-# 额度检查与核销逻辑
-def check_and_consume_quota(user: Optional[Dict[str, Any]], ip: str) -> Dict[str, Any]:
+# ==================== 额度安全检查与成功核销机制 ====================
+
+def check_quota_available(user: Optional[Dict[str, Any]], ip: str) -> Dict[str, Any]:
+    """仅验证额度是否充足，绝对不提前扣除用户的任何额度"""
     today = date.today().isoformat()
     conn = get_db()
     cursor = conn.cursor()
@@ -405,23 +407,16 @@ def check_and_consume_quota(user: Optional[Dict[str, Any]], ip: str) -> Dict[str
     if user:
         uid = user["id"]
         daily_quota = user["daily_quota"]
-        if daily_quota == -1: # 无限额度
+        if daily_quota == -1:
             conn.close()
-            return {"allowed": True, "remaining": 9999, "is_guest": False}
+            return {"allowed": True, "remaining": 9999, "is_guest": False, "quota": -1, "used": 0}
         
         row = cursor.execute("SELECT count FROM daily_usage WHERE user_id = ? AND usage_date = ?", (uid, today)).fetchone()
         used = row["count"] if row else 0
-        if used >= daily_quota:
-            conn.close()
-            return {"allowed": False, "remaining": 0, "is_guest": False, "quota": daily_quota, "used": used}
-        
-        cursor.execute("""
-        INSERT INTO daily_usage (user_id, usage_date, count) VALUES (?, ?, 1)
-        ON CONFLICT(user_id, usage_date) DO UPDATE SET count = count + 1
-        """, (uid, today))
-        conn.commit()
         conn.close()
-        return {"allowed": True, "remaining": daily_quota - (used + 1), "is_guest": False, "quota": daily_quota, "used": used + 1}
+        if used >= daily_quota:
+            return {"allowed": False, "remaining": 0, "is_guest": False, "quota": daily_quota, "used": used}
+        return {"allowed": True, "remaining": max(0, daily_quota - used), "is_guest": False, "quota": daily_quota, "used": used}
     else:
         # 游客模式 (按 IP 每日限额)
         setting = cursor.execute("SELECT value FROM system_settings WHERE key = 'guest_daily_limit'").fetchone()
@@ -429,17 +424,45 @@ def check_and_consume_quota(user: Optional[Dict[str, Any]], ip: str) -> Dict[str
         
         row = cursor.execute("SELECT count FROM guest_usage WHERE ip = ? AND usage_date = ?", (ip, today)).fetchone()
         used = row["count"] if row else 0
+        conn.close()
         if used >= limit:
-            conn.close()
             return {"allowed": False, "remaining": 0, "is_guest": True, "limit": limit, "used": used}
+        return {"allowed": True, "remaining": max(0, limit - used), "is_guest": True, "limit": limit, "used": used}
+
+def consume_quota_success(user: Optional[Dict[str, Any]], ip: str) -> Dict[str, Any]:
+    """仅在研报/搜索真正成功生成后，才正式核销 1 次额度"""
+    today = date.today().isoformat()
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if user:
+        uid = user["id"]
+        daily_quota = user["daily_quota"]
+        if daily_quota == -1:
+            conn.close()
+            return {"remaining": 9999, "is_guest": False}
         
+        cursor.execute("""
+        INSERT INTO daily_usage (user_id, usage_date, count) VALUES (?, ?, 1)
+        ON CONFLICT(user_id, usage_date) DO UPDATE SET count = count + 1
+        """, (uid, today))
+        conn.commit()
+        row = cursor.execute("SELECT count FROM daily_usage WHERE user_id = ? AND usage_date = ?", (uid, today)).fetchone()
+        used = row["count"] if row else 1
+        conn.close()
+        return {"remaining": max(0, daily_quota - used), "is_guest": False, "used": used}
+    else:
         cursor.execute("""
         INSERT INTO guest_usage (ip, usage_date, count) VALUES (?, ?, 1)
         ON CONFLICT(ip, usage_date) DO UPDATE SET count = count + 1
         """, (ip, today))
         conn.commit()
+        setting = cursor.execute("SELECT value FROM system_settings WHERE key = 'guest_daily_limit'").fetchone()
+        limit = int(setting["value"]) if setting else 2
+        row = cursor.execute("SELECT count FROM guest_usage WHERE ip = ? AND usage_date = ?", (ip, today)).fetchone()
+        used = row["count"] if row else 1
         conn.close()
-        return {"allowed": True, "remaining": limit - (used + 1), "is_guest": True, "limit": limit, "used": used + 1}
+        return {"remaining": max(0, limit - used), "is_guest": True, "used": used}
 
 def record_gen_log(user: Optional[Dict[str, Any]], ip: str, gen_type: str, title: str, duration_ms: int, status: str = 'success'):
     try:
@@ -968,7 +991,7 @@ async def health(user: Optional[Dict[str, Any]] = Depends(get_current_user_optio
 @app.post('/api/search')
 async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     ip = get_client_ip(request)
-    quota_res = check_and_consume_quota(user, ip)
+    quota_res = check_quota_available(user, ip)
     if not quota_res["allowed"]:
         raise HTTPException(
             status_code=403,
@@ -992,13 +1015,14 @@ async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[s
     
     duration = int((time.time() - t0) * 1000)
     record_gen_log(user, ip, '实时搜索', req.query, duration, 'success')
+    consume_quota_success(user, ip)
     CACHE.set(cache_key, data)
     return {'status': 'success', 'data': data, 'quota': quota_res}
 
 @app.post('/api/news')
 async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     ip = get_client_ip(request)
-    quota_res = check_and_consume_quota(user, ip)
+    quota_res = check_quota_available(user, ip)
     if not quota_res["allowed"]:
         raise HTTPException(status_code=403, detail="体验额度已用完，请登录账号继续体验！" if quota_res["is_guest"] else "今日额度已达上限")
         
@@ -1016,13 +1040,14 @@ async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, 
         data = resp.json()
         
     record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'success')
+    consume_quota_success(user, ip)
     CACHE.set(cache_key, data)
     return {'status': 'success', 'data': data, 'quota': quota_res}
 
 @app.post('/api/research/stream')
 async def api_research_stream(req: ResearchRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     ip = get_client_ip(request)
-    quota_res = check_and_consume_quota(user, ip)
+    quota_res = check_quota_available(user, ip)
     if not quota_res["allowed"]:
         async def err_gen():
             msg = "游客今日免费额度(2次)已用尽，请登录账号免费解锁每日 10 次额度！" if quota_res["is_guest"] else "今日生成额度已达上限，次日自动刷新"
@@ -1059,7 +1084,7 @@ async def api_research_stream(req: ResearchRequest, request: Request, user: Opti
 @app.post('/api/digest')
 async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     ip = get_client_ip(request)
-    quota_res = check_and_consume_quota(user, ip)
+    quota_res = check_quota_available(user, ip)
     if not quota_res["allowed"]:
         raise HTTPException(
             status_code=403,
@@ -1089,7 +1114,7 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
 @app.post('/api/finance')
 async def api_finance(req: FinanceRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     ip = get_client_ip(request)
-    quota_res = check_and_consume_quota(user, ip)
+    quota_res = check_quota_available(user, ip)
     if not quota_res["allowed"]:
         raise HTTPException(status_code=403, detail="体验额度已用完，请登录后继续体验！" if quota_res["is_guest"] else "今日额度已达上限")
 
@@ -1105,7 +1130,7 @@ async def api_finance(req: FinanceRequest, request: Request, user: Optional[Dict
 @app.post('/api/contents')
 async def api_contents(req: ContentsRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     ip = get_client_ip(request)
-    quota_res = check_and_consume_quota(user, ip)
+    quota_res = check_quota_available(user, ip)
     if not quota_res["allowed"]:
         raise HTTPException(status_code=403, detail="体验额度已用完，请登录后继续！" if quota_res["is_guest"] else "今日额度已达上限")
 
