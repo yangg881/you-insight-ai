@@ -261,16 +261,38 @@
 
             
             
-            <div class="space-y-1.5">
-              <label class="block text-xs font-semibold text-slate-300">Brave Search API Key (0.2s 毫秒级检索通道)</label>
-              <input type="text" id="cfg-brave-key" class="input-field text-xs w-full font-mono" placeholder="输入 Brave Search API Key...">
-              <p class="text-[11px] text-[var(--text-muted)]">用于全网纯净实时搜索与大模型高密切片 (支持 0.2 秒级极速响应与故障自动降级)</p>
-            </div>
+            <!-- 双擎数据源配置 -->
+            <div class="p-4 rounded-xl bg-gradient-to-br from-indigo-950/40 to-slate-900/80 border border-indigo-500/20 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                  <span>⚡</span><span>双擎动力与多源交叉检索配置</span>
+                </span>
+                <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-medium">双通道联调正常</span>
+              </div>
 
-            <div class="space-y-1.5">
-              <label class="block text-xs font-semibold text-slate-300">You.com 上游研报 API Key (X-API-Key)</label>
-              <input type="text" id="cfg-you-key" class="input-field text-xs w-full font-mono" placeholder="输入最新 API Key，保存后即刻生效...">
-              <p class="text-[11px] text-[var(--text-muted)]">若上游凭证过期，可在此随时更新填入最新 Key，无需重启服务器</p>
+              <!-- Brave Key -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <span>🦁</span><span>Brave Search API Key</span>
+                  </label>
+                  <span class="text-[10px] text-amber-400 font-mono">0.2s 极速 · 独立索引库</span>
+                </div>
+                <input type="text" id="cfg-brave-key" class="input-field text-xs w-full font-mono bg-slate-950/60" placeholder="输入 Brave Search API Key (BSAfv...)">
+                <p class="text-[11px] text-[var(--text-muted)]">用于 0.2 秒级极速实时搜索、24h 突发与 7 天时序态势高密切片抓取</p>
+              </div>
+
+              <!-- You.com Key -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <span>🧠</span><span>You.com 上游研报 API Key</span>
+                  </label>
+                  <span class="text-[10px] text-cyan-400 font-mono">深度推理 · $196.93 余额</span>
+                </div>
+                <input type="text" id="cfg-you-key" class="input-field text-xs w-full font-mono bg-slate-950/60" placeholder="输入 You.com API Key (ydc-sk-...)">
+                <p class="text-[11px] text-[var(--text-muted)]">用于深度研报、企业财报多步复杂推理与结构化输出生成</p>
+              </div>
             </div>
 
             <div class="space-y-1.5">
