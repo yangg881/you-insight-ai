@@ -25,23 +25,32 @@
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
 
+  <!-- Top Announcement Banner (If any) -->
+  <div id="system-announcement-banner" class="hidden bg-gradient-to-r from-indigo-900/80 via-purple-900/80 to-indigo-900/80 border-b border-indigo-500/30 px-4 py-2 text-center text-xs text-indigo-200">
+    <span id="announcement-text">系统公告</span>
+  </div>
+
+  <!-- Top Navigation Header -->
   <header class="sticky top-0 z-40 bg-[var(--surface-secondary)]/90 backdrop-blur-xl border-b border-[var(--border-subtle)] px-4 py-3">
     <div class="flex items-center justify-between max-w-7xl mx-auto">
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('home')">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
         <div>
-          <h1 class="font-display text-white">YouInsight AI</h1>
+          <h1 class="font-display text-white text-base sm:text-lg font-bold">YouInsight AI</h1>
           <p class="text-xs text-[var(--text-muted)] hidden sm:block">实时情报 · 深度研报 · 事实溯源</p>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
-          <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
-          <span>API 就绪</span>
+
+      <!-- Right Header: User Info / Login / History -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- User Status Badge / Login Trigger -->
+        <div id="auth-status-container" class="flex items-center gap-2">
+          <!-- Populated by app.js: Either Guest button or User dropdown -->
         </div>
-        <button onclick="toggleHistoryDrawer()" class="btn-secondary flex items-center gap-2">
+
+        <button onclick="toggleHistoryDrawer()" class="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3">
           <span>📜</span><span class="hidden sm:inline">历史</span>
           <span id="history-count-badge" class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded text-xs font-mono">0</span>
         </button>
@@ -59,6 +68,12 @@
       <button onclick="switchTab('news')" id="tab-news" class="tab-btn"><span>📡</span> 新闻流</button>
       <button onclick="switchTab('finance')" id="tab-finance" class="tab-btn"><span>📈</span> 财报洞察</button>
       <button onclick="switchTab('contents')" id="tab-contents" class="tab-btn"><span>📑</span> 正文提取</button>
+      
+      <!-- Admin Tab (Hidden by default, shown for admin) -->
+      <button onclick="switchTab('admin')" id="tab-admin" class="tab-btn hidden text-amber-300 bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20">
+        <span>⚙️</span> 管理后台
+      </button>
+
       <div class="mt-auto pt-4 border-t border-[var(--border-subtle)]">
         <p class="text-xs text-[var(--text-muted)] mb-2">快捷模板</p>
         <div id="template-list" class="space-y-2"></div>
@@ -67,7 +82,8 @@
 
     <!-- Main Content -->
     <div class="main-content flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar">
-      <!-- Home Dashboard -->
+      
+      <!-- ================= 0. Home Dashboard ================= -->
       <section id="panel-home" class="workspace-panel">
         <div class="mb-6">
           <h2 class="font-h1 text-white mb-2">智能工作台</h2>
@@ -98,298 +114,558 @@
           <div class="template-card" onclick="quickStart('market')">
             <div class="text-2xl mb-2">🌍</div>
             <h3 class="font-semibold text-white mb-1">市场进入</h3>
-            <p class="text-xs text-[var(--text-secondary)]">监管、本地化与增长机会</p>
+            <p class="text-xs text-[var(--text-secondary)]">监管环境与增长机会</p>
+          </div>
+          <div class="template-card" onclick="quickStart('academic')">
+            <div class="text-2xl mb-2">📚</div>
+            <h3 class="font-semibold text-white mb-1">学术综述</h3>
+            <p class="text-xs text-[var(--text-secondary)]">梳理发展脉络与关键突破</p>
           </div>
           <div class="template-card" onclick="switchTab('digest')">
-            <div class="text-2xl mb-2">📰</div>
-            <h3 class="font-semibold text-white mb-1">行业早报</h3>
-            <p class="text-xs text-[var(--text-secondary)]">每日自动情报简报</p>
-          </div>
-          <div class="template-card" onclick="switchTab('news')">
-            <div class="text-2xl mb-2">📡</div>
-            <h3 class="font-semibold text-white mb-1">实时新闻流</h3>
-            <p class="text-xs text-[var(--text-secondary)]">追踪最新新闻动态</p>
+            <div class="text-2xl mb-2">⚡</div>
+            <h3 class="font-semibold text-white mb-1">早报定制</h3>
+            <p class="text-xs text-[var(--text-secondary)]">每日自动化行业动态追踪</p>
           </div>
         </div>
         <div class="card p-4">
-          <h3 class="font-h2 text-white mb-3">最近研究</h3>
-          <div id="recent-history" class="space-y-2"></div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-white">最近研究</h3>
+            <button onclick="toggleHistoryDrawer()" class="text-xs text-indigo-400 hover:text-indigo-300">查看全部 →</button>
+          </div>
+          <div id="recent-history" class="space-y-3">
+            <p class="text-sm text-[var(--text-muted)]">正在同步研究记录...</p>
+          </div>
         </div>
       </section>
 
-      <!-- Digest Panel -->
+      <!-- ================= 1. 行业早报 ================= -->
       <section id="panel-digest" class="workspace-panel hidden">
-        <div class="mb-4">
-          <h2 class="font-h1 text-white mb-1">📰 行业情报早报</h2>
-          <p class="text-sm text-[var(--text-secondary)]">组合实时检索与多源交叉分析，生成结构化简报</p>
+        <div class="mb-6">
+          <h2 class="font-h1 text-white mb-2">📰 行业情报早报</h2>
+          <p class="text-[var(--text-secondary)]">组合实时检索与多源交叉分析，生成结构化篇报</p>
         </div>
-        <div class="card p-4 mb-4">
-          <div class="flex flex-col sm:flex-row gap-2">
-            <input type="text" id="digest-input" class="input-field flex-1" placeholder="输入早报主题（例如：AI 大模型、新能源汽车...）" onkeydown="if(event.key==='Enter') executeDigest()">
-            <button onclick="executeDigest()" id="digest-submit-btn" class="btn-primary whitespace-nowrap">⚡ 生成早报</button>
+        <div class="card p-4 mb-6">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <input type="text" id="digest-input" class="input-field flex-1" placeholder="输入行业/领域主题，如：AI 具身智能、芯片与算力、美联储决议..." onkeydown="if(event.key==='Enter') executeDigest()">
+            <button onclick="executeDigest()" id="digest-submit-btn" class="btn-primary flex items-center justify-center gap-2">
+              <span>⚡</span><span>生成早报</span>
+            </button>
           </div>
           <div class="flex flex-wrap gap-2 mt-3">
-            <button onclick="quickFill('digest', 'AI 大模型与具身智能最新进展')" class="btn-secondary text-xs">🤖 AI 具身智能</button>
-            <button onclick="quickFill('digest', '全球半导体与算力最新动态')" class="btn-secondary text-xs">⚡ 芯片与算力</button>
-            <button onclick="quickFill('digest', '美联储利率决议与宏观经济')" class="btn-secondary text-xs">📈 宏观走向</button>
+            <button onclick="quickFill('digest', 'AI 具身智能最新进展')" class="quick-chip">🤖 AI 具身智能</button>
+            <button onclick="quickFill('digest', '全球半导体与算力产业链')" class="quick-chip">⚡ 芯片与算力</button>
+            <button onclick="quickFill('digest', '美联储利率决议与宏观走向')" class="quick-chip">📈 宏观走向</button>
           </div>
         </div>
-        <div id="digest-progress" class="hidden card p-4 mb-4">
-          <div class="flex items-center gap-3">
-            <div class="progress-ring"></div>
-            <div class="flex-1">
-              <p id="digest-stage" class="font-medium text-white">正在检索最新资讯...</p>
-              <p class="text-xs text-[var(--text-muted)]"><span id="digest-timer">0.0</span>s</p>
-            </div>
-          </div>
-        </div>
-        <div id="digest-result" class="hidden space-y-4">
-          <div class="card p-4 md:p-6">
-            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
-              <h3 class="font-h2 text-white">📋 综合研报正文</h3>
-              <div class="flex gap-2">
+        <div id="digest-result" class="space-y-6 hidden">
+          <div class="card p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
+              <h3 class="font-semibold text-white flex items-center gap-2"><span>📋</span> 早报综述</h3>
+              <div class="flex items-center gap-2">
+                <button onclick="exportWord('digest-content', '行业早报')" class="btn-secondary text-xs">📄 导出 Word</button>
+                <button onclick="exportPDF('digest-content', '行业早报')" class="btn-secondary text-xs">📑 导出 PDF</button>
                 <button onclick="copyContent('digest-content')" class="btn-secondary text-xs">📋 复制</button>
-                <button onclick="exportMarkdown('digest-content', '行业早报')" class="btn-secondary text-xs">💾 导出</button>
               </div>
             </div>
             <div id="digest-content" class="markdown-body"></div>
           </div>
-          <div class="card p-4">
-            <h3 class="font-h2 text-white mb-3">📡 关联新闻信源</h3>
-            <div id="digest-news" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+          <div class="card p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2"><span>📰</span> 关联新闻与一手信源</h3>
+            <div id="digest-news" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
           </div>
         </div>
-        <div id="digest-empty" class="empty-state">
-          <div class="empty-state-icon">📰</div>
-          <h3 class="font-semibold text-white mb-1">一键探索行业情报</h3>
-          <p class="text-sm text-[var(--text-muted)]">输入主题，AI 全网搜集并提炼研报</p>
+        <div id="digest-empty" class="card p-12 text-center text-[var(--text-muted)]">
+          <div class="text-4xl mb-3">📰</div>
+          <p class="text-sm font-medium text-white mb-1">一键探索行业情报</p>
+          <p class="text-xs">输入主题，AI 全网搜集并提炼研报</p>
+        </div>
+        <div id="digest-progress" class="card p-12 text-center hidden">
+          <div class="loading-spinner mx-auto mb-4"></div>
+          <p id="digest-stage" class="text-sm font-medium text-white mb-2">正在检索最新行业情报...</p>
+          <p id="digest-timer" class="text-xs text-[var(--text-muted)] font-mono">耗时: 0s</p>
         </div>
       </section>
 
-      <!-- Research Panel -->
+      <!-- ================= 2. 深度研报 ================= -->
       <section id="panel-research" class="workspace-panel hidden">
-        <div class="mb-4">
-          <h2 class="font-h1 text-white mb-1">🧠 深度研报生成</h2>
-          <p class="text-sm text-[var(--text-secondary)]">多轮深度检索与总结，自带真实出处标注</p>
+        <div class="mb-6">
+          <h2 class="font-h1 text-white mb-2">🧠 深度研报生成</h2>
+          <p class="text-[var(--text-secondary)]">多源交叉验证、事实溯源与权威出处标注（支持导出 Word/PDF）</p>
         </div>
-        <div class="card p-4 mb-4">
-          <textarea id="research-input" rows="3" class="input-field resize-none" placeholder="输入你想深度调研的研究课题、技术方案对比或宏观问题..."></textarea>
-          <div class="flex justify-between items-center mt-3">
-            <select id="research-depth" class="input-field w-auto text-sm">
-              <option value="fast">快速概览</option>
-              <option value="standard" selected>标准分析</option>
-              <option value="deep">深度尽调</option>
-            </select>
-            <button onclick="executeResearchStream()" id="research-submit-btn" class="btn-primary">🚀 开始研究</button>
-          </div>
-        </div>
-        <div id="research-progress" class="hidden card p-4 mb-4">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="progress-ring"></div>
-            <div>
-              <p id="research-stage" class="font-medium text-white">初始化...</p>
-              <p class="text-xs text-[var(--text-muted)]"><span id="research-timer">0.0</span>s</p>
+        <div class="card p-4 mb-6">
+          <div class="flex flex-col gap-3">
+            <textarea id="research-input" rows="3" class="input-field w-full resize-none" placeholder="输入深度研究课题，如：对比 DeepSeek 与 OpenAI 商业模式壁垒、2026 低空经济产业链深度尽调..."></textarea>
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-[var(--text-muted)]">研报深度:</span>
+                <select id="research-depth" class="bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] text-xs text-white rounded-lg px-2.5 py-1.5 outline-none">
+                  <option value="standard">标准深度 (1-2分钟)</option>
+                  <option value="deep">专业级穿透 (2-3分钟)</option>
+                </select>
+              </div>
+              <button onclick="executeResearchStream()" id="research-submit-btn" class="btn-primary flex items-center justify-center gap-2">
+                <span>🧠</span><span>开始深度研究</span>
+              </button>
             </div>
           </div>
-          <div class="space-y-2">
-            <div class="skeleton h-4 w-3/4"></div>
-            <div class="skeleton h-4 w-full"></div>
-            <div class="skeleton h-4 w-5/6"></div>
-          </div>
         </div>
-        <div id="research-result" class="hidden space-y-4">
-          <div class="card p-4 md:p-6">
-            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
-              <h3 class="font-h2 text-white">📄 研报正文</h3>
-              <div class="flex gap-2">
+        <div id="research-result" class="space-y-6 hidden">
+          <div class="card p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
+              <h3 class="font-semibold text-white flex items-center gap-2"><span>📑</span> 研报正文</h3>
+              <div class="flex items-center gap-2">
+                <button onclick="exportWord('research-content', '深度研报')" class="btn-secondary text-xs">📄 导出 Word</button>
+                <button onclick="exportPDF('research-content', '深度研报')" class="btn-secondary text-xs">📑 导出 PDF</button>
                 <button onclick="copyContent('research-content')" class="btn-secondary text-xs">📋 复制</button>
-                <button onclick="exportMarkdown('research-content', '深度研报')" class="btn-secondary text-xs">💾 导出</button>
               </div>
             </div>
             <div id="research-content" class="markdown-body"></div>
           </div>
-          <div class="card p-4">
-            <h3 class="font-h2 text-white mb-3">🔗 溯源引用 <span id="research-sources-count" class="text-sm text-[var(--text-muted)]">(0)</span></h3>
-            <div id="research-sources" class="space-y-2"></div>
+          <div class="card p-6">
+            <h3 class="font-semibold text-white mb-4 flex items-center gap-2"><span>🔗</span> 引用信源 (Sources)</h3>
+            <div id="research-sources" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
           </div>
         </div>
-        <div id="research-empty" class="empty-state">
-          <div class="empty-state-icon">🧠</div>
-          <h3 class="font-semibold text-white mb-1">开始深度研究</h3>
-          <p class="text-sm text-[var(--text-muted)]">输入课题，获取带引用的专业研报</p>
+        <div id="research-empty" class="card p-12 text-center text-[var(--text-muted)]">
+          <div class="text-4xl mb-3">🧠</div>
+          <p class="text-sm font-medium text-white mb-1">输入复杂课题，开启深度研究</p>
+          <p class="text-xs">支持竞品分析、技术选型、投资尽调与政策研判</p>
+        </div>
+        <div id="research-progress" class="card p-12 text-center hidden">
+          <div class="loading-spinner mx-auto mb-4"></div>
+          <p id="research-stage" class="text-sm font-medium text-white mb-2">初始化检索通道...</p>
+          <p id="research-timer" class="text-xs text-[var(--text-muted)] font-mono">耗时: 0s</p>
         </div>
       </section>
 
-      <!-- Search Panel -->
+      <!-- ================= 3. 实时搜索 ================= -->
       <section id="panel-search" class="workspace-panel hidden">
-        <div class="mb-4">
-          <h2 class="font-h1 text-white mb-1">🔍 实时联网搜索</h2>
-          <p class="text-sm text-[var(--text-secondary)]">纯净无广告的高信噪比网页检索</p>
+        <div class="mb-6">
+          <h2 class="font-h1 text-white mb-2">🔍 实时联网搜索</h2>
+          <p class="text-[var(--text-secondary)]">高信噪比网页检索，提取精准标题、文本片段及页面时间戳</p>
         </div>
-        <div class="card p-4 mb-4">
-          <div class="flex flex-col sm:flex-row gap-2">
+        <div class="card p-4 mb-6">
+          <div class="flex flex-col sm:flex-row gap-3">
             <input type="text" id="search-input" class="input-field flex-1" placeholder="输入搜索关键词..." onkeydown="if(event.key==='Enter') executeSearch()">
-            <select id="search-count" class="input-field w-auto"><option value="5">5 条</option><option value="10" selected>10 条</option><option value="20">20 条</option></select>
-            <button onclick="executeSearch()" id="search-submit-btn" class="btn-primary">🔍 搜索</button>
+            <select id="search-count" class="bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] text-xs text-white rounded-lg px-3 py-2 outline-none">
+              <option value="10">10 条结果</option>
+              <option value="20">20 条结果</option>
+            </select>
+            <button onclick="executeSearch()" id="search-submit-btn" class="btn-primary">开始搜索</button>
           </div>
         </div>
-        <div id="search-progress" class="hidden card p-4 mb-4">
-          <div class="flex items-center gap-3">
-            <div class="progress-ring"></div>
-            <div class="flex-1">
-              <p class="font-medium text-white">正在检索全网...</p>
-              <div class="space-y-2 mt-2">
-                <div class="skeleton h-4 w-3/4"></div>
-                <div class="skeleton h-4 w-full"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="search-result" class="hidden space-y-3"></div>
-        <div id="search-empty" class="empty-state">
-          <div class="empty-state-icon">🔍</div>
-          <h3 class="font-semibold text-white mb-1">实时检索网络</h3>
-          <p class="text-sm text-[var(--text-muted)]">获取精准标题、摘要与时间戳</p>
+        <div id="search-result" class="space-y-3 hidden"></div>
+        <div id="search-empty" class="card p-12 text-center text-[var(--text-muted)]">
+          <div class="text-4xl mb-3">🔍</div>
+          <p class="text-sm font-medium text-white mb-1">全网纯净检索</p>
+          <p class="text-xs">无广告干扰，秒级获取精准信源</p>
         </div>
       </section>
 
-      <!-- News Panel -->
+      <!-- ================= 4. 新闻流 ================= -->
       <section id="panel-news" class="workspace-panel hidden">
-        <div class="mb-4">
-          <h2 class="font-h1 text-white mb-1">📡 实时新闻流</h2>
-          <p class="text-sm text-[var(--text-secondary)]">追踪最新新闻动态与舆情</p>
+        <div class="mb-6">
+          <h2 class="font-h1 text-white mb-2">📡 实时新闻流</h2>
+          <p class="text-[var(--text-secondary)]">全网一手热点资讯聚合与分类快讯</p>
         </div>
-        <div class="card p-4 mb-4">
-          <div class="flex gap-2">
-            <input type="text" id="news-input" class="input-field flex-1" placeholder="输入追踪主题..." onkeydown="if(event.key==='Enter') executeNews()">
-            <button onclick="executeNews()" id="news-submit-btn" class="btn-primary">📡 获取新闻</button>
+        <div class="card p-4 mb-6">
+          <div class="flex gap-3">
+            <input type="text" id="news-input" class="input-field flex-1" placeholder="输入新闻主题或关键词..." onkeydown="if(event.key==='Enter') executeNews()">
+            <button onclick="executeNews()" id="news-submit-btn" class="btn-primary">获取资讯</button>
           </div>
         </div>
-        <div id="news-progress" class="hidden card p-4 mb-4">
-          <div class="flex items-center gap-3">
-            <div class="progress-ring"></div>
-            <div class="flex-1">
-              <p class="font-medium text-white">正在抓取新闻流...</p>
-              <div class="space-y-2 mt-2">
-                <div class="skeleton h-4 w-3/4"></div>
-                <div class="skeleton h-4 w-5/6"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div id="news-result" class="hidden space-y-3"></div>
-        <div id="news-empty" class="empty-state">
-          <div class="empty-state-icon">📡</div>
-          <h3 class="font-semibold text-white mb-1">实时新闻追踪</h3>
-          <p class="text-sm text-[var(--text-muted)]">获取最新新闻与舆情动态</p>
+        <div id="news-result" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden"></div>
+        <div id="news-empty" class="card p-12 text-center text-[var(--text-muted)]">
+          <div class="text-4xl mb-3">📡</div>
+          <p class="text-sm font-medium text-white">输入关键词，聚合全网最新新闻</p>
         </div>
       </section>
 
-      <!-- Finance Panel -->
+      <!-- ================= 5. 财报洞察 ================= -->
       <section id="panel-finance" class="workspace-panel hidden">
-        <div class="mb-4">
-          <h2 class="font-h1 text-white mb-1">📈 企业财报洞察</h2>
-          <p class="text-sm text-[var(--text-secondary)]">穿透 SEC 披露，精准比对财务数据</p>
+        <div class="mb-6">
+          <h2 class="font-h1 text-white mb-2">📈 企业财报与金融洞察</h2>
+          <p class="text-[var(--text-secondary)]">穿透上市企业最新财报披露、核心业务拆解与估值体检</p>
         </div>
-        <div class="card p-4 mb-4">
-          <input type="text" id="finance-input" class="input-field" placeholder="输入公司名称或财务问题（例如：NVIDIA 最新季度营收）..." onkeydown="if(event.key==='Enter') executeFinance()">
-          <div class="flex flex-wrap gap-2 mt-3">
-            <button onclick="quickFill('finance', 'NVIDIA 最新季度营收与数据中心业务表现')" class="btn-secondary text-xs">🎮 NVIDIA</button>
-            <button onclick="quickFill('finance', '苹果公司最新财报营收与利润分析')" class="btn-secondary text-xs">🍎 苹果</button>
-            <button onclick="quickFill('finance', '特斯拉最新季度交付量与毛利率')" class="btn-secondary text-xs">🚗 特斯拉</button>
+        <div class="card p-4 mb-6">
+          <div class="flex gap-3">
+            <input type="text" id="finance-input" class="input-field flex-1" placeholder="输入公司名称或股票代码，如：英伟达 NVDA、苹果 AAPL、腾讯控股..." onkeydown="if(event.key==='Enter') executeFinance()">
+            <button onclick="executeFinance()" id="finance-submit-btn" class="btn-primary">生成财报洞察</button>
           </div>
-          <button onclick="executeFinance()" id="finance-submit-btn" class="btn-primary mt-3">📊 分析财报</button>
         </div>
-        <div id="finance-progress" class="hidden card p-4 mb-4">
-          <div class="flex items-center gap-3">
-            <div class="progress-ring"></div>
-            <div class="flex-1">
-              <p id="finance-stage" class="font-medium text-white">正在穿透 SEC 披露文件...</p>
-              <p class="text-xs text-[var(--text-muted)]"><span id="finance-timer">0.0</span>s</p>
+        <div id="finance-result" class="card p-6 hidden">
+          <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
+            <h3 class="font-semibold text-white">📊 财务与业务深度拆解</h3>
+            <div class="flex gap-2">
+              <button onclick="exportWord('finance-content', '财报分析')" class="btn-secondary text-xs">📄 导出 Word</button>
+              <button onclick="copyContent('finance-content')" class="btn-secondary text-xs">📋 复制</button>
             </div>
           </div>
+          <div id="finance-content" class="markdown-body"></div>
         </div>
-        <div id="finance-result" class="hidden space-y-4">
-          <div class="card p-4 md:p-6">
-            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
-              <h3 class="font-h2 text-white">📊 财务分析</h3>
-              <div class="flex gap-2">
-                <button onclick="copyContent('finance-content')" class="btn-secondary text-xs">📋 复制</button>
-                <button onclick="exportMarkdown('finance-content', '财报洞察')" class="btn-secondary text-xs">💾 导出</button>
-              </div>
-            </div>
-            <div id="finance-content" class="markdown-body"></div>
-          </div>
-          <div class="card p-4">
-            <h3 class="font-h2 text-white mb-3">📎 官方披露源</h3>
-            <div id="finance-sources" class="space-y-2"></div>
-          </div>
+        <div id="finance-empty" class="card p-12 text-center text-[var(--text-muted)]">
+          <div class="text-4xl mb-3">📈</div>
+          <p class="text-sm font-medium text-white">输入上市企业，AI 自动穿透财报与估值</p>
         </div>
-        <div id="finance-empty" class="empty-state">
-          <div class="empty-state-icon">📈</div>
-          <h3 class="font-semibold text-white mb-1">企业财报分析</h3>
-          <p class="text-sm text-[var(--text-muted)]">穿透 SEC 文件，获取精准财务洞察</p>
+        <div id="finance-progress" class="card p-12 text-center hidden">
+          <div class="loading-spinner mx-auto mb-4"></div>
+          <p class="text-sm font-medium text-white mb-2">正在检索官方 SEC 披露与财报底稿...</p>
         </div>
       </section>
 
-      <!-- Contents Panel -->
+      <!-- ================= 6. 正文提取 ================= -->
       <section id="panel-contents" class="workspace-panel hidden">
-        <div class="mb-4">
-          <h2 class="font-h1 text-white mb-1">📑 网页正文提取</h2>
-          <p class="text-sm text-[var(--text-secondary)]">自动去除广告弹窗，提取干净正文</p>
+        <div class="mb-6">
+          <h2 class="font-h1 text-white mb-2">📑 网页正文干净提取</h2>
+          <p class="text-[var(--text-secondary)]">去除网页广告、弹窗与多余样式，提取纯净干货 Markdown</p>
         </div>
-        <div class="card p-4 mb-4">
-          <textarea id="contents-input" rows="3" class="input-field resize-none font-mono text-sm" placeholder="输入目标网页 URL，每行一个..."></textarea>
-          <button onclick="executeContents()" id="contents-submit-btn" class="btn-primary mt-3">📥 提取正文</button>
-        </div>
-        <div id="contents-progress" class="hidden card p-4 mb-4">
-          <div class="flex items-center gap-3">
-            <div class="progress-ring"></div>
-            <div class="flex-1">
-              <p class="font-medium text-white">正在提取网页正文...</p>
-              <div class="space-y-2 mt-2">
-                <div class="skeleton h-4 w-3/4"></div>
-                <div class="skeleton h-4 w-2/3"></div>
-              </div>
+        <div class="card p-4 mb-6">
+          <div class="flex flex-col gap-3">
+            <textarea id="contents-input" rows="3" class="input-field w-full resize-none" placeholder="输入目标网页 URL（每行一个链接，支持批量提取）..."></textarea>
+            <div class="flex justify-end">
+              <button onclick="executeContents()" id="contents-submit-btn" class="btn-primary">提取正文</button>
             </div>
           </div>
         </div>
-        <div id="contents-result" class="hidden space-y-4"></div>
-        <div id="contents-empty" class="empty-state">
-          <div class="empty-state-icon">📑</div>
-          <h3 class="font-semibold text-white mb-1">网页干货提取</h3>
-          <p class="text-sm text-[var(--text-muted)]">一键提取目标网页的干净正文</p>
+        <div id="contents-result" class="space-y-4 hidden"></div>
+        <div id="contents-empty" class="card p-12 text-center text-[var(--text-muted)]">
+          <div class="text-4xl mb-3">📑</div>
+          <p class="text-sm font-medium text-white">粘贴网页链接，一键去除广告提取纯净正文</p>
         </div>
       </section>
+
+      <!-- ================= 7. 系统管理后台 (Admin Panel) ================= -->
+      <section id="panel-admin" class="workspace-panel hidden">
+        <div class="mb-6 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h2 class="font-h1 text-amber-300 mb-1 flex items-center gap-2">
+              <span>⚙️</span> 系统综合运营管理后台
+            </h2>
+            <p class="text-xs text-[var(--text-muted)]">全站用户监控、配额调配、调用审计与通道管理</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadAdminData()" class="btn-secondary text-xs">🔄 刷新数据</button>
+          </div>
+        </div>
+
+        <!-- Admin Sub-tabs -->
+        <div class="flex gap-2 border-b border-[var(--border-subtle)] pb-2 mb-6 overflow-x-auto">
+          <button onclick="switchAdminTab('metrics')" id="admin-tab-metrics" class="admin-tab active">📊 运营大盘</button>
+          <button onclick="switchAdminTab('users')" id="admin-tab-users" class="admin-tab">👥 用户与配额</button>
+          <button onclick="switchAdminTab('logs')" id="admin-tab-logs" class="admin-tab">📑 生成审计日志</button>
+          <button onclick="switchAdminTab('settings')" id="admin-tab-settings" class="admin-tab">⚙️ 策略与配置</button>
+        </div>
+
+        <!-- Admin Section 1: Metrics -->
+        <div id="admin-view-metrics" class="space-y-6">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="card p-4 bg-gradient-to-br from-indigo-900/40 to-slate-900 border-indigo-500/30">
+              <p class="text-xs text-indigo-300 mb-1">👥 累计注册用户</p>
+              <h3 id="adm-metric-total-users" class="text-2xl font-bold text-white font-mono">0</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-2">今日新增: <span id="adm-metric-today-users" class="text-emerald-400 font-bold">0</span> 人</p>
+            </div>
+            <div class="card p-4 bg-gradient-to-br from-purple-900/40 to-slate-900 border-purple-500/30">
+              <p class="text-xs text-purple-300 mb-1">⚡ 全站研报生成总数</p>
+              <h3 id="adm-metric-total-gens" class="text-2xl font-bold text-white font-mono">0</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-2">今日生成: <span id="adm-metric-today-gens" class="text-purple-300 font-bold">0</span> 次</p>
+            </div>
+            <div class="card p-4 bg-gradient-to-br from-pink-900/40 to-slate-900 border-pink-500/30">
+              <p class="text-xs text-pink-300 mb-1">📱 阿里云短信下发</p>
+              <h3 id="adm-metric-sms-sent" class="text-2xl font-bold text-white font-mono">0</h3>
+              <p class="text-[11px] text-pink-400 mt-2">短信模板: SMS_336470119</p>
+            </div>
+            <div class="card p-4 bg-gradient-to-br from-cyan-900/40 to-slate-900 border-cyan-500/30">
+              <p class="text-xs text-cyan-300 mb-1">📧 Resend 邮件下发</p>
+              <h3 id="adm-metric-email-sent" class="text-2xl font-bold text-white font-mono">0</h3>
+              <p class="text-[11px] text-cyan-400 mt-2">通道: onboarding@resend.dev</p>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <h3 class="font-semibold text-white mb-4">📊 模块调用热度分布</h3>
+            <div id="adm-module-stats" class="space-y-3">
+              <p class="text-xs text-[var(--text-muted)]">暂无统计数据</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Section 2: Users -->
+        <div id="admin-view-users" class="space-y-4 hidden">
+          <div class="flex gap-3">
+            <input type="text" id="adm-user-search" class="input-field flex-1 text-xs" placeholder="搜索用户名、手机号或邮箱..." oninput="handleAdminUserSearch()">
+          </div>
+          <div class="card overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[var(--surface-tertiary)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                <tr>
+                  <th class="p-3">ID</th>
+                  <th class="p-3">用户</th>
+                  <th class="p-3">绑定账号</th>
+                  <th class="p-3">角色</th>
+                  <th class="p-3">每日额度</th>
+                  <th class="p-3">状态</th>
+                  <th class="p-3">注册时间</th>
+                  <th class="p-3 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody id="adm-users-table-body" class="divide-y divide-[var(--border-subtle)]">
+                <!-- Populated by app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Admin Section 3: Logs -->
+        <div id="admin-view-logs" class="space-y-4 hidden">
+          <div class="card overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-[var(--surface-tertiary)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                <tr>
+                  <th class="p-3">时间</th>
+                  <th class="p-3">用户</th>
+                  <th class="p-3">模块类型</th>
+                  <th class="p-3">生成课题</th>
+                  <th class="p-3">耗时</th>
+                  <th class="p-3">状态</th>
+                  <th class="p-3">IP</th>
+                </tr>
+              </thead>
+              <tbody id="adm-logs-table-body" class="divide-y divide-[var(--border-subtle)]">
+                <!-- Populated by app.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Admin Section 4: Settings -->
+        <div id="admin-view-settings" class="space-y-6 hidden">
+          <div class="card p-6 space-y-4 max-w-2xl">
+            <h3 class="font-semibold text-white mb-2">⚙️ 运营与安全策略配置</h3>
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">游客每日免费体验次数 (次/天)</label>
+              <input type="number" id="adm-set-guest-limit" class="input-field text-xs w-full" value="2">
+            </div>
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">新注册用户默认每日额度 (次/天)</label>
+              <input type="number" id="adm-set-user-quota" class="input-field text-xs w-full" value="10">
+            </div>
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">全站公告内容 (留空则不展示)</label>
+              <textarea id="adm-set-announcement" rows="2" class="input-field text-xs w-full resize-none" placeholder="输入向所有用户展示的横幅公告..."></textarea>
+            </div>
+            <div class="pt-2">
+              <button onclick="saveAdminSettings()" class="btn-primary text-xs px-5 py-2">💾 保存系统策略</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
     </div>
   </main>
 
-  <!-- Mobile Bottom Nav：横向可滚动，覆盖全部功能入口 -->
-  <nav class="mobile-nav">
-    <button onclick="switchTab('home')" id="m-nav-home" class="mobile-nav-btn active"><span>🏠</span><span>首页</span></button>
-    <button onclick="switchTab('digest')" id="m-nav-digest" class="mobile-nav-btn"><span>📰</span><span>早报</span></button>
-    <button onclick="switchTab('research')" id="m-nav-research" class="mobile-nav-btn"><span>🧠</span><span>研报</span></button>
-    <button onclick="switchTab('search')" id="m-nav-search" class="mobile-nav-btn"><span>🔍</span><span>搜索</span></button>
-    <button onclick="switchTab('news')" id="m-nav-news" class="mobile-nav-btn"><span>📡</span><span>新闻</span></button>
-    <button onclick="switchTab('finance')" id="m-nav-finance" class="mobile-nav-btn"><span>📈</span><span>财报</span></button>
-    <button onclick="switchTab('contents')" id="m-nav-contents" class="mobile-nav-btn"><span>📑</span><span>提取</span></button>
-  </nav>
+  <!-- ================= AUTH MODAL (登录/注册/找回密码) ================= -->
+  <div id="auth-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md hidden transition-opacity">
+    <div class="auth-card relative w-full max-w-md bg-[var(--surface-secondary)] border border-indigo-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl shadow-indigo-950/80">
+      
+      <!-- Close Button -->
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition-colors text-lg p-1">✕</button>
 
-  <!-- History Drawer -->
-  <div id="history-drawer" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-[var(--surface-secondary)] border-l border-[var(--border-subtle)] transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
-    <div class="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
-      <h3 class="font-h2 text-white">📜 历史记录</h3>
-      <button onclick="toggleHistoryDrawer()" class="btn-secondary p-2">✕</button>
-    </div>
-    <div class="p-4 border-b border-[var(--border-subtle)]">
-      <input type="text" id="history-search" class="input-field" placeholder="搜索历史..." oninput="filterHistory()">
-    </div>
-    <div id="history-list" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2"></div>
-    <div class="p-4 border-t border-[var(--border-subtle)]">
-      <button id="history-load-more" onclick="loadMoreHistory()" class="btn-secondary w-full text-sm hidden">加载更多</button>
+      <!-- Modal Header -->
+      <div class="text-center mb-6">
+        <div class="inline-flex w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 items-center justify-center shadow-lg shadow-indigo-500/25 mb-3">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h3 id="auth-modal-title" class="text-xl font-bold text-white">欢迎使用 YouInsight AI</h3>
+        <p id="auth-modal-subtitle" class="text-xs text-[var(--text-secondary)] mt-1">登录后解锁每日 10 次额度与云端研报多端漫游</p>
+      </div>
+
+      <!-- Main Switch Tabs: 登录 / 注册 -->
+      <div id="auth-main-tabs" class="grid grid-cols-2 gap-2 p-1 bg-[var(--surface-tertiary)] rounded-xl mb-6">
+        <button onclick="switchAuthTab('login')" id="auth-tab-btn-login" class="auth-main-tab active">🚀 登录账号</button>
+        <button onclick="switchAuthTab('register')" id="auth-tab-btn-register" class="auth-main-tab">✨ 快速注册</button>
+      </div>
+
+      <!-- ================= FORM 1: LOGIN (登录) ================= -->
+      <div id="auth-form-login" class="space-y-4">
+        <!-- Sub-pills: 密码登录 vs 验证码免密登录 -->
+        <div class="flex justify-center gap-4 text-xs mb-2">
+          <label class="flex items-center gap-1.5 text-indigo-300 cursor-pointer">
+            <input type="radio" name="login_mode" value="password" checked onchange="toggleLoginMode('password')">
+            <span>🔑 密码登录</span>
+          </label>
+          <label class="flex items-center gap-1.5 text-[var(--text-muted)] hover:text-indigo-300 cursor-pointer">
+            <input type="radio" name="login_mode" value="code" onchange="toggleLoginMode('code')">
+            <span>💬 验证码免密登录</span>
+          </label>
+        </div>
+
+        <!-- Mode A: 密码登录 fields -->
+        <div id="login-fields-password" class="space-y-3">
+          <div>
+            <label class="block text-xs text-[var(--text-secondary)] mb-1">用户名 / 手机号 / 邮箱</label>
+            <input type="text" id="login-account" class="input-field w-full text-sm" placeholder="输入用户名、11位手机号或邮箱">
+          </div>
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-xs text-[var(--text-secondary)]">登录密码</label>
+              <button type="button" onclick="switchAuthTab('reset')" class="text-[11px] text-indigo-400 hover:text-indigo-300">忘记密码？</button>
+            </div>
+            <div class="relative">
+              <input type="password" id="login-password" class="input-field w-full text-sm pr-10" placeholder="输入登录密码">
+              <button type="button" onclick="togglePasswordVisibility('login-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-white">👁️</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode B: 验证码免密登录 fields -->
+        <div id="login-fields-code" class="space-y-3 hidden">
+          <div>
+            <label class="block text-xs text-[var(--text-secondary)] mb-1">手机号 或 邮箱</label>
+            <input type="text" id="login-code-target" class="input-field w-full text-sm" placeholder="输入 11 位手机号或常用邮箱">
+          </div>
+          <div>
+            <label class="block text-xs text-[var(--text-secondary)] mb-1">验证码</label>
+            <div class="flex gap-2">
+              <input type="text" id="login-code-val" class="input-field flex-1 text-sm font-mono tracking-widest" placeholder="验证码">
+              <button type="button" id="btn-send-login-code" onclick="sendAuthCode('login-code-target', 'btn-send-login-code', 'login')" class="btn-secondary text-xs whitespace-nowrap px-3">
+                获取验证码
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="handleLoginSubmit()" id="btn-login-submit" class="btn-primary w-full py-2.5 text-sm font-bold mt-4">
+          🚀 立即登录 ↗
+        </button>
+      </div>
+
+      <!-- ================= FORM 2: REGISTER (注册) ================= -->
+      <div id="auth-form-register" class="space-y-3.5 hidden">
+        <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">手机号 或 邮箱 (二选一验证)</label>
+          <input type="text" id="reg-target" class="input-field w-full text-sm" placeholder="输入 11 位手机号 或 邮箱地址">
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">短信 / 邮件验证码</label>
+          <div class="flex gap-2">
+            <input type="text" id="reg-code" class="input-field flex-1 text-sm font-mono tracking-widest" placeholder="输入验证码">
+            <button type="button" id="btn-send-reg-code" onclick="sendAuthCode('reg-target', 'btn-send-reg-code', 'register')" class="btn-secondary text-xs whitespace-nowrap px-3">
+              获取验证码
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">设置登录密码 (≥6位)</label>
+          <div class="relative">
+            <input type="password" id="reg-password" class="input-field w-full text-sm pr-10" placeholder="设置登录密码">
+            <button type="button" onclick="togglePasswordVisibility('reg-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-white">👁️</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">个性用户名 / 昵称 <span class="text-[10px] text-[var(--text-muted)]">(选填，留空自动生成)</span></label>
+          <input type="text" id="reg-username" class="input-field w-full text-sm" placeholder="如：Alex_2026 或 智研者">
+        </div>
+
+        <button onclick="handleRegisterSubmit()" id="btn-reg-submit" class="btn-primary w-full py-2.5 text-sm font-bold mt-2">
+          ✨ 立即注册并登录 ↗
+        </button>
+      </div>
+
+      <!-- ================= FORM 3: RESET PASSWORD (找回密码) ================= -->
+      <div id="auth-form-reset" class="space-y-3.5 hidden">
+        <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">已绑定的手机号 或 邮箱</label>
+          <input type="text" id="reset-target" class="input-field w-full text-sm" placeholder="输入手机号或邮箱">
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">验证码</label>
+          <div class="flex gap-2">
+            <input type="text" id="reset-code" class="input-field flex-1 text-sm font-mono tracking-widest" placeholder="输入验证码">
+            <button type="button" id="btn-send-reset-code" onclick="sendAuthCode('reset-target', 'btn-send-reset-code', 'reset')" class="btn-secondary text-xs whitespace-nowrap px-3">
+              获取验证码
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">设置新密码 (≥6位)</label>
+          <input type="password" id="reset-new-password" class="input-field w-full text-sm" placeholder="输入新密码">
+        </div>
+
+        <button onclick="handleResetSubmit()" id="btn-reset-submit" class="btn-primary w-full py-2.5 text-sm font-bold mt-2">
+          🔒 重置密码并登录 ↗
+        </button>
+        <div class="text-center pt-2">
+          <button type="button" onclick="switchAuthTab('login')" class="text-xs text-indigo-400 hover:text-indigo-300">返回登录</button>
+        </div>
+      </div>
+
     </div>
   </div>
-  <div id="history-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="toggleHistoryDrawer()"></div>
+
+  <!-- ================= USER PROFILE MODAL (个人中心) ================= -->
+  <div id="profile-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md hidden transition-opacity">
+    <div class="relative w-full max-w-md bg-[var(--surface-secondary)] border border-indigo-500/30 rounded-2xl p-6 sm:p-8 shadow-2xl">
+      <button onclick="closeProfileModal()" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white text-lg p-1">✕</button>
+      <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2"><span>👤</span> 个人中心与配额</h3>
+      
+      <div class="space-y-4">
+        <div class="p-4 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] space-y-2 text-xs">
+          <div class="flex justify-between"><span class="text-[var(--text-muted)]">用户昵称:</span><strong id="prof-username" class="text-white"></strong></div>
+          <div class="flex justify-between"><span class="text-[var(--text-muted)]">绑定手机:</span><span id="prof-phone" class="text-slate-300 font-mono">未绑定</span></div>
+          <div class="flex justify-between"><span class="text-[var(--text-muted)]">绑定邮箱:</span><span id="prof-email" class="text-slate-300 font-mono">未绑定</span></div>
+          <div class="flex justify-between"><span class="text-[var(--text-muted)]">账户角色:</span><span id="prof-role" class="text-indigo-400 font-bold"></span></div>
+          <div class="flex justify-between pt-2 border-t border-white/5"><span class="text-[var(--text-muted)]">今日可用额度:</span><span id="prof-quota" class="text-emerald-400 font-bold font-mono"></span></div>
+        </div>
+
+        <!-- Update Username -->
+        <div class="space-y-2">
+          <label class="block text-xs text-[var(--text-muted)]">修改个性用户名</label>
+          <div class="flex gap-2">
+            <input type="text" id="prof-edit-username" class="input-field flex-1 text-xs" placeholder="新用户名">
+            <button onclick="saveProfileUsername()" class="btn-secondary text-xs whitespace-nowrap">保存</button>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-[var(--border-subtle)] flex justify-between items-center">
+          <button onclick="handleLogout()" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1">
+            <span>🚪</span><span>退出登录</span>
+          </button>
+          <button onclick="closeProfileModal()" class="btn-secondary text-xs">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Drawer -->
+  <div id="history-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden" onclick="toggleHistoryDrawer()"></div>
+  <div id="history-drawer" class="fixed top-0 right-0 h-full w-full sm:w-96 bg-[var(--surface-secondary)] border-l border-[var(--border-subtle)] z-50 flex flex-col transform translate-x-full transition-transform duration-300 ease-out">
+    <div class="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+      <h3 class="font-semibold text-white flex items-center gap-2"><span>📜</span> 历史研报库</h3>
+      <button onclick="toggleHistoryDrawer()" class="text-[var(--text-muted)] hover:text-white p-1">✕</button>
+    </div>
+    <div class="p-4 border-b border-[var(--border-subtle)]">
+      <input type="text" id="history-search" class="input-field text-xs w-full" placeholder="搜索历史研报标题..." oninput="filterHistory()">
+    </div>
+    <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+    <div class="p-4 border-t border-[var(--border-subtle)]">
+      <button id="history-load-more" onclick="loadMoreHistory()" class="btn-secondary w-full text-xs hidden">加载更多</button>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Tab Bar -->
+  <nav class="mobile-nav fixed bottom-0 left-0 right-0 bg-[var(--surface-secondary)]/95 backdrop-blur-xl border-t border-[var(--border-subtle)] z-40">
+    <div class="flex overflow-x-auto whitespace-nowrap px-2 py-2 gap-1 justify-start">
+      <button onclick="switchTab('home')" id="mob-tab-home" class="mobile-nav-item active flex-shrink-0"><span>🏠</span><span>工作台</span></button>
+      <button onclick="switchTab('digest')" id="mob-tab-digest" class="mobile-nav-item flex-shrink-0"><span>📰</span><span>早报</span></button>
+      <button onclick="switchTab('research')" id="mob-tab-research" class="mobile-nav-item flex-shrink-0"><span>🧠</span><span>研报</span></button>
+      <button onclick="switchTab('search')" id="mob-tab-search" class="mobile-nav-item flex-shrink-0"><span>🔍</span><span>搜索</span></button>
+      <button onclick="switchTab('news')" id="mob-tab-news" class="mobile-nav-item flex-shrink-0"><span>📡</span><span>快讯</span></button>
+      <button onclick="switchTab('finance')" id="mob-tab-finance" class="mobile-nav-item flex-shrink-0"><span>📈</span><span>财报</span></button>
+      <button onclick="switchTab('contents')" id="mob-tab-contents" class="mobile-nav-item flex-shrink-0"><span>📑</span><span>正文</span></button>
+      <button onclick="switchTab('admin')" id="mob-tab-admin" class="mobile-nav-item flex-shrink-0 hidden text-amber-300"><span>⚙️</span><span>管理</span></button>
+    </div>
+  </nav>
 
   <script src="app.js"></script>
 </body>
