@@ -1190,9 +1190,7 @@ if not os.path.exists(static_dir):
     static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
 
-@app.get('/admin')
-async def admin_page():
-    return FileResponse(os.path.join(static_dir, 'index.html'))
+
 
 
 @app.get('/admin')
