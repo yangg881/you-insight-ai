@@ -506,28 +506,31 @@ def extract_clean_article_markdown(raw_html: str, url: str) -> Dict[str, Any]:
     if not title:
         title = domain or "网页正文"
         
-    # 2. 剥离无用标签 (script, style, nav, footer, header, svg, noscript, form, iframe, etc.)
-    cleaned = re.sub(r'<(script|style|svg|noscript|header|footer|nav|form|iframe|aside)[^>]*>.*?</>', '', raw_html, flags=re.DOTALL | re.IGNORECASE)
-    cleaned = re.sub(r'<!--.*?-->', '', cleaned, flags=re.DOTALL)
+    # 2. 彻底剥离 <head>, <script>, <style>, <nav>, <footer> 等非正文区块
+    cleaned = re.sub(r'<head[\s\S]*?</head>', '', raw_html, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<(script|style|svg|noscript|header|footer|nav|form|iframe|aside)[\s\S]*?</\1>', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<!--[\s\S]*?-->', '', cleaned)
     
     # 3. 提取文章主体 (优先匹配 <article>, <main>, class/id 包含 content/article/post/entry/body 的容器)
-    main_match = re.search(r'<(article|main)[^>]*>(.*?)</>', cleaned, flags=re.DOTALL | re.IGNORECASE)
+    main_match = re.search(r'<(article|main)[^>]*>([\s\S]*?)</\1>', cleaned, flags=re.IGNORECASE)
     search_scope = main_match.group(2) if main_match else cleaned
     
     # 4. 结构化提取正文段落与标题
     blocks = []
     seen_texts = set()
     
-    for m in re.finditer(r'<(h[1-6]|p|li|blockquote)[^>]*>(.*?)</>', search_scope, flags=re.DOTALL | re.IGNORECASE):
+    for m in re.finditer(r'<(h[1-6]|p|li|blockquote)[^>]*>([\s\S]*?)</\1>', search_scope, flags=re.IGNORECASE):
         tag = m.group(1).lower()
         inner_text = re.sub(r'<[^>]*>', '', m.group(2)).strip()
         inner_text = unescape(inner_text)
         inner_text = re.sub(r'\s+', ' ', inner_text) # 规整多余空格
         
-        # 过滤过短或重复噪声（如导航、Cookie提示等）
-        if len(inner_text) < 5 or inner_text in seen_texts:
+        # 过滤代码脚本或短噪点
+        if len(inner_text) < 6 or inner_text in seen_texts:
             continue
-        if re.search(r'(cookie|privacy policy|terms of service|copyright|rights reserved|all rights reserved|sign in|log in|subscribe|newsletter)', inner_text, re.I) and len(inner_text) < 60:
+        if any(noise in inner_text for noise in ['function(', 'gtm.js', 'dataLayer', 'var ', 'const ', 'window.', 'document.']):
+            continue
+        if re.search(r'(cookie|privacy policy|terms of service|copyright|rights reserved|sign in|log in|subscribe|newsletter|skip to)', inner_text, re.I) and len(inner_text) < 60:
             continue
             
         seen_texts.add(inner_text)
@@ -544,7 +547,6 @@ def extract_clean_article_markdown(raw_html: str, url: str) -> Dict[str, Any]:
             
     markdown_content = "\n\n".join(blocks)
     if not markdown_content or len(markdown_content) < 50:
-        # 降级备用：直接提取纯文本
         plain = re.sub(r'<[^>]*>', ' ', cleaned)
         plain = unescape(plain)
         plain = re.sub(r'\n\s*\n+', '\n\n', plain).strip()
