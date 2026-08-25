@@ -138,8 +138,8 @@ function renderAuthHeader() {
             <p class="text-xs font-bold text-white">${escapeHtml(currentUser.username)}</p>
             <p class="text-[11px] text-[var(--text-muted)]">${roleBadge} · 今日剩余: ${quotaText}</p>
           </div>
-          <button onclick="openProfileModal()" class="dropdown-item"><span>👤</span> 个人中心与配额</button>
-          ${['admin', 'super_admin'].includes(currentUser.role) ? `<button onclick="switchTab('admin'); closeUserDropdown();" class="dropdown-item text-amber-300"><span>⚙️</span> 系统管理后台</button>` : ''}
+          <a href="profile.html" class="dropdown-item"><span>👤</span> 个人中心与资产大盘</a>
+          ${['admin', 'super_admin'].includes(currentUser.role) ? `<a href="admin.html" class="dropdown-item text-amber-300"><span>⚙️</span> 系统管理后台大盘</a>` : ''}
           <button onclick="handleLogout()" class="dropdown-item text-rose-400 hover:text-rose-300"><span>🚪</span> 退出登录</button>
         </div>
       </div>

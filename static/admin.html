@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="YouInsight AI - 系统综合运营管理中台">
+  <title>YouInsight AI - 系统综合运营管理中台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      transition: all 0.2s;
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+    }
+    .admin-nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+    }
+    .admin-nav-item.active {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));
+      border-color: rgba(245, 158, 11, 0.35);
+      color: #fbbf24;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
+
+  <!-- ================= 1. ADMIN LOGIN VIEW (未登录管理员展示) ================= -->
+  <div id="admin-login-view" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[var(--surface-primary)]">
+    <div class="w-full max-w-md bg-[var(--surface-secondary)] border border-amber-500/30 rounded-3xl p-8 shadow-2xl shadow-amber-950/40 relative overflow-hidden">
+      <!-- Ambient Glow -->
+      <div class="absolute -top-24 -right-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center mb-8 relative">
+        <div class="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-600 items-center justify-center shadow-lg shadow-amber-500/25 mb-3">
+          <span class="text-2xl">⚙️</span>
+        </div>
+        <h2 class="text-2xl font-black text-white tracking-tight">系统管理控制台</h2>
+        <p class="text-xs text-[var(--text-muted)] mt-1.5">YouInsight AI 专属运维与运营管理中台</p>
+      </div>
+
+      <div class="space-y-4 relative">
+        <div>
+          <label class="block text-xs font-semibold text-amber-200/80 mb-1.5">管理员账号 / 手机号 / 邮箱</label>
+          <input type="text" id="adm-login-account" class="input-field text-sm" placeholder="输入管理员用户名或手机号" value="admin">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-amber-200/80 mb-1.5">管理员密码</label>
+          <div class="relative">
+            <input type="password" id="adm-login-password" class="input-field text-sm pr-10" placeholder="输入管理员密码">
+            <button type="button" onclick="toggleAdmPw()" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-white">👁️</button>
+          </div>
+        </div>
+
+        <button onclick="handleAdminLogin()" id="btn-adm-login" class="btn-primary w-full py-3 text-sm font-bold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 border-none shadow-lg shadow-amber-500/20 mt-2">
+          🔐 安全登录管理中台 ↗
+        </button>
+
+        <div class="pt-4 border-t border-white/5 text-center">
+          <a href="index.html" class="text-xs text-[var(--text-muted)] hover:text-indigo-400 transition-colors">
+            ← 返回前台用户工作台
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. ADMIN CONSOLE (已登录管理员全屏中台) ================= -->
+  <div id="admin-console-view" class="flex-1 flex flex-col hidden">
+    <!-- Top Admin Header -->
+    <header class="bg-[var(--surface-secondary)]/90 backdrop-blur-xl border-b border-[var(--border-subtle)] px-6 py-3 sticky top-0 z-30">
+      <div class="flex items-center justify-between max-w-7xl mx-auto">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md">
+            <span class="text-lg">⚙️</span>
+          </div>
+          <div>
+            <h1 class="font-bold text-white text-base flex items-center gap-2">
+              <span>YouInsight 综合管理控制台</span>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-mono">v2.2 Pro</span>
+            </h1>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <a href="index.html" class="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-indigo-300 hover:text-white">
+            <span>🌐</span><span>前台工作台</span>
+          </a>
+          <div class="flex items-center gap-2 pl-3 border-l border-white/10">
+            <span class="text-xs font-bold text-amber-300" id="adm-display-name">Admin</span>
+            <button onclick="handleAdminLogout()" class="text-xs text-rose-400 hover:text-rose-300 py-1 px-2 rounded hover:bg-rose-500/10 transition-colors">
+              退出
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace Area -->
+    <div class="flex-1 flex max-w-7xl mx-auto w-full p-4 sm:p-6 gap-6">
+      <!-- Admin Sidebar -->
+      <aside class="w-56 flex-shrink-0 flex flex-col gap-1.5">
+        <button onclick="switchSection('metrics')" id="nav-metrics" class="admin-nav-item active">
+          <span>📊</span><span>运营数据大盘</span>
+        </button>
+        <button onclick="switchSection('users')" id="nav-users" class="admin-nav-item">
+          <span>👥</span><span>用户与配额管理</span>
+        </button>
+        <button onclick="switchSection('logs')" id="nav-logs" class="admin-nav-item">
+          <span>📑</span><span>全站生成审计日志</span>
+        </button>
+        <button onclick="switchSection('settings')" id="nav-settings" class="admin-nav-item">
+          <span>⚙️</span><span>运营与安全策略</span>
+        </button>
+      </aside>
+
+      <!-- Admin Main Panel Content -->
+      <main class="flex-1 min-w-0">
+
+        <!-- Section 1: Metrics Overview -->
+        <div id="sec-metrics" class="space-y-6">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="card p-5 bg-gradient-to-br from-indigo-950/60 to-slate-900 border-indigo-500/30">
+              <p class="text-xs text-indigo-300 font-medium mb-1">👥 累计注册用户</p>
+              <h3 id="stat-total-users" class="text-3xl font-black text-white font-mono">0</h3>
+              <p class="text-xs text-[var(--text-muted)] mt-2">今日新增: <span id="stat-today-users" class="text-emerald-400 font-bold">0</span> 人</p>
+            </div>
+            <div class="card p-5 bg-gradient-to-br from-purple-950/60 to-slate-900 border-purple-500/30">
+              <p class="text-xs text-purple-300 font-medium mb-1">⚡ 全站研报生成总数</p>
+              <h3 id="stat-total-gens" class="text-3xl font-black text-white font-mono">0</h3>
+              <p class="text-xs text-[var(--text-muted)] mt-2">今日生成: <span id="stat-today-gens" class="text-purple-300 font-bold">0</span> 次</p>
+            </div>
+            <div class="card p-5 bg-gradient-to-br from-pink-950/60 to-slate-900 border-pink-500/30">
+              <p class="text-xs text-pink-300 font-medium mb-1">📱 阿里云短信下发</p>
+              <h3 id="stat-sms-sent" class="text-3xl font-black text-white font-mono">0</h3>
+              <p class="text-[11px] text-pink-400 mt-2">模板: SMS_336470119</p>
+            </div>
+            <div class="card p-5 bg-gradient-to-br from-cyan-950/60 to-slate-900 border-cyan-500/30">
+              <p class="text-xs text-cyan-300 font-medium mb-1">📧 Resend 邮件下发</p>
+              <h3 id="stat-email-sent" class="text-3xl font-black text-white font-mono">0</h3>
+              <p class="text-[11px] text-cyan-400 mt-2">通道: Resend API</p>
+            </div>
+          </div>
+
+          <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                <span>📈</span><span>各功能模块调用热度分析</span>
+              </h3>
+              <button onclick="loadAdminMetrics()" class="text-xs text-indigo-400 hover:text-indigo-300">刷新</button>
+            </div>
+            <div id="stat-module-bars" class="space-y-3">
+              <p class="text-xs text-[var(--text-muted)]">正在统计模块分布...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: User Management -->
+        <div id="sec-users" class="space-y-4 hidden">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <input type="text" id="user-search-input" class="input-field text-xs flex-1" placeholder="🔍 搜索用户 ID、用户名、手机号或邮箱..." oninput="handleSearchUsers()">
+            <button onclick="loadAdminUsers()" class="btn-secondary text-xs py-2 px-4 whitespace-nowrap">🔄 刷新列表</button>
+          </div>
+
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-[var(--surface-tertiary)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                  <tr>
+                    <th class="p-3.5">UID</th>
+                    <th class="p-3.5">用户昵称</th>
+                    <th class="p-3.5">绑定账号</th>
+                    <th class="p-3.5">角色权限</th>
+                    <th class="p-3.5">每日可用额度</th>
+                    <th class="p-3.5">账号状态</th>
+                    <th class="p-3.5">注册时间</th>
+                    <th class="p-3.5 text-right">调配操作</th>
+                  </tr>
+                </thead>
+                <tbody id="user-table-body" class="divide-y divide-[var(--border-subtle)]">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Audit Logs -->
+        <div id="sec-logs" class="space-y-4 hidden">
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-[var(--text-muted)]">展示全网用户实时调用流水与生成耗时</p>
+            <button onclick="loadAdminLogs()" class="btn-secondary text-xs py-1.5 px-3">🔄 刷新日志</button>
+          </div>
+
+          <div class="card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-[var(--surface-tertiary)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
+                  <tr>
+                    <th class="p-3.5">时间</th>
+                    <th class="p-3.5">用户</th>
+                    <th class="p-3.5">模块</th>
+                    <th class="p-3.5">课题主题</th>
+                    <th class="p-3.5">耗时</th>
+                    <th class="p-3.5">状态</th>
+                    <th class="p-3.5">IP</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body" class="divide-y divide-[var(--border-subtle)]">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: System Policy & Settings -->
+        <div id="sec-settings" class="space-y-6 hidden">
+          <div class="card p-6 space-y-5 max-w-2xl">
+            <h3 class="font-bold text-white text-base pb-3 border-b border-white/5 flex items-center gap-2">
+              <span>⚙️</span><span>全局运营与防刷策略</span>
+            </h3>
+            
+            <div class="space-y-1.5">
+              <label class="block text-xs font-semibold text-slate-300">游客每日免登录免费体验次数 (次/天)</label>
+              <input type="number" id="cfg-guest-limit" class="input-field text-xs w-full" value="2">
+              <p class="text-[11px] text-[var(--text-muted)]">基于客户端 IP 限制，耗尽后引导注册登录</p>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-xs font-semibold text-slate-300">新注册用户默认每日额度 (次/天)</label>
+              <input type="number" id="cfg-user-quota" class="input-field text-xs w-full" value="10">
+              <p class="text-[11px] text-[var(--text-muted)]">普通用户每日免费额度，次日 00:00 自动刷新重置</p>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="block text-xs font-semibold text-slate-300">全站横幅通知公告</label>
+              <textarea id="cfg-announcement" rows="3" class="input-field text-xs w-full resize-none" placeholder="输入公告内容，留空则不展示横幅..."></textarea>
+            </div>
+
+            <div class="pt-3">
+              <button onclick="saveAdminSettings()" class="btn-primary text-xs px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 font-bold border-none shadow-lg shadow-amber-500/20">
+                💾 保存并实时应用策略
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.pathname.startsWith('/you-insight') ? '/you-insight' : '';
+    let currentAdmin = null;
+    let adminToken = localStorage.getItem('youinsight_jwt_token') || null;
+
+    async function initAdmin() {
+      if (adminToken) {
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/me`, {
+            headers: { 'Authorization': `Bearer ${adminToken}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (['admin', 'super_admin'].includes(data.user?.role)) {
+              currentAdmin = data.user;
+              showConsole();
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+      showLogin();
+    }
+
+    function showLogin() {
+      document.getElementById('admin-login-view').classList.remove('hidden');
+      document.getElementById('admin-console-view').classList.add('hidden');
+    }
+
+    function showConsole() {
+      document.getElementById('admin-login-view').classList.add('hidden');
+      document.getElementById('admin-console-view').classList.remove('hidden');
+      document.getElementById('adm-display-name').textContent = currentAdmin.username;
+      switchSection('metrics');
+    }
+
+    function toggleAdmPw() {
+      const el = document.getElementById('adm-login-password');
+      if (el) el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    async function handleAdminLogin() {
+      const account = document.getElementById('adm-login-account')?.value.trim();
+      const password = document.getElementById('adm-login-password')?.value;
+      const btn = document.getElementById('btn-adm-login');
+
+      if (!account || !password) {
+        showToast('请输入账号和密码', 'info');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '验证中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: 'password', account, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '登录失败');
+
+        if (!['admin', 'super_admin'].includes(data.user?.role)) {
+          throw new Error('此账号非管理员，无权进入管理控制台');
+        }
+
+        adminToken = data.token;
+        localStorage.setItem('youinsight_jwt_token', adminToken);
+        currentAdmin = data.user;
+        showToast(`欢迎进入管理中台，${currentAdmin.username}！`, 'success');
+        showConsole();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔐 安全登录管理中台 ↗';
+      }
+    }
+
+    function handleAdminLogout() {
+      adminToken = null;
+      currentAdmin = null;
+      localStorage.removeItem('youinsight_jwt_token');
+      showLogin();
+      showToast('已安全退出管理后台', 'info');
+    }
+
+    function switchSection(sec) {
+      ['metrics', 'users', 'logs', 'settings'].forEach(s => {
+        const panel = document.getElementById(`sec-${s}`);
+        const nav = document.getElementById(`nav-${s}`);
+        if (panel) panel.classList.toggle('hidden', s !== sec);
+        if (nav) nav.classList.toggle('active', s === sec);
+      });
+      if (sec === 'metrics') loadAdminMetrics();
+      else if (sec === 'users') loadAdminUsers();
+      else if (sec === 'logs') loadAdminLogs();
+      else if (sec === 'settings') loadAdminSettings();
+    }
+
+    async function loadAdminMetrics() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/metrics`, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if (!res.ok) return;
+        const { data } = await res.json();
+        document.getElementById('stat-total-users').textContent = data.total_users;
+        document.getElementById('stat-today-users').textContent = data.today_users;
+        document.getElementById('stat-total-gens').textContent = data.total_generations;
+        document.getElementById('stat-today-gens').textContent = data.today_generations;
+        document.getElementById('stat-sms-sent').textContent = data.total_sms_sent;
+        document.getElementById('stat-email-sent').textContent = data.total_emails_sent;
+
+        const barContainer = document.getElementById('stat-module-bars');
+        if (data.module_stats && data.module_stats.length > 0) {
+          barContainer.innerHTML = data.module_stats.map(m => `
+            <div class="flex items-center justify-between p-3 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] text-xs">
+              <span class="font-bold text-white">${escapeHtml(m.type)}</span>
+              <span class="font-mono text-amber-400 font-bold">${m.count} 次调用</span>
+            </div>
+          `).join('');
+        } else {
+          barContainer.innerHTML = '<p class="text-xs text-[var(--text-muted)]">暂无调用记录</p>';
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    let searchTimer = null;
+    function handleSearchUsers() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        const q = document.getElementById('user-search-input')?.value.trim();
+        loadAdminUsers(q);
+      }, 400);
+    }
+
+    async function loadAdminUsers(query = '') {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users?query=${encodeURIComponent(query)}`, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const tbody = document.getElementById('user-table-body');
+        if (!data.users || data.users.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-[var(--text-muted)]">未找到匹配的用户</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.users.map(u => `
+          <tr class="hover:bg-[var(--surface-tertiary)] transition-colors">
+            <td class="p-3.5 font-mono text-[var(--text-muted)]">#${u.id}</td>
+            <td class="p-3.5 font-bold text-white">${escapeHtml(u.username)}</td>
+            <td class="p-3.5 font-mono text-slate-300">${escapeHtml(u.phone || u.email || '—')}</td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 rounded text-[11px] font-medium ${u.role === 'super_admin' ? 'bg-amber-500/20 text-amber-300' : (u.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-indigo-500/20 text-indigo-300')}">
+                ${u.role}
+              </span>
+            </td>
+            <td class="p-3.5 font-mono text-emerald-400 font-bold">${u.daily_quota === -1 ? '无限' : u.daily_quota + '次/天'}</td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 rounded text-[10px] ${u.is_active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'}">
+                ${u.is_active ? '正常' : '已冻结'}
+              </span>
+            </td>
+            <td class="p-3.5 text-[var(--text-muted)]">${u.created_at || '—'}</td>
+            <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+              <button onclick="setQuota(${u.id}, 50)" class="btn-secondary text-[11px] py-1 px-2.5">加50次</button>
+              <button onclick="setQuota(${u.id}, -1)" class="btn-secondary text-[11px] py-1 px-2.5 text-amber-300 font-bold">无限</button>
+              <button onclick="toggleUser(${u.id})" class="btn-secondary text-[11px] py-1 px-2.5 ${u.is_active ? 'text-rose-400' : 'text-emerald-400'}">
+                ${u.is_active ? '冻结' : '解封'}
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    async function setQuota(uid, quota) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${uid}/quota`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify({ daily_quota: quota })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '修改失败');
+        showToast(data.message, 'success');
+        loadAdminUsers();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function toggleUser(uid) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${uid}/status`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '操作失败');
+        showToast(data.message, 'success');
+        loadAdminUsers();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function loadAdminLogs() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/logs`, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const tbody = document.getElementById('logs-table-body');
+        if (!data.logs || data.logs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-[var(--text-muted)]">暂无审计日志</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.logs.map(l => `
+          <tr class="hover:bg-[var(--surface-tertiary)] transition-colors">
+            <td class="p-3.5 text-[var(--text-muted)] font-mono">${l.created_at}</td>
+            <td class="p-3.5 font-bold text-white">${escapeHtml(l.username || '游客')}</td>
+            <td class="p-3.5"><span class="px-2 py-0.5 rounded text-[11px] bg-purple-500/20 text-purple-300 font-medium">${escapeHtml(l.type)}</span></td>
+            <td class="p-3.5 max-w-sm truncate text-slate-200" title="${escapeHtml(l.title)}">${escapeHtml(l.title)}</td>
+            <td class="p-3.5 font-mono text-cyan-300">${l.duration_ms}ms</td>
+            <td class="p-3.5"><span class="px-1.5 py-0.5 rounded text-[10px] ${l.status === 'success' ? 'text-emerald-400' : 'text-rose-400'}">${l.status}</span></td>
+            <td class="p-3.5 font-mono text-[var(--text-muted)]">${escapeHtml(l.ip)}</td>
+          </tr>
+        `).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    async function loadAdminSettings() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/settings`, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        if (!res.ok) return;
+        const { settings } = await res.json();
+        if (settings.guest_daily_limit) document.getElementById('cfg-guest-limit').value = settings.guest_daily_limit;
+        if (settings.default_user_quota) document.getElementById('cfg-user-quota').value = settings.default_user_quota;
+        if (settings.announcement !== undefined) document.getElementById('cfg-announcement').value = settings.announcement;
+      } catch (e) { console.error(e); }
+    }
+
+    async function saveAdminSettings() {
+      const guest_daily_limit = document.getElementById('cfg-guest-limit')?.value;
+      const default_user_quota = document.getElementById('cfg-user-quota')?.value;
+      const announcement = document.getElementById('cfg-announcement')?.value;
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/settings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify({ settings: { guest_daily_limit, default_user_quota, announcement } })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '保存失败');
+        showToast('系统策略配置已更新！', 'success');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span><span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3200);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', initAdmin);
+  </script>
+</body>
+</html>
