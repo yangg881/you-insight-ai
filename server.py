@@ -29,25 +29,78 @@ BROWSER_HEADERS = {
 DB_PATH = '/opt/you-insight-ai/data/youinsight.db'
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
+# ---------- 简单 TTL 缓存：同 query 短时间去重，省上游配额 ----------
+class TTLCache:
+    def __init__(self, maxsize: int = 128, ttl: int = 300):
+        self.maxsize, self.ttl = maxsize, ttl
+        self._data: dict = {}
+
+    def get(self, key: str):
+        item = self._data.get(key)
+        if not item:
+            return None
+        ts, value = item
+        if time.time() - ts > self.ttl:
+            self._data.pop(key, None)
+            return None
+        return value
+
+    def set(self, key: str, value):
+        if len(self._data) >= self.maxsize:
+            oldest = min(self._data, key=lambda k: self._data[k][0])
+            self._data.pop(oldest, None)
+        self._data[key] = (time.time(), value)
+
+CACHE = TTLCache(maxsize=128, ttl=300)
+
+# ---------- SQLite ----------
+def get_db():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA busy_timeout=5000')
+    conn.row_factory = sqlite3.Row
+    return conn
+
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     conn.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, api_key TEXT, plan TEXT DEFAULT "free", created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
     conn.execute('CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER DEFAULT 0, type TEXT, title TEXT, content TEXT, sources TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
     conn.execute('CREATE TABLE IF NOT EXISTS subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, topic TEXT, schedule TEXT DEFAULT "daily", active INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
+    # 列表按时间倒序查询高频，补索引避免全表扫描
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_history_created ON history (created_at DESC)')
     conn.commit()
     conn.close()
 init_db()
 
+# ---------- 全局 httpx 连接复用 ----------
+shared_client: Optional[httpx.AsyncClient] = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global shared_client
+    transport = httpx.AsyncHTTPTransport(proxy=PROXY_URL, retries=1) if PROXY_URL else httpx.AsyncHTTPTransport(retries=1)
+    shared_client = httpx.AsyncClient(transport=transport, timeout=60.0, follow_redirects=True, headers=BROWSER_HEADERS)
     yield
+    if shared_client:
+        await shared_client.aclose()
+        shared_client = None
 
-app = FastAPI(title='YouInsight AI Studio', version='2.0.0', lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+app = FastAPI(title='YouInsight AI Studio', version='2.1.0', lifespan=lifespan)
+# 注：allow_origins=['*'] 与 allow_credentials=True 组合无效且不安全，去掉 credentials
+app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=False, allow_methods=['*'], allow_headers=['*'])
 
-def get_client(timeout=60.0):
+def client(timeout: float = 60.0):
+    """优先复用全局连接池；仅当超时要求不同（如研报 180s）时临时建客户端。"""
+    if shared_client is not None and timeout <= 60.0:
+        return _NullCtx(shared_client)
     transport = httpx.AsyncHTTPTransport(proxy=PROXY_URL) if PROXY_URL else None
     return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=True, headers=BROWSER_HEADERS)
+
+class _NullCtx:
+    """让全局 client 也能用 async with 语法且不被关闭。"""
+    def __init__(self, c): self._c = c
+    async def __aenter__(self): return self._c
+    async def __aexit__(self, *exc): return False
 
 class SearchRequest(BaseModel):
     query: str
@@ -81,43 +134,60 @@ class HistorySave(BaseModel):
 
 @app.get('/api/health')
 async def health():
-    return {'status': 'ok', 'version': '2.0.0', 'proxy': bool(PROXY_URL)}
+    db_ok = True
+    try:
+        conn = get_db(); conn.execute('SELECT 1'); conn.close()
+    except Exception:
+        db_ok = False
+    return {'status': 'ok', 'version': '2.1.0', 'proxy': bool(PROXY_URL), 'db': db_ok}
 
 @app.post('/api/search')
 async def api_search(req: SearchRequest):
-    async with get_client() as client:
+    cache_key = f'search|{req.query}|{req.count}|{req.freshness or ""}'
+    hit = CACHE.get(cache_key)
+    if hit is not None:
+        return {'status': 'success', 'data': hit, 'cached': True}
+    async with client() as c:
         params = {'query': req.query, 'count': req.count}
         if req.freshness:
             params['freshness'] = req.freshness
-        resp = await client.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': API_KEY})
+        resp = await c.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': API_KEY})
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=f'Search API Error: {resp.text[:200]}')
-        return {'status': 'success', 'data': resp.json()}
+        data = resp.json()
+    CACHE.set(cache_key, data)
+    return {'status': 'success', 'data': data}
 
 @app.post('/api/news')
 async def api_news(req: NewsRequest):
-    async with get_client() as client:
-        resp = await client.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': API_KEY})
+    cache_key = f'news|{req.query}|{req.count}'
+    hit = CACHE.get(cache_key)
+    if hit is not None:
+        return {'status': 'success', 'data': hit, 'cached': True}
+    async with client() as c:
+        resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': API_KEY})
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=f'News API Error: {resp.text[:200]}')
-        return {'status': 'success', 'data': resp.json()}
+        data = resp.json()
+    CACHE.set(cache_key, data)
+    return {'status': 'success', 'data': data}
 
 @app.post('/api/research')
 async def api_research(req: ResearchRequest):
-    async with get_client(timeout=120.0) as client:
+    async with client(timeout=120.0) as c:
         payload = {'input': req.input, 'chat_history': req.chat_history or []}
-        resp = await client.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': API_KEY})
+        resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': API_KEY})
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=f'Research API Error: {resp.text[:200]}')
         return {'status': 'success', 'data': resp.json()}
 
-async def research_with_retry(client, payload):
+async def research_with_retry(c, payload):
     """调用上游研报接口；上游偶发 60s 掐断连接，自动换一次新连接重试。
     产出 ('stage', 文案) 进度事件，最后产出 ('result', 数据)。"""
     last_err = None
     for attempt in range(2):
         try:
-            resp = await client.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': API_KEY})
+            resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': API_KEY})
             if resp.status_code != 200:
                 raise RuntimeError(f'Research API Error: {resp.status_code} {resp.text[:200]}')
             yield ('result', resp.json())
@@ -137,10 +207,10 @@ async def api_research_stream(req: ResearchRequest):
         await asyncio.sleep(0.5)
         yield f'data: {json.dumps({"type": "stage", "stage": "分析中"})}\n\n'
         try:
-            async with get_client(timeout=180.0) as client:
+            async with client(timeout=180.0) as c:
                 payload = {'input': req.input, 'chat_history': req.chat_history or []}
                 data = None
-                async for kind, val in research_with_retry(client, payload):
+                async for kind, val in research_with_retry(c, payload):
                     if kind == 'stage':
                         yield f'data: {json.dumps({"type": "stage", "stage": val})}\n\n'
                     else:
@@ -158,28 +228,28 @@ async def api_research_stream(req: ResearchRequest):
 
 @app.post('/api/finance')
 async def api_finance(req: FinanceRequest):
-    async with get_client(timeout=120.0) as client:
-        resp = await client.post('https://api.you.com/v1/finance_research', json={'input': req.input}, headers={'X-API-Key': API_KEY})
+    async with client(timeout=120.0) as c:
+        resp = await c.post('https://api.you.com/v1/finance_research', json={'input': req.input}, headers={'X-API-Key': API_KEY})
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=f'Finance API Error: {resp.text[:200]}')
         return {'status': 'success', 'data': resp.json()}
 
 @app.post('/api/contents')
 async def api_contents(req: ContentsRequest):
-    async with get_client() as client:
-        resp = await client.post('https://api.you.com/v1/contents', json={'urls': req.urls}, headers={'X-API-Key': API_KEY})
+    async with client() as c:
+        resp = await c.post('https://api.you.com/v1/contents', json={'urls': req.urls}, headers={'X-API-Key': API_KEY})
         if resp.status_code != 200:
             raise HTTPException(status_code=resp.status_code, detail=f'Contents API Error: {resp.text[:200]}')
         return {'status': 'success', 'data': resp.json()}
 
 @app.post('/api/digest')
 async def api_digest(req: DigestRequest):
-    async with get_client(timeout=120.0) as client:
+    async with client(timeout=120.0) as c:
         try:
-            search_task = client.get('https://api.you.com/v1/search', params={'query': f'{req.topic} 最新 进展 动态', 'count': 6}, headers={'X-API-Key': API_KEY})
-            news_task = client.get('https://api.you.com/v1/search', params={'query': req.topic, 'count': 5}, headers={'X-API-Key': API_KEY})
+            search_task = c.get('https://api.you.com/v1/search', params={'query': f'{req.topic} 最新 进展 动态', 'count': 6}, headers={'X-API-Key': API_KEY})
+            news_task = c.get('https://api.you.com/v1/search', params={'query': req.topic, 'count': 5}, headers={'X-API-Key': API_KEY})
             prompt = f'请针对主题【{req.topic}】生成一份结构化行业早报与情报综合分析。包含：1. 今日核心要点 2. 详细动态与深度解读 3. 发展趋势与商业洞察。必须保持事实准确与客观。'
-            research_task = client.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': API_KEY})
+            research_task = c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': API_KEY})
             search_res, news_res, research_res = await asyncio.gather(search_task, news_task, research_task, return_exceptions=True)
             search_data = search_res.json() if not isinstance(search_res, Exception) and search_res.status_code == 200 else {}
             news_data = news_res.json() if not isinstance(news_res, Exception) and news_res.status_code == 200 else {}
@@ -188,25 +258,52 @@ async def api_digest(req: DigestRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+# ---------- 历史记录 ----------
+# SQLite CURRENT_TIMESTAMP 存的是 UTC，直接下发会让前端显示时间差 8 小时，
+# 统一在查询时转成本地时间；列表接口只回摘要，避免一次拉回几十份研报全文。
 @app.get('/api/history')
-async def get_history(limit: int = 50):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute('SELECT * FROM history ORDER BY created_at DESC LIMIT ?', (limit,)).fetchall()
+async def get_history(limit: int = 50, offset: int = 0):
+    if limit < 1 or limit > 200:
+        limit = 50
+    if offset < 0:
+        offset = 0
+    conn = get_db()
+    total = conn.execute('SELECT COUNT(*) FROM history').fetchone()[0]
+    rows = conn.execute(
+        'SELECT id, type, title, substr(content, 1, 300) AS excerpt, sources, '
+        'datetime(created_at, \'localtime\') AS created_at '
+        'FROM history ORDER BY id DESC LIMIT ? OFFSET ?', (limit, offset)).fetchall()
     conn.close()
-    return {'status': 'success', 'data': [dict(r) for r in rows]}
+    return {'status': 'success', 'total': total, 'data': [dict(r) for r in rows]}
+
+@app.get('/api/history/{hid}')
+async def get_history_detail(hid: int):
+    conn = get_db()
+    row = conn.execute(
+        'SELECT id, type, title, content, sources, '
+        'datetime(created_at, \'localtime\') AS created_at '
+        'FROM history WHERE id = ?', (hid,)).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail='记录不存在')
+    return {'status': 'success', 'data': dict(row)}
 
 @app.post('/api/history')
 async def save_history(req: HistorySave):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('INSERT INTO history (type, title, content, sources) VALUES (?, ?, ?, ?)', (req.type, req.title, req.content, req.sources))
+    title = (req.title or '')[:300]
+    content = req.content or ''
+    if len(content) > 200_000:
+        content = content[:200_000]
+    conn = get_db()
+    conn.execute('INSERT INTO history (type, title, content, sources) VALUES (?, ?, ?, ?)',
+                 ((req.type or '其他')[:50], title, content, req.sources or ''))
     conn.commit()
     conn.close()
     return {'status': 'success'}
 
 @app.delete('/api/history/{hid}')
 async def delete_history(hid: int):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db()
     conn.execute('DELETE FROM history WHERE id = ?', (hid,))
     conn.commit()
     conn.close()

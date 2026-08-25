@@ -2,7 +2,8 @@
 <html lang="zh-CN" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="YouInsight AI Studio - 实时情报、深度研报与事实溯源工作台">
   <title>YouInsight AI Studio - 智能情报与深度研报工作台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -232,6 +233,18 @@
             <button onclick="executeSearch()" id="search-submit-btn" class="btn-primary">🔍 搜索</button>
           </div>
         </div>
+        <div id="search-progress" class="hidden card p-4 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="progress-ring"></div>
+            <div class="flex-1">
+              <p class="font-medium text-white">正在检索全网...</p>
+              <div class="space-y-2 mt-2">
+                <div class="skeleton h-4 w-3/4"></div>
+                <div class="skeleton h-4 w-full"></div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div id="search-result" class="hidden space-y-3"></div>
         <div id="search-empty" class="empty-state">
           <div class="empty-state-icon">🔍</div>
@@ -252,6 +265,18 @@
             <button onclick="executeNews()" id="news-submit-btn" class="btn-primary">📡 获取新闻</button>
           </div>
         </div>
+        <div id="news-progress" class="hidden card p-4 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="progress-ring"></div>
+            <div class="flex-1">
+              <p class="font-medium text-white">正在抓取新闻流...</p>
+              <div class="space-y-2 mt-2">
+                <div class="skeleton h-4 w-3/4"></div>
+                <div class="skeleton h-4 w-5/6"></div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div id="news-result" class="hidden space-y-3"></div>
         <div id="news-empty" class="empty-state">
           <div class="empty-state-icon">📡</div>
@@ -268,13 +293,30 @@
         </div>
         <div class="card p-4 mb-4">
           <input type="text" id="finance-input" class="input-field" placeholder="输入公司名称或财务问题（例如：NVIDIA 最新季度营收）..." onkeydown="if(event.key==='Enter') executeFinance()">
+          <div class="flex flex-wrap gap-2 mt-3">
+            <button onclick="quickFill('finance', 'NVIDIA 最新季度营收与数据中心业务表现')" class="btn-secondary text-xs">🎮 NVIDIA</button>
+            <button onclick="quickFill('finance', '苹果公司最新财报营收与利润分析')" class="btn-secondary text-xs">🍎 苹果</button>
+            <button onclick="quickFill('finance', '特斯拉最新季度交付量与毛利率')" class="btn-secondary text-xs">🚗 特斯拉</button>
+          </div>
           <button onclick="executeFinance()" id="finance-submit-btn" class="btn-primary mt-3">📊 分析财报</button>
+        </div>
+        <div id="finance-progress" class="hidden card p-4 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="progress-ring"></div>
+            <div class="flex-1">
+              <p id="finance-stage" class="font-medium text-white">正在穿透 SEC 披露文件...</p>
+              <p class="text-xs text-[var(--text-muted)]"><span id="finance-timer">0.0</span>s</p>
+            </div>
+          </div>
         </div>
         <div id="finance-result" class="hidden space-y-4">
           <div class="card p-4 md:p-6">
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
               <h3 class="font-h2 text-white">📊 财务分析</h3>
-              <button onclick="copyContent('finance-content')" class="btn-secondary text-xs">📋 复制</button>
+              <div class="flex gap-2">
+                <button onclick="copyContent('finance-content')" class="btn-secondary text-xs">📋 复制</button>
+                <button onclick="exportMarkdown('finance-content', '财报洞察')" class="btn-secondary text-xs">💾 导出</button>
+              </div>
             </div>
             <div id="finance-content" class="markdown-body"></div>
           </div>
@@ -300,6 +342,18 @@
           <textarea id="contents-input" rows="3" class="input-field resize-none font-mono text-sm" placeholder="输入目标网页 URL，每行一个..."></textarea>
           <button onclick="executeContents()" id="contents-submit-btn" class="btn-primary mt-3">📥 提取正文</button>
         </div>
+        <div id="contents-progress" class="hidden card p-4 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="progress-ring"></div>
+            <div class="flex-1">
+              <p class="font-medium text-white">正在提取网页正文...</p>
+              <div class="space-y-2 mt-2">
+                <div class="skeleton h-4 w-3/4"></div>
+                <div class="skeleton h-4 w-2/3"></div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div id="contents-result" class="hidden space-y-4"></div>
         <div id="contents-empty" class="empty-state">
           <div class="empty-state-icon">📑</div>
@@ -310,13 +364,15 @@
     </div>
   </main>
 
-  <!-- Mobile Bottom Nav -->
+  <!-- Mobile Bottom Nav：横向可滚动，覆盖全部功能入口 -->
   <nav class="mobile-nav">
     <button onclick="switchTab('home')" id="m-nav-home" class="mobile-nav-btn active"><span>🏠</span><span>首页</span></button>
     <button onclick="switchTab('digest')" id="m-nav-digest" class="mobile-nav-btn"><span>📰</span><span>早报</span></button>
     <button onclick="switchTab('research')" id="m-nav-research" class="mobile-nav-btn"><span>🧠</span><span>研报</span></button>
     <button onclick="switchTab('search')" id="m-nav-search" class="mobile-nav-btn"><span>🔍</span><span>搜索</span></button>
+    <button onclick="switchTab('news')" id="m-nav-news" class="mobile-nav-btn"><span>📡</span><span>新闻</span></button>
     <button onclick="switchTab('finance')" id="m-nav-finance" class="mobile-nav-btn"><span>📈</span><span>财报</span></button>
+    <button onclick="switchTab('contents')" id="m-nav-contents" class="mobile-nav-btn"><span>📑</span><span>提取</span></button>
   </nav>
 
   <!-- History Drawer -->
@@ -329,9 +385,12 @@
       <input type="text" id="history-search" class="input-field" placeholder="搜索历史..." oninput="filterHistory()">
     </div>
     <div id="history-list" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2"></div>
+    <div class="p-4 border-t border-[var(--border-subtle)]">
+      <button id="history-load-more" onclick="loadMoreHistory()" class="btn-secondary w-full text-sm hidden">加载更多</button>
+    </div>
   </div>
   <div id="history-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="toggleHistoryDrawer()"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.1.1"></script>
 </body>
 </html>
