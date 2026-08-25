@@ -146,7 +146,7 @@
               <div id="quota-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500" style="width: 0%;"></div>
             </div>
             <p class="text-[11px] text-[var(--text-muted)]">
-              💡 提示：所有正式注册用户每日均享有 10 次免费深度研报与早报额度。如需更多批量额度，可联系管理员调配。
+              💡 提示：所有正式注册用户每日均享有 10 次免费深度研报与早报额度。生成失败或接口异常绝不扣减任何额度。
             </p>
           </div>
         </div>
@@ -166,10 +166,11 @@
 
       <!-- ================= TAB 3: 账号资料与安全中心 ================= -->
       <div id="tab-security" class="space-y-6 hidden">
+        
         <!-- 1. 修改用户名 -->
-        <div class="card p-6 max-w-xl space-y-4">
+        <div class="card p-6 max-w-2xl space-y-4">
           <h3 class="font-bold text-white text-sm pb-2 border-b border-white/5 flex items-center gap-2">
-            <span>👤</span><span>个性化资料</span>
+            <span>👤</span><span>个性化资料设置</span>
           </h3>
           <div class="space-y-1.5">
             <label class="block text-xs text-[var(--text-muted)]">个性昵称 / 用户名</label>
@@ -180,8 +181,90 @@
           </div>
         </div>
 
-        <!-- 2. 修改密码 -->
-        <div class="card p-6 max-w-xl space-y-4">
+        <!-- 2. 账号绑定与安全通信通道 (手机 & 邮箱绑定/换绑) -->
+        <div class="card p-6 max-w-2xl space-y-5">
+          <h3 class="font-bold text-white text-sm pb-2 border-b border-white/5 flex items-center gap-2">
+            <span>📱</span><span>账号绑定与多通道认证</span>
+          </h3>
+
+          <!-- A. 手机号绑定卡片 -->
+          <div class="p-4 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-white">手机号安全绑定</span>
+                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">用于短信验证码快捷免密登录与账号安全验证</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="label-bound-phone" class="text-xs font-mono text-indigo-300">未绑定</span>
+                <button onclick="toggleBindBox('phone')" id="btn-toggle-bind-phone" class="btn-secondary text-xs py-1 px-2.5">
+                  立即绑定
+                </button>
+              </div>
+            </div>
+
+            <!-- Phone Bind Box (Collapsible) -->
+            <div id="box-bind-phone" class="pt-3 border-t border-white/5 space-y-2.5 hidden">
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">输入新 11 位手机号</label>
+                <input type="text" id="input-bind-phone" class="input-field text-xs w-full" placeholder="输入手机号">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">短信验证码</label>
+                <div class="flex gap-2">
+                  <input type="text" id="input-code-phone" class="input-field flex-1 text-xs font-mono tracking-widest" placeholder="4位验证码">
+                  <button type="button" id="btn-send-phone-code" onclick="sendBindCode('phone')" class="btn-secondary text-xs px-3 whitespace-nowrap">
+                    获取验证码
+                  </button>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 pt-1">
+                <button type="button" onclick="toggleBindBox('phone')" class="btn-secondary text-xs py-1 px-3">取消</button>
+                <button type="button" onclick="submitBindTarget('phone')" class="btn-primary text-xs py-1 px-4">确认绑定/换绑</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- B. 邮箱绑定卡片 -->
+          <div class="p-4 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-white">安全邮箱绑定</span>
+                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">用于邮件验证码登录、安全通知与找回密码</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="label-bound-email" class="text-xs font-mono text-indigo-300">未绑定</span>
+                <button onclick="toggleBindBox('email')" id="btn-toggle-bind-email" class="btn-secondary text-xs py-1 px-2.5">
+                  立即绑定
+                </button>
+              </div>
+            </div>
+
+            <!-- Email Bind Box (Collapsible) -->
+            <div id="box-bind-email" class="pt-3 border-t border-white/5 space-y-2.5 hidden">
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">输入新常用邮箱</label>
+                <input type="text" id="input-bind-email" class="input-field text-xs w-full" placeholder="如：name@example.com">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">邮件验证码</label>
+                <div class="flex gap-2">
+                  <input type="text" id="input-code-email" class="input-field flex-1 text-xs font-mono tracking-widest" placeholder="6位验证码">
+                  <button type="button" id="btn-send-email-code" onclick="sendBindCode('email')" class="btn-secondary text-xs px-3 whitespace-nowrap">
+                    获取验证码
+                  </button>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 pt-1">
+                <button type="button" onclick="toggleBindBox('email')" class="btn-secondary text-xs py-1 px-3">取消</button>
+                <button type="button" onclick="submitBindTarget('email')" class="btn-primary text-xs py-1 px-4">确认绑定/换绑</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. 修改密码 -->
+        <div class="card p-6 max-w-2xl space-y-4">
           <h3 class="font-bold text-white text-sm pb-2 border-b border-white/5 flex items-center gap-2">
             <span>🔒</span><span>修改登录密码</span>
           </h3>
@@ -200,26 +283,71 @@
           </div>
         </div>
 
-        <!-- 3. 绑定状态 -->
-        <div class="card p-6 max-w-xl space-y-3">
-          <h3 class="font-bold text-white text-sm pb-2 border-b border-white/5 flex items-center gap-2">
-            <span>📱</span><span>账号绑定情况</span>
+        <!-- 4. ⚠️ 危险操作区 (注销账号) -->
+        <div class="card p-6 max-w-2xl border-rose-500/30 bg-rose-950/10 space-y-3">
+          <h3 class="font-bold text-rose-400 text-sm flex items-center gap-2">
+            <span>⚠️</span><span>危险区域：注销账户</span>
           </h3>
-          <div class="space-y-2 text-xs">
-            <div class="flex justify-between p-3 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)]">
-              <span class="text-[var(--text-muted)]">绑定手机号:</span>
-              <span id="sec-phone" class="font-mono text-white">未绑定</span>
-            </div>
-            <div class="flex justify-between p-3 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)]">
-              <span class="text-[var(--text-muted)]">绑定邮箱:</span>
-              <span id="sec-email" class="font-mono text-white">未绑定</span>
-            </div>
+          <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+            注销账户是不可逆的高风险操作。注销后，您的账号凭证、所有生成的深度研报与历史资产、每日配额等将被<strong>永久抹除且无法找回</strong>。
+          </p>
+          <div class="pt-2">
+            <button onclick="openDeleteAccountModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-rose-300 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 transition-colors flex items-center gap-1.5">
+              <span>🗑️</span><span>申请注销当前账户</span>
+            </button>
           </div>
         </div>
+
       </div>
 
     </section>
   </main>
+
+  <!-- ================= DANGER ZONE: 注销账户高风险确认弹窗 ================= -->
+  <div id="delete-account-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
+    <div class="relative w-full max-w-md bg-[var(--surface-secondary)] border border-rose-500/40 rounded-2xl p-6 sm:p-7 shadow-2xl shadow-rose-950/80">
+      
+      <!-- Close Button -->
+      <button onclick="closeDeleteAccountModal()" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white text-lg p-1">✕</button>
+
+      <div class="text-center mb-5">
+        <div class="inline-flex w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 items-center justify-center text-2xl mb-2.5">
+          ⚠️
+        </div>
+        <h3 class="text-lg font-bold text-white">高风险操作：确认注销账号</h3>
+        <p class="text-xs text-rose-300/80 mt-1">此操作不可逆，将永久删除您的所有研报资产</p>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-slate-300 space-y-1.5 text-[11px]">
+          <p class="font-bold text-rose-300">注销后您将放弃：</p>
+          <p>• 永久删除账号及所有历史生成的研报记录；</p>
+          <p>• 清空所有每日可用额度，且不可恢复；</p>
+          <p>• 原绑定的手机号/邮箱将解除关联。</p>
+        </div>
+
+        <div>
+          <label class="block text-[11px] text-[var(--text-muted)] mb-1">
+            验证码将发送至已绑定的安全账号：<span id="del-acc-target-label" class="text-white font-mono font-bold"></span>
+          </label>
+          <div class="flex gap-2">
+            <input type="text" id="input-del-acc-code" class="input-field flex-1 text-xs font-mono tracking-widest" placeholder="输入验证码">
+            <button type="button" id="btn-send-del-code" onclick="sendDeleteAccountCode()" class="btn-secondary text-xs px-3 whitespace-nowrap">
+              获取验证码
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button onclick="closeDeleteAccountModal()" class="btn-secondary flex-1 py-2 text-xs">放弃注销</button>
+          <button onclick="confirmDeleteAccount()" id="btn-confirm-delete" class="flex-1 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30 transition-colors">
+            ⚠️ 确认永久注销
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <script>
     const API_BASE = window.location.pathname.startsWith('/you-insight') ? '/you-insight' : '';
@@ -297,8 +425,39 @@
 
       // Security Tab
       document.getElementById('input-edit-username').value = currentUser.username;
-      document.getElementById('sec-phone').textContent = currentUser.phone || '未绑定';
-      document.getElementById('sec-email').textContent = currentUser.email || '未绑定';
+      
+      // Render Phone Binding Status
+      const phoneLabel = document.getElementById('label-bound-phone');
+      const phoneBtn = document.getElementById('btn-toggle-bind-phone');
+      if (currentUser.phone) {
+        phoneLabel.textContent = `已绑定: ${maskPhone(currentUser.phone)}`;
+        phoneBtn.textContent = '更换手机号';
+      } else {
+        phoneLabel.textContent = '未绑定';
+        phoneBtn.textContent = '立即绑定';
+      }
+
+      // Render Email Binding Status
+      const emailLabel = document.getElementById('label-bound-email');
+      const emailBtn = document.getElementById('btn-toggle-bind-email');
+      if (currentUser.email) {
+        emailLabel.textContent = `已绑定: ${maskEmail(currentUser.email)}`;
+        emailBtn.textContent = '更换邮箱';
+      } else {
+        emailLabel.textContent = '未绑定';
+        emailBtn.textContent = '立即绑定';
+      }
+    }
+
+    function maskPhone(p) {
+      if (!p || p.length < 11) return p;
+      return p.slice(0, 3) + '****' + p.slice(7);
+    }
+
+    function maskEmail(e) {
+      if (!e || !e.includes('@')) return e;
+      const [u, d] = e.split('@');
+      return (u.length > 2 ? u.slice(0, 2) + '***' : u) + '@' + d;
     }
 
     function switchTab(tab) {
@@ -310,6 +469,162 @@
       });
       if (tab === 'reports') loadUserReports();
     }
+
+    // ==================== 手机 / 邮箱 绑定与换绑逻辑 ====================
+
+    function toggleBindBox(type) {
+      const box = document.getElementById(`box-bind-${type}`);
+      if (box) box.classList.toggle('hidden');
+    }
+
+    async function sendBindCode(type) {
+      const target = document.getElementById(`input-bind-${type}`)?.value.trim();
+      const btn = document.getElementById(`btn-send-${type}-code`);
+      if (!target) {
+        showToast(`请输入要绑定的新${type === 'phone' ? '手机号' : '邮箱'}`, 'info');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '发送中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, code_type: 'bind' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '验证码发送失败');
+
+        showToast(data.message || '验证码已发送！', 'success');
+
+        let cd = 60;
+        btn.textContent = `${cd}s 后重试`;
+        const interval = setInterval(() => {
+          cd--;
+          if (cd <= 0) {
+            clearInterval(interval);
+            btn.disabled = false;
+            btn.textContent = '获取验证码';
+          } else {
+            btn.textContent = `${cd}s 后重试`;
+          }
+        }, 1000);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '获取验证码';
+      }
+    }
+
+    async function submitBindTarget(type) {
+      const target = document.getElementById(`input-bind-${type}`)?.value.trim();
+      const code = document.getElementById(`input-code-${type}`)?.value.trim();
+      if (!target || !code) {
+        showToast('请完整输入账号及收到的验证码', 'info');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/bind-target`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ target, code })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '绑定失败');
+
+        showToast(data.message, 'success');
+        currentUser = data.user;
+        renderUserData();
+        toggleBindBox(type);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ==================== 账号注销逻辑 ====================
+
+    function openDeleteAccountModal() {
+      const target = currentUser.phone || currentUser.email;
+      if (!target) {
+        showToast('请先绑定手机或邮箱以完成注销验证', 'error');
+        return;
+      }
+      document.getElementById('del-acc-target-label').textContent = currentUser.phone ? maskPhone(currentUser.phone) : maskEmail(currentUser.email);
+      document.getElementById('delete-account-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteAccountModal() {
+      document.getElementById('delete-account-modal').classList.add('hidden');
+    }
+
+    async function sendDeleteAccountCode() {
+      const target = currentUser.phone || currentUser.email;
+      const btn = document.getElementById('btn-send-del-code');
+      btn.disabled = true;
+      btn.textContent = '发送中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, code_type: 'delete_account' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '验证码发送失败');
+
+        showToast('注销确认验证码已下发！', 'info');
+
+        let cd = 60;
+        btn.textContent = `${cd}s 后重试`;
+        const timer = setInterval(() => {
+          cd--;
+          if (cd <= 0) {
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.textContent = '获取验证码';
+          } else {
+            btn.textContent = `${cd}s 后重试`;
+          }
+        }, 1000);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '获取验证码';
+      }
+    }
+
+    async function confirmDeleteAccount() {
+      const code = document.getElementById('input-del-acc-code')?.value.trim();
+      if (!code) {
+        showToast('请输入注销确认验证码', 'info');
+        return;
+      }
+      const btn = document.getElementById('btn-confirm-delete');
+      btn.disabled = true;
+      btn.textContent = '正在注销抹除...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/delete-account`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '注销失败');
+
+        alert('您的账号及所有研报资产已成功注销并彻底清除。感谢您使用 YouInsight AI！');
+        localStorage.removeItem('youinsight_jwt_token');
+        window.location.href = 'index.html';
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '⚠️ 确认永久注销';
+      }
+    }
+
+    // ==================== 研报资产库与资料修改 ====================
 
     async function loadUserReports() {
       try {

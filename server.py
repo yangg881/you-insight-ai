@@ -513,6 +513,13 @@ class ResetPwReq(BaseModel):
     code: str
     new_password: str
 
+class BindTargetReq(BaseModel):
+    target: str
+    code: str
+
+class DeleteAccountReq(BaseModel):
+    code: str
+
 class UpdateProfileReq(BaseModel):
     username: Optional[str] = None
     new_password: Optional[str] = None
@@ -571,7 +578,7 @@ async def api_send_code(req: SendCodeReq, request: Request):
     conn.close()
     
     # 下发验证码
-    action_map = {"register": "新用户注册", "login": "快捷免密登录", "reset": "重置密码"}
+    action_map = {"register": "新用户注册", "login": "快捷免密登录", "reset": "重置密码", "bind": "绑定/换绑安全账号", "delete_account": "注销账号"}
     action_text = action_map.get(req.code_type, "验证操作")
     
     if is_phone:
@@ -801,6 +808,98 @@ async def api_get_me(user: Dict[str, Any] = Depends(require_auth)):
             "remaining_today": 9999 if quota == -1 else max(0, quota - used_today),
             "total_generations": total_gen
         }
+    }
+
+
+@app.post('/api/auth/bind-target')
+async def api_bind_target(req: BindTargetReq, user: Dict[str, Any] = Depends(require_auth)):
+    target = req.target.strip()
+    code = req.code.strip()
+    is_phone = bool(re.match(r"^1[3-9]\d{9}$", target))
+    is_email = bool(re.match(r"^[\w\.-]+@[\w\.-]+\.\w+$", target))
+    
+    if not is_phone and not is_email:
+        raise HTTPException(status_code=400, detail="请输入正确的 11 位手机号或邮箱地址")
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 验证验证码
+    vrow = cursor.execute(
+        "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
+        (target,)
+    ).fetchone()
+    if not vrow or vrow["used"] == 1 or vrow["code"] != code or datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") < datetime.now():
+        conn.close()
+        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+        
+    field = "phone" if is_phone else "email"
+    
+    # 检查是否已被其他用户绑定
+    exist = cursor.execute(f"SELECT id FROM users WHERE {field} = ? AND id != ?", (target, user["id"])).fetchone()
+    if exist:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"该{'手机号' if is_phone else '邮箱'}已被其他账号绑定，请更换")
+        
+    cursor.execute(f"UPDATE users SET {field} = ? WHERE id = ?", (target, user["id"]))
+    cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
+    conn.commit()
+    
+    updated_user = cursor.execute("SELECT id, username, phone, email, role, daily_quota FROM users WHERE id = ?", (user["id"],)).fetchone()
+    conn.close()
+    
+    return {
+        "status": "success",
+        "message": f"{'手机号' if is_phone else '邮箱'}绑定/更改成功！",
+        "user": dict(updated_user)
+    }
+
+@app.post('/api/auth/delete-account')
+async def api_delete_account(req: DeleteAccountReq, user: Dict[str, Any] = Depends(require_auth)):
+    code = req.code.strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="请输入注销确认验证码")
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 寻找当前用户绑定的手机或邮箱
+    bound_targets = []
+    if user.get("phone"): bound_targets.append(user["phone"])
+    if user.get("email"): bound_targets.append(user["email"])
+    
+    if not bound_targets:
+        conn.close()
+        raise HTTPException(status_code=400, detail="当前账号未绑定手机或邮箱，无法验证身份注销")
+        
+    # 验证验证码
+    valid_vrow = None
+    for target in bound_targets:
+        vrow = cursor.execute(
+            "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
+            (target,)
+        ).fetchone()
+        if vrow and vrow["used"] == 0 and vrow["code"] == code and datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") >= datetime.now():
+            valid_vrow = vrow
+            break
+            
+    if not valid_vrow:
+        conn.close()
+        raise HTTPException(status_code=400, detail="注销验证码错误或已过期")
+        
+    uid = user["id"]
+    # 永久抹除该用户全部历史资产
+    cursor.execute("DELETE FROM history WHERE user_id = ?", (uid,))
+    cursor.execute("DELETE FROM daily_usage WHERE user_id = ?", (uid,))
+    cursor.execute("DELETE FROM generation_logs WHERE user_id = ?", (uid,))
+    cursor.execute("DELETE FROM users WHERE id = ?", (uid,))
+    cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (valid_vrow["id"],))
+    conn.commit()
+    conn.close()
+    
+    return {
+        "status": "success",
+        "message": "账号及所有个人资产数据已成功注销并彻底抹除"
     }
 
 @app.post('/api/auth/update-profile')
