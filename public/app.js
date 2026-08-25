@@ -1,3 +1,53 @@
+async function translateCard(btn, titleId, descId) {
+  const titleEl = document.getElementById(titleId);
+  const descEl = document.getElementById(descId);
+  if (!descEl) return;
+  
+  if (btn.dataset.translated === 'true') {
+    // 恢复原文
+    titleEl.textContent = btn.dataset.origTitle;
+    descEl.textContent = btn.dataset.origDesc;
+    btn.dataset.translated = 'false';
+    btn.innerHTML = '🇨🇳 译为中文';
+    btn.classList.remove('bg-indigo-500/20', 'text-indigo-300');
+    btn.classList.add('bg-white/5', 'text-slate-400');
+    return;
+  }
+  
+  // 保存原文
+  if (!btn.dataset.origTitle) btn.dataset.origTitle = titleEl.textContent;
+  if (!btn.dataset.origDesc) btn.dataset.origDesc = descEl.textContent;
+  
+  const origText = btn.dataset.origDesc;
+  const origTitle = btn.dataset.origTitle;
+  
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="animate-spin h-3 w-3 inline mr-1" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 翻译中...';
+  
+  try {
+    const res = await apiCall('/api/translate', {
+      method: 'POST',
+      body: JSON.stringify({ title: origTitle, text: origText })
+    });
+    if (res.status === 'success' && res.data) {
+      if (res.data.title && titleEl) titleEl.textContent = res.data.title;
+      if (res.data.text) descEl.textContent = res.data.text;
+      btn.dataset.translated = 'true';
+      btn.innerHTML = '🔄 显示原文';
+      btn.classList.remove('bg-white/5', 'text-slate-400');
+      btn.classList.add('bg-indigo-500/20', 'text-indigo-300');
+    } else {
+      showToast('翻译异常，请稍后重试', 'error');
+      btn.innerHTML = '🇨🇳 译为中文';
+    }
+  } catch (e) {
+    showToast('翻译超时', 'error');
+    btn.innerHTML = '🇨🇳 译为中文';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function cleanSnippetText(text) {
   if (!text) return '';
   return text
@@ -1211,19 +1261,24 @@ function renderWebItems(items) {
     result.innerHTML = '<div class="card p-8 text-center text-sm text-[var(--text-muted)]">未找到相关网页结果</div>';
     return;
   }
-  result.innerHTML = items.map(item => `
-    <div class="card p-4 hover:border-indigo-500/40 transition-colors">
+  result.innerHTML = items.map((item, idx) => {
+    const isEn = !/[\u4e00-\u9fa5]/.test(item.title + (item.description || ''));
+    return `
+    <div class="card p-4 hover:border-indigo-500/40 transition-colors relative group">
       <div class="flex items-center justify-between mb-1.5">
         <div class="flex items-center gap-2">
           <span class="text-xs text-indigo-400 font-mono">${escapeHtml(safeHostname(item.url))}</span>
           ${item.source ? `<span class="px-1.5 py-0.2 rounded text-[10px] bg-amber-500/15 text-amber-300">🦁 ${escapeHtml(item.source)}</span>` : ''}
         </div>
-        <span class="text-xs text-[var(--text-muted)]">${item.page_age ? escapeHtml(String(item.page_age).split('T')[0]) : '实时'}</span>
+        <div class="flex items-center gap-2">
+          ${isEn ? `<button onclick="translateCard(this, 's-title-${idx}', 's-desc-${idx}')" class="px-2 py-0.5 rounded text-[10px] bg-white/5 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 transition-colors">🇨🇳 译为中文</button>` : ''}
+          <span class="text-xs text-[var(--text-muted)]">${item.page_age ? escapeHtml(String(item.page_age).split('T')[0]) : '实时'}</span>
+        </div>
       </div>
-      <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-sm font-bold text-white hover:text-indigo-400 block mb-1.5">${escapeHtml(cleanSnippetText(item.title || '无标题'))}</a>
-      <p class="text-xs text-[var(--text-secondary)] line-clamp-3">${escapeHtml(cleanSnippetText(item.description || item.snippets?.[0] || ''))}</p>
+      <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" id="s-title-${idx}" class="text-sm font-bold text-white hover:text-indigo-400 block mb-1.5">${escapeHtml(cleanSnippetText(item.title || '无标题'))}</a>
+      <p id="s-desc-${idx}" class="text-xs text-[var(--text-secondary)] line-clamp-3">${escapeHtml(cleanSnippetText(item.description || item.snippets?.[0] || ''))}</p>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 // 4. 新闻流
