@@ -461,30 +461,6 @@ async def fetch_brave_news_search(query: str, count: int = 10, lang: Optional[st
         print(f"Brave news error: {e}")
     return None
 
-class TranslateRequest(BaseModel):
-    title: Optional[str] = ""
-    text: str
-
-@app.post('/api/translate')
-async def api_translate(req: TranslateRequest):
-    """将英文搜索/新闻卡片快速翻译为地道中文"""
-    prompt = f"请将以下英文内容准确、通顺、地道地翻译为中文（保持专业术语如模型名不变）。\n标题：{req.title}\n正文：{req.text}\n请直接输出JSON格式：{{\"title\": \"中文标题\", \"text\": \"中文正文\"}}"
-    try:
-        async with client(timeout=30.0) as c:
-            resp = await c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
-            if resp.status_code == 200:
-                raw = resp.json().get('output', {}).get('content', '')
-                # 尝试提取 JSON
-                import re
-                match = re.search(r'\{.*\}', raw, re.DOTALL)
-                if match:
-                    res_json = json.loads(match.group())
-                    return {"status": "success", "data": res_json}
-                return {"status": "success", "data": {"title": req.title, "text": raw}}
-    except Exception as e:
-        print(f"Translate error: {e}")
-    return {"status": "error", "message": "翻译服务繁忙"}
-
 CACHE = TTLCache(maxsize=128, ttl=300)
 shared_client: Optional[httpx.AsyncClient] = None
 
@@ -1556,3 +1532,29 @@ app.mount('/', StaticFiles(directory=static_dir, html=True), name='static')
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host='127.0.0.1', port=8200)
+
+
+# ==================== 卡片本地化翻译端点 ====================
+class TranslateRequest(BaseModel):
+    title: Optional[str] = ""
+    text: str
+
+@app.post('/api/translate')
+async def api_translate(req: TranslateRequest):
+    """将英文搜索/新闻卡片快速翻译为地道中文"""
+    prompt = f"请将以下英文内容准确、通顺、地道地翻译为中文（保持专业术语如模型名不变）。\n标题：{req.title}\n正文：{req.text}\n请直接输出JSON格式：{{\"title\": \"中文标题\", \"text\": \"中文正文\"}}"
+    try:
+        async with client(timeout=30.0) as c:
+            resp = await c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
+            if resp.status_code == 200:
+                raw = resp.json().get('output', {}).get('content', '')
+                # 尝试提取 JSON
+                import re
+                match = re.search(r'\{.*\}', raw, re.DOTALL)
+                if match:
+                    res_json = json.loads(match.group())
+                    return {"status": "success", "data": res_json}
+                return {"status": "success", "data": {"title": req.title, "text": raw}}
+    except Exception as e:
+        print(f"Translate error: {e}")
+    return {"status": "error", "message": "翻译服务繁忙"}
