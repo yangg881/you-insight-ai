@@ -1244,6 +1244,7 @@ async def api_finance(req: FinanceRequest, request: Request, user: Optional[Dict
             if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
                 detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
             raise HTTPException(status_code=resp.status_code, detail=detail_msg)
+        consume_quota_success(user, ip)
         record_gen_log(user, ip, '企业财报', req.input, int((time.time() - t0)*1000), 'success')
         return {'status': 'success', 'data': resp.json(), 'quota': quota_res}
 
