@@ -1,237 +1,232 @@
-import os
-import time
+import os, time, asyncio, json, re, sqlite3, secrets
+from datetime import datetime
+from typing import List, Optional
+from contextlib import asynccontextmanager
 import httpx
-import asyncio
-from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-DEFAULT_API_KEY = os.getenv('YOU_API_KEY', 'ydc-sk-a068ac9fc0503513-Pvd87FZqsG6U8D2eb7KO7ZUWWN1ZL0Pl-23cd1929')
+try:
+    from dotenv import load_dotenv
+    load_dotenv('/etc/you-insight-ai/.env')
+except Exception:
+    pass
 
-BASE_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-    'Accept': 'application/json',
-    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+API_KEY = os.getenv('YOU_API_KEY')
+if not API_KEY:
+    raise RuntimeError('YOU_API_KEY not set')
+PROXY_URL = os.getenv('PROXY_URL', 'http://127.0.0.1:10888')
+
+BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
 }
 
-app = FastAPI(title='YouInsight AI Studio', version='1.0.0')
+DB_PATH = '/opt/you-insight-ai/data/youinsight.db'
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=['*'],
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
-)
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE, api_key TEXT, plan TEXT DEFAULT "free", created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
+    conn.execute('CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER DEFAULT 0, type TEXT, title TEXT, content TEXT, sources TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
+    conn.execute('CREATE TABLE IF NOT EXISTS subscriptions (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, topic TEXT, schedule TEXT DEFAULT "daily", active INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)')
+    conn.commit()
+    conn.close()
+init_db()
 
-def get_auth_key(custom_key: Optional[str], header_key: Optional[str]) -> str:
-    if custom_key and custom_key.strip():
-        return custom_key.strip()
-    if header_key and header_key.strip():
-        return header_key.strip()
-    return DEFAULT_API_KEY
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
 
-def build_headers(key: str) -> dict:
-    headers = dict(BASE_HEADERS)
-    headers['X-API-Key'] = key
-    return headers
+app = FastAPI(title='YouInsight AI Studio', version='2.0.0', lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=True, allow_methods=['*'], allow_headers=['*'])
+
+def get_client(timeout=60.0):
+    transport = httpx.AsyncHTTPTransport(proxy=PROXY_URL) if PROXY_URL else None
+    return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=True, headers=BROWSER_HEADERS)
 
 class SearchRequest(BaseModel):
     query: str
     count: Optional[int] = 10
-    country: Optional[str] = None
-    language: Optional[str] = None
-    api_key: Optional[str] = None
+    freshness: Optional[str] = None
 
 class ResearchRequest(BaseModel):
     input: str
-    api_key: Optional[str] = None
+    chat_history: Optional[List[dict]] = None
+    depth: Optional[str] = 'standard'
 
 class FinanceRequest(BaseModel):
     input: str
-    api_key: Optional[str] = None
 
 class ContentsRequest(BaseModel):
     urls: List[str]
-    api_key: Optional[str] = None
 
 class DigestRequest(BaseModel):
     topic: str
-    api_key: Optional[str] = None
+    schedule: Optional[bool] = False
+
+class NewsRequest(BaseModel):
+    query: str
+    count: Optional[int] = 10
+
+class HistorySave(BaseModel):
+    type: str
+    title: str
+    content: str
+    sources: Optional[str] = ''
+
+@app.get('/api/health')
+async def health():
+    return {'status': 'ok', 'version': '2.0.0', 'proxy': bool(PROXY_URL)}
 
 @app.post('/api/search')
-async def search_endpoint(req: SearchRequest, x_api_key: Optional[str] = Header(None)):
-    key = get_auth_key(req.api_key, x_api_key)
-    params = {'query': req.query, 'count': req.count}
-    if req.country:
-        params['country'] = req.country
-    if req.language:
-        params['language'] = req.language
+async def api_search(req: SearchRequest):
+    async with get_client() as client:
+        params = {'query': req.query, 'count': req.count}
+        if req.freshness:
+            params['freshness'] = req.freshness
+        resp = await client.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': API_KEY})
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=f'Search API Error: {resp.text[:200]}')
+        return {'status': 'success', 'data': resp.json()}
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        try:
-            start_t = time.time()
-            resp = await client.get(
-                'https://api.you.com/v1/search',
-                params=params,
-                headers=build_headers(key)
-            )
-            elapsed = round(time.time() - start_t, 2)
-            if resp.status_code != 200:
-                raise HTTPException(status_code=resp.status_code, detail=f'Search API 响应异常: {resp.text}')
-            data = resp.json()
-            return {'data': data, 'elapsed': elapsed}
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=500, detail=f'网络请求超时或失败: {str(e)}')
+@app.post('/api/news')
+async def api_news(req: NewsRequest):
+    async with get_client() as client:
+        resp = await client.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': API_KEY})
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=f'News API Error: {resp.text[:200]}')
+        return {'status': 'success', 'data': resp.json()}
 
 @app.post('/api/research')
-async def research_endpoint(req: ResearchRequest, x_api_key: Optional[str] = Header(None)):
-    key = get_auth_key(req.api_key, x_api_key)
-    headers = build_headers(key)
-    headers['Content-Type'] = 'application/json'
-    async with httpx.AsyncClient(timeout=60.0) as client:
+async def api_research(req: ResearchRequest):
+    async with get_client(timeout=120.0) as client:
+        payload = {'input': req.input, 'chat_history': req.chat_history or []}
+        resp = await client.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': API_KEY})
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=f'Research API Error: {resp.text[:200]}')
+        return {'status': 'success', 'data': resp.json()}
+
+async def research_with_retry(client, payload):
+    """调用上游研报接口；上游偶发 60s 掐断连接，自动换一次新连接重试。
+    产出 ('stage', 文案) 进度事件，最后产出 ('result', 数据)。"""
+    last_err = None
+    for attempt in range(2):
         try:
-            start_t = time.time()
-            resp = await client.post(
-                'https://api.you.com/v1/research',
-                json={'input': req.input},
-                headers=headers
-            )
-            elapsed = round(time.time() - start_t, 2)
+            resp = await client.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': API_KEY})
             if resp.status_code != 200:
-                raise HTTPException(status_code=resp.status_code, detail=f'Research API 响应异常: {resp.text}')
-            data = resp.json()
-            return {'data': data, 'elapsed': elapsed}
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=500, detail=f'研究请求超时或失败: {str(e)}')
+                raise RuntimeError(f'Research API Error: {resp.status_code} {resp.text[:200]}')
+            yield ('result', resp.json())
+            return
+        except (httpx.RemoteProtocolError, httpx.ReadError, httpx.ReadTimeout) as e:
+            last_err = e
+            if attempt == 0:
+                yield ('stage', '上游连接中断，正在重试')
+                await asyncio.sleep(1)
+                continue
+    raise last_err
+
+@app.post('/api/research/stream')
+async def api_research_stream(req: ResearchRequest):
+    async def generate():
+        yield f'data: {json.dumps({"type": "start", "stage": "检索中"})}\n\n'
+        await asyncio.sleep(0.5)
+        yield f'data: {json.dumps({"type": "stage", "stage": "分析中"})}\n\n'
+        try:
+            async with get_client(timeout=180.0) as client:
+                payload = {'input': req.input, 'chat_history': req.chat_history or []}
+                data = None
+                async for kind, val in research_with_retry(client, payload):
+                    if kind == 'stage':
+                        yield f'data: {json.dumps({"type": "stage", "stage": val})}\n\n'
+                    else:
+                        data = val
+                content = data.get('output', {}).get('content', '')
+                sources = data.get('output', {}).get('sources', [])
+                chunk_size = 50
+                for i in range(0, len(content), chunk_size):
+                    yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
+                    await asyncio.sleep(0.03)
+                yield f'data: {json.dumps({"type": "done", "sources": sources, "full_content": content})}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "error", "message": str(e)})}\n\n'
+    return StreamingResponse(generate(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 @app.post('/api/finance')
-async def finance_endpoint(req: FinanceRequest, x_api_key: Optional[str] = Header(None)):
-    key = get_auth_key(req.api_key, x_api_key)
-    headers = build_headers(key)
-    headers['Content-Type'] = 'application/json'
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        try:
-            start_t = time.time()
-            resp = await client.post(
-                'https://api.you.com/v1/finance_research',
-                json={'input': req.input},
-                headers=headers
-            )
-            elapsed = round(time.time() - start_t, 2)
-            if resp.status_code != 200:
-                raise HTTPException(status_code=resp.status_code, detail=f'Finance API 响应异常: {resp.text}')
-            data = resp.json()
-            return {'data': data, 'elapsed': elapsed}
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=500, detail=f'金融研究请求失败: {str(e)}')
+async def api_finance(req: FinanceRequest):
+    async with get_client(timeout=120.0) as client:
+        resp = await client.post('https://api.you.com/v1/finance_research', json={'input': req.input}, headers={'X-API-Key': API_KEY})
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=f'Finance API Error: {resp.text[:200]}')
+        return {'status': 'success', 'data': resp.json()}
 
 @app.post('/api/contents')
-async def contents_endpoint(req: ContentsRequest, x_api_key: Optional[str] = Header(None)):
-    key = get_auth_key(req.api_key, x_api_key)
-    headers = build_headers(key)
-    headers['Content-Type'] = 'application/json'
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        try:
-            start_t = time.time()
-            resp = await client.post(
-                'https://api.you.com/v1/contents',
-                json={'urls': req.urls},
-                headers=headers
-            )
-            elapsed = round(time.time() - start_t, 2)
-            if resp.status_code != 200:
-                raise HTTPException(status_code=resp.status_code, detail=f'Contents API 响应异常: {resp.text}')
-            data = resp.json()
-            return {'data': data, 'elapsed': elapsed}
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=500, detail=f'内容提取失败: {str(e)}')
+async def api_contents(req: ContentsRequest):
+    async with get_client() as client:
+        resp = await client.post('https://api.you.com/v1/contents', json={'urls': req.urls}, headers={'X-API-Key': API_KEY})
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=f'Contents API Error: {resp.text[:200]}')
+        return {'status': 'success', 'data': resp.json()}
 
 @app.post('/api/digest')
-async def digest_endpoint(req: DigestRequest, x_api_key: Optional[str] = Header(None)):
-    key = get_auth_key(req.api_key, x_api_key)
-    headers = build_headers(key)
-    headers['Content-Type'] = 'application/json'
-    
-    async with httpx.AsyncClient(timeout=60.0) as client:
+async def api_digest(req: DigestRequest):
+    async with get_client(timeout=120.0) as client:
         try:
-            start_t = time.time()
-            
-            # 1. 实时搜索最新资讯
-            search_headers = build_headers(key)
-            search_task = client.get(
-                'https://api.you.com/v1/search',
-                params={'query': f'{req.topic} 最新 动态', 'count': 6},
-                headers=search_headers
-            )
-            
-            # 2. 深度综合分析
-            research_prompt = f'请为我撰写一份关于【{req.topic}】的最新行业动态综合简报。包含：核心背景、最新3个重大进展、影响与分析、未来展望。请分清晰章节输出，并标注数据源。'
-            research_task = client.post(
-                'https://api.you.com/v1/research',
-                json={'input': research_prompt},
-                headers=headers
-            )
-            
-            search_res, research_res = await asyncio.gather(search_task, research_task, return_exceptions=True)
-            
-            search_data = {}
-            if not isinstance(search_res, Exception) and search_res.status_code == 200:
-                search_data = search_res.json()
-            
-            research_data = {}
-            if not isinstance(research_res, Exception) and research_res.status_code == 200:
-                research_data = research_res.json()
-            elif isinstance(research_res, Exception):
-                raise research_res
-            elif research_res.status_code != 200:
-                raise HTTPException(status_code=research_res.status_code, detail=research_res.text)
-
-            elapsed = round(time.time() - start_t, 2)
-            return {
-                'topic': req.topic,
-                'search_results': search_data,
-                'brief_report': research_data,
-                'elapsed': elapsed
-            }
-        except HTTPException:
-            raise
+            search_task = client.get('https://api.you.com/v1/search', params={'query': f'{req.topic} 最新 进展 动态', 'count': 6}, headers={'X-API-Key': API_KEY})
+            news_task = client.get('https://api.you.com/v1/search', params={'query': req.topic, 'count': 5}, headers={'X-API-Key': API_KEY})
+            prompt = f'请针对主题【{req.topic}】生成一份结构化行业早报与情报综合分析。包含：1. 今日核心要点 2. 详细动态与深度解读 3. 发展趋势与商业洞察。必须保持事实准确与客观。'
+            research_task = client.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': API_KEY})
+            search_res, news_res, research_res = await asyncio.gather(search_task, news_task, research_task, return_exceptions=True)
+            search_data = search_res.json() if not isinstance(search_res, Exception) and search_res.status_code == 200 else {}
+            news_data = news_res.json() if not isinstance(news_res, Exception) and news_res.status_code == 200 else {}
+            res_data = research_res.json() if not isinstance(research_res, Exception) and research_res.status_code == 200 else {}
+            return {'status': 'success', 'topic': req.topic, 'brief_report': res_data, 'search_results': search_data, 'news_results': news_data}
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f'生成综合早报失败: {str(e)}')
+            raise HTTPException(status_code=500, detail=str(e))
 
-@app.get('/api/test-key')
-async def test_key(key: Optional[str] = None, x_api_key: Optional[str] = Header(None)):
-    auth_key = get_auth_key(key, x_api_key)
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        try:
-            start_t = time.time()
-            resp = await client.get(
-                'https://api.you.com/v1/search',
-                params={'query': 'test', 'count': 1},
-                headers=build_headers(auth_key)
-            )
-            elapsed = round((time.time() - start_t) * 1000)
-            if resp.status_code == 200:
-                return {'valid': True, 'latency_ms': elapsed, 'message': 'API Key 有效且连接通畅'}
-            else:
-                return {'valid': False, 'status_code': resp.status_code, 'message': resp.text}
-        except Exception as e:
-            return {'valid': False, 'message': str(e)}
+@app.get('/api/history')
+async def get_history(limit: int = 50):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute('SELECT * FROM history ORDER BY created_at DESC LIMIT ?', (limit,)).fetchall()
+    conn.close()
+    return {'status': 'success', 'data': [dict(r) for r in rows]}
 
-static_dir = os.path.join(os.path.dirname(__file__), 'static')
-if os.path.exists(static_dir):
-    app.mount('/static', StaticFiles(directory=static_dir), name='static')
+@app.post('/api/history')
+async def save_history(req: HistorySave):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('INSERT INTO history (type, title, content, sources) VALUES (?, ?, ?, ?)', (req.type, req.title, req.content, req.sources))
+    conn.commit()
+    conn.close()
+    return {'status': 'success'}
 
-@app.get('/')
-async def read_index():
-    index_file = os.path.join(static_dir, 'index.html')
-    if os.path.exists(index_file):
-        return FileResponse(index_file)
-    return JSONResponse({'message': 'YouInsight AI Studio Backend is running.'})
+@app.delete('/api/history/{hid}')
+async def delete_history(hid: int):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('DELETE FROM history WHERE id = ?', (hid,))
+    conn.commit()
+    conn.close()
+    return {'status': 'success'}
+
+@app.get('/api/templates')
+async def get_templates():
+    return {'status': 'success', 'data': [
+        {'id': 'competitor', 'name': '竞品分析', 'icon': '⚔️', 'prompt': '请对比分析以下产品/公司的核心功能、定价策略、技术架构和市场定位：'},
+        {'id': 'tech', 'name': '技术选型', 'icon': '🔧', 'prompt': '请深度调研以下技术方案的优缺点、适用场景、社区活跃度和迁移成本：'},
+        {'id': 'investment', 'name': '投资尽调', 'icon': '💰', 'prompt': '请对以下公司/赛道进行投资尽调分析，包括市场规模、竞争格局、核心壁垒和风险因素：'},
+        {'id': 'market', 'name': '市场进入', 'icon': '🌍', 'prompt': '请分析以下市场的进入策略，包括监管环境、本地化需求、渠道建设和增长机会：'},
+        {'id': 'academic', 'name': '学术综述', 'icon': '📚', 'prompt': '请对以下研究方向进行系统性文献综述，梳理发展脉络、关键突破和未来趋势：'}
+    ]}
+
+static_dir = '/opt/you-insight-ai/app/public'
+if not os.path.exists(static_dir):
+    static_dir = '/opt/you-insight-ai/app/static'
+app.mount('/', StaticFiles(directory=static_dir, html=True), name='static')
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run('server:app', host='127.0.0.1', port=8000, reload=True)
+    uvicorn.run(app, host='127.0.0.1', port=8200)

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>YouInsight AI Studio - 全能实时情报与深度研报工作台</title>
+  <title>YouInsight AI Studio - 智能情报与深度研报工作台</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -13,24 +13,6 @@
           fontFamily: {
             sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
             mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace']
-          },
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              400: '#818cf8',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            },
-            obsidian: {
-              950: '#040711',
-              900: '#080D1A',
-              850: '#0D1527',
-              800: '#131D35',
-              700: '#1E2C4F',
-              600: '#2C3E6B'
-            }
           }
         }
       }
@@ -39,429 +21,316 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-obsidian-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white overflow-x-hidden">
+<body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
 
-  <!-- Ambient Glows -->
-  <div class="fixed top-0 left-1/4 w-72 md:w-96 h-72 md:h-96 bg-brand-600/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
-  <div class="fixed top-1/3 right-5 w-72 md:w-96 h-72 md:h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
-
-  <!-- Toast Container -->
-  <div id="toast-container" class="fixed top-3 right-3 left-3 md:left-auto md:w-80 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-  <!-- Header -->
-  <header class="border-b border-slate-800/80 bg-obsidian-900/90 backdrop-blur-xl sticky top-0 z-40 px-3.5 md:px-6 py-2.5 md:py-3.5 flex items-center justify-between shadow-xl">
-    <div class="flex items-center space-x-2.5 md:space-x-3.5 min-w-0">
-      <div class="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 ring-1 ring-white/20 shrink-0">
-        <span class="text-white font-bold text-sm md:text-lg">⚡</span>
-      </div>
-      <div class="min-w-0">
-        <div class="flex items-center gap-1.5">
-          <h1 class="text-sm md:text-lg font-bold text-white tracking-tight truncate">YouInsight AI</h1>
-          <span class="text-[9px] md:text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded-full bg-brand-500/20 text-brand-400 border border-brand-500/30 shrink-0">Pro</span>
+  <header class="sticky top-0 z-40 bg-[var(--surface-secondary)]/90 backdrop-blur-xl border-b border-[var(--border-subtle)] px-4 py-3">
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         </div>
-        <p class="text-[10px] md:text-xs text-slate-400 font-medium truncate hidden sm:block">实时情报 · 深度研报 · 事实溯源平台</p>
+        <div>
+          <h1 class="font-display text-white">YouInsight AI</h1>
+          <p class="text-xs text-[var(--text-muted)] hidden sm:block">实时情报 · 深度研报 · 事实溯源</p>
+        </div>
       </div>
-    </div>
-
-    <!-- Header Controls -->
-    <div class="flex items-center space-x-2 shrink-0">
-      <div class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-medium">
-        <span class="relative flex h-1.5 w-1.5">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-        </span>
-        <span>全球就绪</span>
+      <div class="flex items-center gap-2">
+        <div class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+          <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
+          <span>API 就绪</span>
+        </div>
+        <button onclick="toggleHistoryDrawer()" class="btn-secondary flex items-center gap-2">
+          <span>📜</span><span class="hidden sm:inline">历史</span>
+          <span id="history-count-badge" class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded text-xs font-mono">0</span>
+        </button>
       </div>
-
-      <button onclick="toggleHistoryDrawer()" class="flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 rounded-xl bg-obsidian-800 hover:bg-obsidian-700 text-slate-200 border border-slate-700/80 text-xs font-medium transition-all shadow-sm active:scale-95">
-        <span>📜</span>
-        <span class="hidden xs:inline">历史</span>
-        <span id="history-count-badge" class="px-1.5 py-0.2 bg-brand-500/25 text-brand-300 rounded-full text-[10px] font-mono">0</span>
-      </button>
     </div>
   </header>
 
-  <!-- Mobile Horizontal Module Tabs -->
-  <div class="md:hidden bg-obsidian-900/95 border-b border-slate-800/80 sticky top-[53px] z-30 px-3 py-2 overflow-x-auto whitespace-nowrap scrollbar-none flex gap-2">
-    <button onclick="switchTab('digest')" id="m-tab-btn-digest" class="mobile-tab-btn active">📰 行业早报</button>
-    <button onclick="switchTab('research')" id="m-tab-btn-research" class="mobile-tab-btn">🧠 深度研报</button>
-    <button onclick="switchTab('search')" id="m-tab-btn-search" class="mobile-tab-btn">🔍 实时搜索</button>
-    <button onclick="switchTab('finance')" id="m-tab-btn-finance" class="mobile-tab-btn">📈 财报洞察</button>
-    <button onclick="switchTab('contents')" id="m-tab-btn-contents" class="mobile-tab-btn">📑 网页提取</button>
-  </div>
-
-  <!-- Main Container -->
-  <div class="flex-1 flex max-w-7xl w-full mx-auto px-3 md:px-4 py-3 md:py-6 gap-6 relative min-w-0">
-    
-    <!-- Desktop Sidebar Navigation -->
-    <aside class="w-64 shrink-0 hidden md:flex flex-col space-y-1.5">
-      <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 mb-1.5 flex items-center justify-between">
-        <span>情报与分析模块</span>
-        <span class="text-[10px] text-slate-600 font-mono">v1.3</span>
-      </div>
-      
-      <button onclick="switchTab('digest')" id="tab-btn-digest" class="nav-tab-btn active w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
-        <div class="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-sm shrink-0">📰</div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between">
-            <span class="font-semibold text-white">行业情报早报</span>
-            <span class="text-[9px] bg-pink-500/20 text-pink-300 border border-pink-500/30 px-1.5 rounded">推荐</span>
-          </div>
-          <div class="text-[11px] text-slate-400 truncate">热点新闻 + 综合研报</div>
-        </div>
-      </button>
-
-      <button onclick="switchTab('research')" id="tab-btn-research" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
-        <div class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-sm shrink-0">🧠</div>
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center justify-between">
-            <span class="font-semibold">深度研报生成</span>
-            <span class="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 rounded">溯源</span>
-          </div>
-          <div class="text-[11px] text-slate-400 truncate">多源事实核验与分析</div>
-        </div>
-      </button>
-
-      <button onclick="switchTab('search')" id="tab-btn-search" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
-        <div class="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-sm shrink-0">🔍</div>
-        <div class="flex-1 min-w-0">
-          <span class="font-semibold">实时联网搜索</span>
-          <div class="text-[11px] text-slate-400 truncate">纯净高信噪比检索</div>
-        </div>
-      </button>
-
-      <button onclick="switchTab('finance')" id="tab-btn-finance" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
-        <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-sm shrink-0">📈</div>
-        <div class="flex-1 min-w-0">
-          <span class="font-semibold">企业财报洞察</span>
-          <div class="text-[11px] text-slate-400 truncate">SEC 官方披露与穿透</div>
-        </div>
-      </button>
-
-      <button onclick="switchTab('contents')" id="tab-btn-contents" class="nav-tab-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all text-slate-300 hover:text-white text-left">
-        <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-sm shrink-0">📑</div>
-        <div class="flex-1 min-w-0">
-          <span class="font-semibold">网页干货提取</span>
-          <div class="text-[11px] text-slate-400 truncate">去广告纯净正文</div>
-        </div>
-      </button>
-
-      <div class="pt-4 mt-auto border-t border-slate-800/80">
-        <div class="bg-obsidian-850 border border-slate-800/90 rounded-xl p-3 space-y-1.5 text-xs text-slate-400">
-          <div class="font-semibold text-brand-300 flex items-center gap-1.5"><span>🛡️</span> 抗幻觉事实核验</div>
-          <p class="text-[11px] leading-relaxed">每份研报均提供可点击的 [1] 原文文献出处。</p>
-        </div>
+  <main class="flex-1 flex max-w-7xl mx-auto w-full">
+    <!-- Desktop Sidebar -->
+    <aside class="desktop-sidebar w-64 border-r border-[var(--border-subtle)] p-4 flex flex-col gap-2">
+      <button onclick="switchTab('home')" id="tab-home" class="tab-btn active"><span>🏠</span> 工作台</button>
+      <button onclick="switchTab('digest')" id="tab-digest" class="tab-btn"><span>📰</span> 行业早报</button>
+      <button onclick="switchTab('research')" id="tab-research" class="tab-btn"><span>🧠</span> 深度研报</button>
+      <button onclick="switchTab('search')" id="tab-search" class="tab-btn"><span>🔍</span> 实时搜索</button>
+      <button onclick="switchTab('news')" id="tab-news" class="tab-btn"><span>📡</span> 新闻流</button>
+      <button onclick="switchTab('finance')" id="tab-finance" class="tab-btn"><span>📈</span> 财报洞察</button>
+      <button onclick="switchTab('contents')" id="tab-contents" class="tab-btn"><span>📑</span> 正文提取</button>
+      <div class="mt-auto pt-4 border-t border-[var(--border-subtle)]">
+        <p class="text-xs text-[var(--text-muted)] mb-2">快捷模板</p>
+        <div id="template-list" class="space-y-2"></div>
       </div>
     </aside>
 
-    <!-- Main Workspace -->
-    <main class="flex-1 flex flex-col min-w-0 bg-obsidian-900/80 border border-slate-800/90 rounded-xl md:rounded-2xl p-3.5 md:p-6 backdrop-blur-xl overflow-hidden shadow-2xl relative">
-
-      <!-- ================= 1. 行业早报 ================= -->
-      <section id="panel-digest" class="workspace-panel flex-1 flex flex-col">
-        <div class="mb-3.5 md:mb-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span>📰</span> 一键智能早报与事件综合
-            </h2>
-            <span class="text-[10px] md:text-xs text-pink-400 bg-pink-500/10 border border-pink-500/20 px-2.5 py-0.5 rounded-full font-medium">Smart Digest</span>
-          </div>
-          <p class="text-xs text-slate-400 mt-1 hidden sm:block">全网检索最新资讯并自动提炼结构化早报与信息源溯源。</p>
+    <!-- Main Content -->
+    <div class="main-content flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar">
+      <!-- Home Dashboard -->
+      <section id="panel-home" class="workspace-panel">
+        <div class="mb-6">
+          <h2 class="font-h1 text-white mb-2">智能工作台</h2>
+          <p class="text-[var(--text-secondary)]">选择场景开始，或直接使用全局搜索</p>
         </div>
-
-        <!-- Hot Topic Tags (Horizontal scroll on mobile) -->
-        <div class="flex items-center gap-2 mb-3.5 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none">
-          <span class="text-xs text-slate-400 font-medium shrink-0">热门：</span>
-          <button type="button" onclick="quickFillAndRun('digest', 'AI 大模型与具身智能机器人最新进展')" class="chip-btn">🤖 AI 具身智能</button>
-          <button type="button" onclick="quickFillAndRun('digest', '全球半导体芯片与算力最新动态')" class="chip-btn">⚡ 芯片与算力</button>
-          <button type="button" onclick="quickFillAndRun('digest', '新能源汽车与智能驾驶技术量产动态')" class="chip-btn">🚗 新能源与智驾</button>
-          <button type="button" onclick="quickFillAndRun('digest', '美联储利率决议与全球宏观经济走向')" class="chip-btn">📈 宏观降息走向</button>
-        </div>
-
-        <!-- Input Box (Mobile Stacked Layout) -->
-        <div class="flex flex-col sm:relative mb-4 gap-2 sm:gap-0">
-          <input type="text" id="digest-input" placeholder="输入早报主题（例如：OpenAI 最新动态、算力进展...）" 
-                 class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-3.5 py-3 sm:pr-32 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-pink-500 shadow-inner"
-                 onkeydown="if(event.key==='Enter') executeDigest()">
-          <button type="button" onclick="executeDigest()" id="digest-submit-btn" class="sm:absolute sm:right-1.5 sm:top-1.5 sm:bottom-1.5 px-4 py-2.5 sm:py-0 bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-600 hover:to-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg active:scale-95 shrink-0">
-            <span>⚡ 生成早报</span>
-          </button>
-        </div>
-
-        <!-- Dynamic Progress Tracker -->
-        <div id="digest-progress-box" class="hidden mb-4 p-3.5 rounded-xl bg-pink-500/10 border border-pink-500/30 text-pink-300">
-          <div class="flex items-center justify-between mb-2">
-            <span id="digest-progress-text" class="text-xs font-semibold truncate pr-2">正在检索最新资讯并执行深度综合分析...</span>
-            <span id="digest-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0">0.0s</span>
-          </div>
-          <div class="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden">
-            <div id="digest-progress-bar" class="bg-gradient-to-r from-pink-500 to-indigo-500 h-1.5 rounded-full w-2/3 transition-all duration-300"></div>
-          </div>
-        </div>
-
-        <!-- Result Container -->
-        <div id="digest-result-box" class="flex-1 overflow-y-auto space-y-4 md:space-y-6 hidden pr-1 custom-scrollbar">
-          <div class="bg-obsidian-950 border border-slate-800/90 rounded-xl p-4 md:p-6 shadow-xl">
-            <div class="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 mb-3 gap-2">
-              <div class="text-xs md:text-sm font-semibold text-pink-300">📋 综合研报正文</div>
-              <div class="flex flex-wrap items-center gap-1.5">
-                <button onclick="copyElementText('digest-report-content')" class="action-btn">📋 复制</button>
-                <button onclick="exportAsWord('digest-report-content', '行业早报')" class="action-btn text-blue-400 border-blue-500/30 bg-blue-500/10">📄 导出Word</button>
-                <button onclick="exportAsPDF('digest-report-content', '行业早报')" class="action-btn text-emerald-400 border-emerald-500/30 bg-emerald-500/10">📑 导出PDF</button>
-                <button onclick="downloadAsMarkdown('digest-report-content', '行业早报')" class="action-btn">💾 导出MD</button>
-              </div>
-            </div>
-            <div id="digest-report-content" class="markdown-body text-slate-200 text-xs md:text-sm leading-relaxed"></div>
-          </div>
-
-          <div>
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
-              <span>📡</span> 关联实时新闻与信息源
-            </h3>
-            <div id="digest-news-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-          </div>
-        </div>
-
-        <!-- Empty State -->
-        <div id="digest-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
-          <div class="w-12 h-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-xl mb-2.5">📰</div>
-          <h3 class="text-xs md:text-sm font-semibold text-slate-200">一键探索任意行业与事件情报</h3>
-          <p class="text-[11px] md:text-xs text-slate-500 mt-1 max-w-sm">输入关键词或点击上方热门标签，AI 全网搜集最新资讯并提炼研报。</p>
-        </div>
-      </section>
-
-      <!-- ================= 2. 深度研报 ================= -->
-      <section id="panel-research" class="workspace-panel flex-1 flex flex-col hidden">
-        <div class="mb-3.5 md:mb-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span>🧠</span> 深度研报生成 (Deep Research)
-            </h2>
-            <span class="text-[10px] md:text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-0.5 rounded-full font-medium">Research</span>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 mb-3.5 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none">
-          <span class="text-xs text-slate-400 font-medium shrink-0">课题：</span>
-          <button type="button" onclick="quickFillAndRun('research', '对比 DeepSeek V3 与 GPT-4o 架构与算力成本')" class="chip-btn">⚡ DeepSeek vs GPT-4o</button>
-          <button type="button" onclick="quickFillAndRun('research', '固态电池商业化最新量产进展与技术路线')" class="chip-btn">🔋 固态电池量产进展</button>
-          <button type="button" onclick="quickFillAndRun('research', '量子计算对现代密码体系的威胁评估')" class="chip-btn">🔐 量子计算威胁</button>
-        </div>
-
-        <div class="flex flex-col sm:relative mb-4 gap-2 sm:gap-0">
-          <textarea id="research-input" rows="2" placeholder="输入你想深度调研的研究课题、技术方案对比或宏观问题..."
-                    class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-3.5 py-2.5 sm:pb-12 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner resize-none"></textarea>
-          <button type="button" onclick="executeResearch()" id="research-submit-btn" class="sm:absolute sm:right-2 sm:bottom-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg active:scale-95">
-            <span>🚀 开始深度研究</span>
-          </button>
-        </div>
-
-        <div id="research-progress-box" class="hidden mb-4 p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
-          <div class="flex items-center justify-between mb-2">
-            <span id="research-progress-text" class="text-xs font-semibold truncate pr-2">正在进行全网深度文献检索与交叉验证...</span>
-            <span id="research-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0">0.0s</span>
-          </div>
-          <div class="w-full bg-slate-950/80 rounded-full h-1.5 overflow-hidden">
-            <div id="research-progress-bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full w-2/3"></div>
-          </div>
-        </div>
-
-        <div id="research-result-box" class="flex-1 overflow-y-auto space-y-4 hidden pr-1 custom-scrollbar">
-          <div class="bg-obsidian-950 border border-slate-800/90 rounded-xl p-4 md:p-6 shadow-xl">
-            <div class="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 mb-3 gap-2">
-              <div class="text-xs md:text-sm font-semibold text-indigo-300">📑 研究报告结论</div>
-              <div class="flex flex-wrap items-center gap-1.5">
-                <button onclick="copyElementText('research-report-content')" class="action-btn">📋 复制</button>
-                <button onclick="exportAsWord('research-report-content', '深度研报')" class="action-btn text-blue-400 border-blue-500/30 bg-blue-500/10">📄 导出Word</button>
-                <button onclick="exportAsPDF('research-report-content', '深度研报')" class="action-btn text-emerald-400 border-emerald-500/30 bg-emerald-500/10">📑 导出PDF</button>
-                <button onclick="downloadAsMarkdown('research-report-content', '深度研报')" class="action-btn">💾 导出MD</button>
-              </div>
-            </div>
-            <div id="research-report-content" class="markdown-body text-slate-200 text-xs md:text-sm leading-relaxed"></div>
-          </div>
-
-          <div class="bg-obsidian-950/60 border border-slate-800 rounded-xl p-3.5 md:p-4">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
-              🔗 溯源引用与参考文献 (<span id="research-sources-count">0</span>)
-            </h3>
-            <div id="research-sources-list" class="space-y-2"></div>
-          </div>
-        </div>
-
-        <div id="research-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
-          <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-xl mb-2">🧠</div>
-          <h3 class="text-xs md:text-sm font-semibold text-slate-200">高可信度 AI 深度研报</h3>
-          <p class="text-[11px] md:text-xs text-slate-500 mt-1 max-w-sm">每段论述自动检索真实互联网网页与知识库并标注出处来源。</p>
-        </div>
-      </section>
-
-      <!-- ================= 3. 实时搜索 ================= -->
-      <section id="panel-search" class="workspace-panel flex-1 flex flex-col hidden">
-        <div class="mb-3.5 md:mb-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span>🔍</span> 实时联网搜索 (Web Search)
-            </h2>
-            <span class="text-[10px] md:text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2.5 py-0.5 rounded-full font-medium">Search</span>
-          </div>
-        </div>
-
-        <div class="flex flex-col sm:flex-row gap-2 mb-4">
-          <input type="text" id="search-input" placeholder="输入搜索关键词..."
-                 class="flex-1 bg-obsidian-950 border border-slate-700/80 rounded-xl px-3.5 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 shadow-inner"
-                 onkeydown="if(event.key==='Enter') executeSearch()">
+        <div class="card p-4 mb-6">
           <div class="flex gap-2">
-            <select id="search-count" class="bg-obsidian-950 border border-slate-700/80 rounded-xl px-3 py-3 text-xs text-slate-300 focus:outline-none focus:border-blue-500">
-              <option value="5">5条</option>
-              <option value="10" selected>10条</option>
-              <option value="20">20条</option>
-            </select>
-            <button type="button" onclick="executeSearch()" id="search-submit-btn" class="flex-1 sm:flex-none px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg active:scale-95">
-              <span>搜索</span>
-            </button>
+            <input type="text" id="global-search" class="input-field flex-1" placeholder="输入关键词，智能识别搜索 / 研报 / 提取..." onkeydown="if(event.key==='Enter') handleGlobalSearch()">
+            <button onclick="handleGlobalSearch()" class="btn-primary">智能分析</button>
           </div>
         </div>
-
-        <div id="search-progress-box" class="hidden mb-3 p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-300">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold">正在检索全网最新网页内容...</span>
-            <span id="search-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div class="template-card" onclick="quickStart('competitor')">
+            <div class="text-2xl mb-2">⚔️</div>
+            <h3 class="font-semibold text-white mb-1">竞品分析</h3>
+            <p class="text-xs text-[var(--text-secondary)]">对比功能、定价、技术架构</p>
+          </div>
+          <div class="template-card" onclick="quickStart('tech')">
+            <div class="text-2xl mb-2">🔧</div>
+            <h3 class="font-semibold text-white mb-1">技术选型</h3>
+            <p class="text-xs text-[var(--text-secondary)]">深度调研技术方案优缺点</p>
+          </div>
+          <div class="template-card" onclick="quickStart('investment')">
+            <div class="text-2xl mb-2">💰</div>
+            <h3 class="font-semibold text-white mb-1">投资尽调</h3>
+            <p class="text-xs text-[var(--text-secondary)]">市场规模与竞争格局分析</p>
+          </div>
+          <div class="template-card" onclick="quickStart('market')">
+            <div class="text-2xl mb-2">🌍</div>
+            <h3 class="font-semibold text-white mb-1">市场进入</h3>
+            <p class="text-xs text-[var(--text-secondary)]">监管、本地化与增长机会</p>
+          </div>
+          <div class="template-card" onclick="switchTab('digest')">
+            <div class="text-2xl mb-2">📰</div>
+            <h3 class="font-semibold text-white mb-1">行业早报</h3>
+            <p class="text-xs text-[var(--text-secondary)]">每日自动情报简报</p>
+          </div>
+          <div class="template-card" onclick="switchTab('news')">
+            <div class="text-2xl mb-2">📡</div>
+            <h3 class="font-semibold text-white mb-1">实时新闻流</h3>
+            <p class="text-xs text-[var(--text-secondary)]">追踪最新新闻动态</p>
           </div>
         </div>
-
-        <div id="search-result-box" class="flex-1 overflow-y-auto space-y-3 hidden pr-1 custom-scrollbar"></div>
-
-        <div id="search-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
-          <div class="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-xl mb-2">🔍</div>
-          <h3 class="text-xs md:text-sm font-semibold text-slate-200">实时检索全网网页</h3>
-          <p class="text-[11px] text-slate-500 mt-1">无广告干货结构化检索。</p>
+        <div class="card p-4">
+          <h3 class="font-h2 text-white mb-3">最近研究</h3>
+          <div id="recent-history" class="space-y-2"></div>
         </div>
       </section>
 
-      <!-- ================= 4. 财报洞察 ================= -->
-      <section id="panel-finance" class="workspace-panel flex-1 flex flex-col hidden">
-        <div class="mb-3.5 md:mb-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span>📈</span> 企业财报与金融洞察
-            </h2>
-            <span class="text-[10px] md:text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full font-medium">Finance</span>
+      <!-- Digest Panel -->
+      <section id="panel-digest" class="workspace-panel hidden">
+        <div class="mb-4">
+          <h2 class="font-h1 text-white mb-1">📰 行业情报早报</h2>
+          <p class="text-sm text-[var(--text-secondary)]">组合实时检索与多源交叉分析，生成结构化简报</p>
+        </div>
+        <div class="card p-4 mb-4">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input type="text" id="digest-input" class="input-field flex-1" placeholder="输入早报主题（例如：AI 大模型、新能源汽车...）" onkeydown="if(event.key==='Enter') executeDigest()">
+            <button onclick="executeDigest()" id="digest-submit-btn" class="btn-primary whitespace-nowrap">⚡ 生成早报</button>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <button onclick="quickFill('digest', 'AI 大模型与具身智能最新进展')" class="btn-secondary text-xs">🤖 AI 具身智能</button>
+            <button onclick="quickFill('digest', '全球半导体与算力最新动态')" class="btn-secondary text-xs">⚡ 芯片与算力</button>
+            <button onclick="quickFill('digest', '美联储利率决议与宏观经济')" class="btn-secondary text-xs">📈 宏观走向</button>
           </div>
         </div>
-
-        <div class="flex items-center gap-2 mb-3.5 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none">
-          <span class="text-xs text-slate-400 font-medium shrink-0">公司：</span>
-          <button type="button" onclick="quickFillAndRun('finance', '英伟达 NVIDIA 2024 各季度营收增速与最新财报拆解')" class="chip-btn">🟢 NVIDIA 财报</button>
-          <button type="button" onclick="quickFillAndRun('finance', '苹果 Apple 硬件与服务业务最新营收占比及趋势')" class="chip-btn">🍎 Apple 营收</button>
-          <button type="button" onclick="quickFillAndRun('finance', '微软 Microsoft 智能云 Azure 增速与资本开支')" class="chip-btn">🟦 微软 Azure</button>
-          <button type="button" onclick="quickFillAndRun('finance', '特斯拉 Tesla 汽车交付量与储能业务增长')" class="chip-btn">🚗 特斯拉交付量</button>
-        </div>
-
-        <div class="flex flex-col sm:relative mb-4 gap-2 sm:gap-0">
-          <input type="text" id="finance-input" placeholder="输入上市公司名称或代码（例如：腾讯最新净利润与业务增长...）"
-                 class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-3.5 py-3 sm:pr-32 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 shadow-inner"
-                 onkeydown="if(event.key==='Enter') executeFinance()">
-          <button type="button" onclick="executeFinance()" id="finance-submit-btn" class="sm:absolute sm:right-1.5 sm:top-1.5 sm:bottom-1.5 px-4 py-2.5 sm:py-0 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg active:scale-95">
-            <span>📊 财务分析</span>
-          </button>
-        </div>
-
-        <div id="finance-progress-box" class="hidden mb-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold">正在调取 SEC 披露数据并比对官方财报...</span>
-            <span id="finance-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
+        <div id="digest-progress" class="hidden card p-4 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="progress-ring"></div>
+            <div class="flex-1">
+              <p id="digest-stage" class="font-medium text-white">正在检索最新资讯...</p>
+              <p class="text-xs text-[var(--text-muted)]"><span id="digest-timer">0.0</span>s</p>
+            </div>
           </div>
         </div>
-
-        <div id="finance-result-box" class="flex-1 overflow-y-auto space-y-4 hidden pr-1 custom-scrollbar">
-          <div class="bg-obsidian-950 border border-slate-800/90 rounded-xl p-4 md:p-6 shadow-xl">
-            <div class="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 mb-3 gap-2">
-              <div class="text-xs md:text-sm font-semibold text-emerald-400">💰 财务分析结论</div>
-              <div class="flex flex-wrap items-center gap-1.5">
-                <button onclick="copyElementText('finance-report-content')" class="action-btn">📋 复制</button>
-                <button onclick="exportAsWord('finance-report-content', '财务研报')" class="action-btn text-blue-400 border-blue-500/30 bg-blue-500/10">📄 导出Word</button>
-                <button onclick="exportAsPDF('finance-report-content', '财务研报')" class="action-btn text-emerald-400 border-emerald-500/30 bg-emerald-500/10">📑 导出PDF</button>
-                <button onclick="downloadAsMarkdown('finance-report-content', '财务研报')" class="action-btn">💾 导出MD</button>
+        <div id="digest-result" class="hidden space-y-4">
+          <div class="card p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
+              <h3 class="font-h2 text-white">📋 综合研报正文</h3>
+              <div class="flex gap-2">
+                <button onclick="copyContent('digest-content')" class="btn-secondary text-xs">📋 复制</button>
+                <button onclick="exportMarkdown('digest-content', '行业早报')" class="btn-secondary text-xs">💾 导出</button>
               </div>
             </div>
-            <div id="finance-report-content" class="markdown-body text-slate-200 text-xs md:text-sm leading-relaxed"></div>
+            <div id="digest-content" class="markdown-body"></div>
           </div>
-          <div class="bg-obsidian-950/60 border border-slate-800 rounded-xl p-3.5">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">🏛️ SEC 财报与官方披露来源</h3>
-            <div id="finance-sources-list" class="space-y-2"></div>
+          <div class="card p-4">
+            <h3 class="font-h2 text-white mb-3">📡 关联新闻信源</h3>
+            <div id="digest-news" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
           </div>
         </div>
-
-        <div id="finance-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
-          <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-xl mb-2">📈</div>
-          <h3 class="text-xs md:text-sm font-semibold text-slate-200">SEC 与企业官方财报对齐</h3>
-          <p class="text-[11px] text-slate-500 mt-1">自动查询 10-K, 10-Q 季度报告提取数据。</p>
+        <div id="digest-empty" class="empty-state">
+          <div class="empty-state-icon">📰</div>
+          <h3 class="font-semibold text-white mb-1">一键探索行业情报</h3>
+          <p class="text-sm text-[var(--text-muted)]">输入主题，AI 全网搜集并提炼研报</p>
         </div>
       </section>
 
-      <!-- ================= 5. 网页正文提取 ================= -->
-      <section id="panel-contents" class="workspace-panel flex-1 flex flex-col hidden">
-        <div class="mb-3.5 md:mb-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-base md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-              <span>📑</span> 网页干货正文提取 (Reader)
-            </h2>
-            <span class="text-[10px] md:text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-medium">Reader</span>
+      <!-- Research Panel -->
+      <section id="panel-research" class="workspace-panel hidden">
+        <div class="mb-4">
+          <h2 class="font-h1 text-white mb-1">🧠 深度研报生成</h2>
+          <p class="text-sm text-[var(--text-secondary)]">多轮深度检索与总结，自带真实出处标注</p>
+        </div>
+        <div class="card p-4 mb-4">
+          <textarea id="research-input" rows="3" class="input-field resize-none" placeholder="输入你想深度调研的研究课题、技术方案对比或宏观问题..."></textarea>
+          <div class="flex justify-between items-center mt-3">
+            <select id="research-depth" class="input-field w-auto text-sm">
+              <option value="fast">快速概览</option>
+              <option value="standard" selected>标准分析</option>
+              <option value="deep">深度尽调</option>
+            </select>
+            <button onclick="executeResearchStream()" id="research-submit-btn" class="btn-primary">🚀 开始研究</button>
           </div>
         </div>
-
-        <div class="flex flex-col sm:flex-row gap-2 mb-4">
-          <input type="url" id="contents-url-input" placeholder="输入目标网页 URL 链接..."
-                 class="flex-1 bg-obsidian-950 border border-slate-700/80 rounded-xl px-3.5 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 shadow-inner"
-                 onkeydown="if(event.key==='Enter') executeContents()">
-          <button type="button" onclick="executeContents()" id="contents-submit-btn" class="px-5 py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 text-white rounded-xl text-sm font-semibold flex items-center justify-center gap-1.5 shadow-lg active:scale-95">
-            <span>📥 提取正文</span>
-          </button>
-        </div>
-
-        <div id="contents-progress-box" class="hidden mb-3 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold">正在抓取并清洗目标网页正文内容...</span>
-            <span id="contents-timer" class="text-xs font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">0.0s</span>
+        <div id="research-progress" class="hidden card p-4 mb-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="progress-ring"></div>
+            <div>
+              <p id="research-stage" class="font-medium text-white">初始化...</p>
+              <p class="text-xs text-[var(--text-muted)]"><span id="research-timer">0.0</span>s</p>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="skeleton h-4 w-3/4"></div>
+            <div class="skeleton h-4 w-full"></div>
+            <div class="skeleton h-4 w-5/6"></div>
           </div>
         </div>
-
-        <div id="contents-result-box" class="flex-1 overflow-y-auto space-y-3 hidden pr-1 custom-scrollbar"></div>
-
-        <div id="contents-empty-box" class="flex-1 flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800/90 rounded-xl bg-obsidian-950/40">
-          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-xl mb-2">📑</div>
-          <h3 class="text-xs md:text-sm font-semibold text-slate-200">纯净网页正文解析</h3>
-          <p class="text-[11px] text-slate-500 mt-1">一键去广告提取正文 Markdown / HTML。</p>
+        <div id="research-result" class="hidden space-y-4">
+          <div class="card p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
+              <h3 class="font-h2 text-white">📄 研报正文</h3>
+              <div class="flex gap-2">
+                <button onclick="copyContent('research-content')" class="btn-secondary text-xs">📋 复制</button>
+                <button onclick="exportMarkdown('research-content', '深度研报')" class="btn-secondary text-xs">💾 导出</button>
+              </div>
+            </div>
+            <div id="research-content" class="markdown-body"></div>
+          </div>
+          <div class="card p-4">
+            <h3 class="font-h2 text-white mb-3">🔗 溯源引用 <span id="research-sources-count" class="text-sm text-[var(--text-muted)]">(0)</span></h3>
+            <div id="research-sources" class="space-y-2"></div>
+          </div>
+        </div>
+        <div id="research-empty" class="empty-state">
+          <div class="empty-state-icon">🧠</div>
+          <h3 class="font-semibold text-white mb-1">开始深度研究</h3>
+          <p class="text-sm text-[var(--text-muted)]">输入课题，获取带引用的专业研报</p>
         </div>
       </section>
 
-    </main>
-  </div>
+      <!-- Search Panel -->
+      <section id="panel-search" class="workspace-panel hidden">
+        <div class="mb-4">
+          <h2 class="font-h1 text-white mb-1">🔍 实时联网搜索</h2>
+          <p class="text-sm text-[var(--text-secondary)]">纯净无广告的高信噪比网页检索</p>
+        </div>
+        <div class="card p-4 mb-4">
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input type="text" id="search-input" class="input-field flex-1" placeholder="输入搜索关键词..." onkeydown="if(event.key==='Enter') executeSearch()">
+            <select id="search-count" class="input-field w-auto"><option value="5">5 条</option><option value="10" selected>10 条</option><option value="20">20 条</option></select>
+            <button onclick="executeSearch()" id="search-submit-btn" class="btn-primary">🔍 搜索</button>
+          </div>
+        </div>
+        <div id="search-result" class="hidden space-y-3"></div>
+        <div id="search-empty" class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <h3 class="font-semibold text-white mb-1">实时检索网络</h3>
+          <p class="text-sm text-[var(--text-muted)]">获取精准标题、摘要与时间戳</p>
+        </div>
+      </section>
+
+      <!-- News Panel -->
+      <section id="panel-news" class="workspace-panel hidden">
+        <div class="mb-4">
+          <h2 class="font-h1 text-white mb-1">📡 实时新闻流</h2>
+          <p class="text-sm text-[var(--text-secondary)]">追踪最新新闻动态与舆情</p>
+        </div>
+        <div class="card p-4 mb-4">
+          <div class="flex gap-2">
+            <input type="text" id="news-input" class="input-field flex-1" placeholder="输入追踪主题..." onkeydown="if(event.key==='Enter') executeNews()">
+            <button onclick="executeNews()" id="news-submit-btn" class="btn-primary">📡 获取新闻</button>
+          </div>
+        </div>
+        <div id="news-result" class="hidden space-y-3"></div>
+        <div id="news-empty" class="empty-state">
+          <div class="empty-state-icon">📡</div>
+          <h3 class="font-semibold text-white mb-1">实时新闻追踪</h3>
+          <p class="text-sm text-[var(--text-muted)]">获取最新新闻与舆情动态</p>
+        </div>
+      </section>
+
+      <!-- Finance Panel -->
+      <section id="panel-finance" class="workspace-panel hidden">
+        <div class="mb-4">
+          <h2 class="font-h1 text-white mb-1">📈 企业财报洞察</h2>
+          <p class="text-sm text-[var(--text-secondary)]">穿透 SEC 披露，精准比对财务数据</p>
+        </div>
+        <div class="card p-4 mb-4">
+          <input type="text" id="finance-input" class="input-field" placeholder="输入公司名称或财务问题（例如：NVIDIA 最新季度营收）..." onkeydown="if(event.key==='Enter') executeFinance()">
+          <button onclick="executeFinance()" id="finance-submit-btn" class="btn-primary mt-3">📊 分析财报</button>
+        </div>
+        <div id="finance-result" class="hidden space-y-4">
+          <div class="card p-4 md:p-6">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)]">
+              <h3 class="font-h2 text-white">📊 财务分析</h3>
+              <button onclick="copyContent('finance-content')" class="btn-secondary text-xs">📋 复制</button>
+            </div>
+            <div id="finance-content" class="markdown-body"></div>
+          </div>
+          <div class="card p-4">
+            <h3 class="font-h2 text-white mb-3">📎 官方披露源</h3>
+            <div id="finance-sources" class="space-y-2"></div>
+          </div>
+        </div>
+        <div id="finance-empty" class="empty-state">
+          <div class="empty-state-icon">📈</div>
+          <h3 class="font-semibold text-white mb-1">企业财报分析</h3>
+          <p class="text-sm text-[var(--text-muted)]">穿透 SEC 文件，获取精准财务洞察</p>
+        </div>
+      </section>
+
+      <!-- Contents Panel -->
+      <section id="panel-contents" class="workspace-panel hidden">
+        <div class="mb-4">
+          <h2 class="font-h1 text-white mb-1">📑 网页正文提取</h2>
+          <p class="text-sm text-[var(--text-secondary)]">自动去除广告弹窗，提取干净正文</p>
+        </div>
+        <div class="card p-4 mb-4">
+          <textarea id="contents-input" rows="3" class="input-field resize-none font-mono text-sm" placeholder="输入目标网页 URL，每行一个..."></textarea>
+          <button onclick="executeContents()" id="contents-submit-btn" class="btn-primary mt-3">📥 提取正文</button>
+        </div>
+        <div id="contents-result" class="hidden space-y-4"></div>
+        <div id="contents-empty" class="empty-state">
+          <div class="empty-state-icon">📑</div>
+          <h3 class="font-semibold text-white mb-1">网页干货提取</h3>
+          <p class="text-sm text-[var(--text-muted)]">一键提取目标网页的干净正文</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-nav">
+    <button onclick="switchTab('home')" id="m-nav-home" class="mobile-nav-btn active"><span>🏠</span><span>首页</span></button>
+    <button onclick="switchTab('digest')" id="m-nav-digest" class="mobile-nav-btn"><span>📰</span><span>早报</span></button>
+    <button onclick="switchTab('research')" id="m-nav-research" class="mobile-nav-btn"><span>🧠</span><span>研报</span></button>
+    <button onclick="switchTab('search')" id="m-nav-search" class="mobile-nav-btn"><span>🔍</span><span>搜索</span></button>
+    <button onclick="switchTab('finance')" id="m-nav-finance" class="mobile-nav-btn"><span>📈</span><span>财报</span></button>
+  </nav>
 
   <!-- History Drawer -->
-  <div id="history-drawer" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex justify-end hidden transition-all">
-    <div class="bg-obsidian-900 border-l border-slate-800 w-full max-w-sm h-full flex flex-col p-4 md:p-6 shadow-2xl space-y-3.5">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 class="text-sm md:text-base font-bold text-white flex items-center gap-2">
-          <span>📜</span> 本地生成历史
-        </h3>
-        <div class="flex items-center gap-3">
-          <button onclick="clearAllHistory()" class="text-xs text-rose-400 hover:text-rose-300">清空</button>
-          <button onclick="toggleHistoryDrawer()" class="text-slate-400 hover:text-white text-lg p-1">✕</button>
-        </div>
-      </div>
-
-      <input type="text" id="history-search-input" placeholder="搜索历史报告..." 
-             class="w-full bg-obsidian-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-500"
-             oninput="filterHistoryList()">
-
-      <div id="history-list-box" class="flex-1 overflow-y-auto space-y-2.5 custom-scrollbar pr-1"></div>
+  <div id="history-drawer" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-[var(--surface-secondary)] border-l border-[var(--border-subtle)] transform translate-x-full transition-transform duration-300 z-50 flex flex-col">
+    <div class="p-4 border-b border-[var(--border-subtle)] flex items-center justify-between">
+      <h3 class="font-h2 text-white">📜 历史记录</h3>
+      <button onclick="toggleHistoryDrawer()" class="btn-secondary p-2">✕</button>
     </div>
+    <div class="p-4 border-b border-[var(--border-subtle)]">
+      <input type="text" id="history-search" class="input-field" placeholder="搜索历史..." oninput="filterHistory()">
+    </div>
+    <div id="history-list" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2"></div>
   </div>
-
-  <footer class="border-t border-slate-800/80 py-3.5 px-4 text-center text-[11px] md:text-xs text-slate-500 bg-obsidian-950">
-    YouInsight AI Studio &copy; 2026 &middot; Powered by You.com Web Intelligence API
-  </footer>
+  <div id="history-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="toggleHistoryDrawer()"></div>
 
   <script src="app.js"></script>
 </body>
