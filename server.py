@@ -528,6 +528,119 @@ def extract_clean_article_markdown(raw_html: str, url: str) -> Dict[str, Any]:
         "word_count": len(markdown_content)
     }
 
+# ==================== TTL 缓存与全局连接池 ====================
+class TTLCache:
+    def __init__(self, maxsize: int = 128, ttl: int = 300):
+        self.maxsize, self.ttl = maxsize, ttl
+        self._data: dict = {}
+
+    def get(self, key: str):
+        item = self._data.get(key)
+        if not item: return None
+        ts, value = item
+        if time.time() - ts > self.ttl:
+            self._data.pop(key, None)
+            return None
+        return value
+
+    def set(self, key: str, value):
+        if len(self._data) >= self.maxsize:
+            oldest = min(self._data, key=lambda k: self._data[k][0])
+            self._data.pop(oldest, None)
+        self._data[key] = (time.time(), value)
+
+async def fetch_brave_web_search(query: str, count: int = 10, freshness: Optional[str] = None, lang: Optional[str] = 'zh') -> Optional[Dict[str, Any]]:
+    key = get_current_brave_api_key()
+    if not key:
+        return None
+    url = "https://api.search.brave.com/res/v1/web/search"
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": key
+    }
+    
+    # 智能中文优先处理
+    q_final = query
+    if lang == 'zh':
+        if not any('一' <= char <= '鿿' for char in query):
+            q_final = f"{query} 中文 最新 评测 资讯"
+            
+    params = {
+        "q": q_final,
+        "count": min(20, count),
+        "extra_snippets": "true"
+    }
+    if lang == 'zh':
+        params["search_lang"] = "zh-hans"
+        params["country"] = "cn"
+    elif lang == 'en':
+        params["search_lang"] = "en"
+        
+    if freshness:
+        params["freshness"] = freshness
+        
+    try:
+        async with client(timeout=10.0) as c:
+            r = await c.get(url, headers=headers, params=params)
+            if r.status_code == 200:
+                raw = r.json()
+                results = []
+                for item in raw.get("web", {}).get("results", []):
+                    snippets = item.get("extra_snippets", [])
+                    desc = item.get("description", "")
+                    if snippets and len(snippets) > 0:
+                        desc = desc + " | " + " ".join(snippets[:2])
+                    results.append({
+                        "url": item.get("url"),
+                        "title": item.get("title"),
+                        "description": desc,
+                        "page_age": item.get("page_age") or item.get("age"),
+                        "snippets": snippets or [desc],
+                        "source": "Brave Search (独立索引)"
+                    })
+                return {"results": {"web": results}, "engine": "Brave Web Search"}
+    except Exception as e:
+        print(f"Brave web search error: {e}")
+    return None
+
+async def fetch_brave_news_search(query: str, count: int = 10, lang: Optional[str] = 'zh') -> Optional[Dict[str, Any]]:
+    key = get_current_brave_api_key()
+    if not key:
+        return None
+    url = "https://api.search.brave.com/res/v1/news/search"
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": key
+    }
+    q_final = query
+    if lang == 'zh' and not any('一' <= char <= '鿿' for char in query):
+        q_final = f"{query} 中文 快讯"
+    params = {"q": q_final, "count": min(20, count)}
+    if lang == 'zh':
+        params["search_lang"] = "zh-hans"
+        params["country"] = "cn" 
+    try:
+        async with client(timeout=10.0) as c:
+            r = await c.get(url, headers=headers, params=params)
+            if r.status_code == 200:
+                raw = r.json()
+                results = []
+                for item in raw.get("results", []):
+                    results.append({
+                        "url": item.get("url"),
+                        "title": item.get("title"),
+                        "description": item.get("description", ""),
+                        "page_age": item.get("age") or item.get("page_age"),
+                        "snippets": [item.get("description", "")],
+                        "source": "Brave News"
+                    })
+                return {"results": {"news": results, "web": results}, "engine": "Brave News"}
+    except Exception as e:
+        print(f"Brave news error: {e}")
+    return None
+
 CACHE = TTLCache(maxsize=128, ttl=300)
 shared_client: Optional[httpx.AsyncClient] = None
 
