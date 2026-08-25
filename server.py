@@ -758,7 +758,7 @@ async def check_and_consume_verification_code(cursor, target: str, code: str, co
         if ok:
             vrow = cursor.execute("SELECT id FROM verification_codes WHERE target = ? AND used = 0 ORDER BY id DESC LIMIT 1", (target,)).fetchone()
             if vrow:
-                # vcode consumed
+                cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
             return True
             
     # 2. 邮箱或本地验证码校验
@@ -768,7 +768,7 @@ async def check_and_consume_verification_code(cursor, target: str, code: str, co
     ).fetchone()
     if vrow and vrow["used"] == 0 and vrow["code"] == code:
         if datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") >= datetime.now():
-            # vcode consumed
+            cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
             return True
             
     return False
