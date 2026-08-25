@@ -20,6 +20,19 @@ except Exception:
 # ==================== 核心配置 ====================
 API_KEY = os.getenv('YOU_API_KEY', '')
 
+BRAVE_API_KEY = os.getenv('BRAVE_API_KEY', 'BSAfv29c3W0c8ZQ9O9hpxDVmoRX8p01')
+
+def get_current_brave_api_key() -> str:
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM system_settings WHERE key = 'brave_api_key'").fetchone()
+        conn.close()
+        if row and row["value"]:
+            return row["value"].strip()
+    except Exception:
+        pass
+    return BRAVE_API_KEY
+
 def get_current_you_api_key() -> str:
     try:
         conn = get_db()
@@ -32,6 +45,13 @@ def get_current_you_api_key() -> str:
     return API_KEY
 
 PROXY_URL = os.getenv('PROXY_URL', 'http://127.0.0.1:10888')
+# ==================== 全局代理覆盖 (Global Proxy Coverage) ====================
+if PROXY_URL:
+    os.environ['HTTP_PROXY'] = PROXY_URL
+    os.environ['HTTPS_PROXY'] = PROXY_URL
+    os.environ['ALL_PROXY'] = PROXY_URL
+    os.environ['http_proxy'] = PROXY_URL
+    os.environ['https_proxy'] = PROXY_URL
 JWT_SECRET = os.getenv('JWT_SECRET', 'youinsight-super-jwt-secret-key-2026')
 
 # 阿里云短信
@@ -347,6 +367,79 @@ class TTLCache:
             oldest = min(self._data, key=lambda k: self._data[k][0])
             self._data.pop(oldest, None)
         self._data[key] = (time.time(), value)
+
+async def fetch_brave_web_search(query: str, count: int = 10, freshness: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    key = get_current_brave_api_key()
+    if not key:
+        return None
+    url = "https://api.search.brave.com/res/v1/web/search"
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": key
+    }
+    params = {
+        "q": query,
+        "count": min(20, count),
+        "extra_snippets": "true"
+    }
+    if freshness:
+        params["freshness"] = freshness
+        
+    try:
+        async with client(timeout=10.0) as c:
+            r = await c.get(url, headers=headers, params=params)
+            if r.status_code == 200:
+                raw = r.json()
+                results = []
+                for item in raw.get("web", {}).get("results", []):
+                    snippets = item.get("extra_snippets", [])
+                    desc = item.get("description", "")
+                    if snippets and len(snippets) > 0:
+                        desc = desc + " | " + " ".join(snippets[:2])
+                    results.append({
+                        "url": item.get("url"),
+                        "title": item.get("title"),
+                        "description": desc,
+                        "page_age": item.get("page_age") or item.get("age"),
+                        "snippets": snippets or [desc],
+                        "source": "Brave Search (独立索引)"
+                    })
+                return {"results": {"web": results}, "engine": "Brave Search"}
+    except Exception as e:
+        print(f"Brave search error: {e}")
+    return None
+
+async def fetch_brave_news_search(query: str, count: int = 10) -> Optional[Dict[str, Any]]:
+    key = get_current_brave_api_key()
+    if not key:
+        return None
+    url = "https://api.search.brave.com/res/v1/news/search"
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": key
+    }
+    params = {"q": query, "count": min(20, count)}
+    try:
+        async with client(timeout=10.0) as c:
+            r = await c.get(url, headers=headers, params=params)
+            if r.status_code == 200:
+                raw = r.json()
+                results = []
+                for item in raw.get("results", []):
+                    results.append({
+                        "url": item.get("url"),
+                        "title": item.get("title"),
+                        "description": item.get("description", ""),
+                        "page_age": item.get("age") or item.get("page_age"),
+                        "snippets": [item.get("description", "")],
+                        "source": "Brave News"
+                    })
+                return {"results": {"news": results, "web": results}, "engine": "Brave News"}
+    except Exception as e:
+        print(f"Brave news error: {e}")
+    return None
 
 CACHE = TTLCache(maxsize=128, ttl=300)
 shared_client: Optional[httpx.AsyncClient] = None
@@ -1115,17 +1208,20 @@ async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[s
     if hit is not None:
         return {'status': 'success', 'data': hit, 'cached': True, 'quota': quota_res}
     
-    async with client() as c:
-        params = {'query': req.query, 'count': req.count}
-        if req.freshness: params['freshness'] = req.freshness
-        resp = await c.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': get_current_you_api_key()})
-        if resp.status_code != 200:
-            record_gen_log(user, ip, '实时搜索', req.query, int((time.time() - t0)*1000), 'failed')
-            detail_msg = resp.text[:200]
-            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
-                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
-            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
-        data = resp.json()
+    # 优先走 Brave 毫秒级极速通道，异常自动降级至 You.com 备用通道
+    data = await fetch_brave_web_search(req.query, req.count or 10, req.freshness)
+    if not data:
+        async with client() as c:
+            params = {'query': req.query, 'count': req.count}
+            if req.freshness: params['freshness'] = req.freshness
+            resp = await c.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': get_current_you_api_key()})
+            if resp.status_code != 200:
+                record_gen_log(user, ip, '实时搜索', req.query, int((time.time() - t0)*1000), 'failed')
+                detail_msg = resp.text[:200]
+                if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
+                    detail_msg = "上游数据源 API Key 已过期或失效，请管理员在后台更新（本次未扣除额度）"
+                raise HTTPException(status_code=resp.status_code, detail=detail_msg)
+            data = resp.json()
     
     duration = int((time.time() - t0) * 1000)
     record_gen_log(user, ip, '实时搜索', req.query, duration, 'success')
@@ -1146,15 +1242,18 @@ async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, 
     if hit is not None:
         return {'status': 'success', 'data': hit, 'cached': True, 'quota': quota_res}
     
-    async with client() as c:
-        resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': get_current_you_api_key()})
-        if resp.status_code != 200:
-            record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'failed')
-            detail_msg = resp.text[:200]
-            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
-                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
-            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
-        data = resp.json()
+    # 优先走 Brave News 极速通道，异常自动降级至备用通道
+    data = await fetch_brave_news_search(req.query, req.count or 10)
+    if not data:
+        async with client() as c:
+            resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': get_current_you_api_key()})
+            if resp.status_code != 200:
+                record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'failed')
+                detail_msg = resp.text[:200]
+                if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
+                    detail_msg = "上游数据源 API Key 已过期或失效，请管理员在后台更新（本次未扣除额度）"
+                raise HTTPException(status_code=resp.status_code, detail=detail_msg)
+            data = resp.json()
         
     record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'success')
     consume_quota_success(user, ip)

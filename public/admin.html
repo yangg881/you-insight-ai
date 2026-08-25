@@ -260,6 +260,13 @@
             </div>
 
             
+            
+            <div class="space-y-1.5">
+              <label class="block text-xs font-semibold text-slate-300">Brave Search API Key (0.2s 毫秒级检索通道)</label>
+              <input type="text" id="cfg-brave-key" class="input-field text-xs w-full font-mono" placeholder="输入 Brave Search API Key...">
+              <p class="text-[11px] text-[var(--text-muted)]">用于全网纯净实时搜索与大模型高密切片 (支持 0.2 秒级极速响应与故障自动降级)</p>
+            </div>
+
             <div class="space-y-1.5">
               <label class="block text-xs font-semibold text-slate-300">You.com 上游研报 API Key (X-API-Key)</label>
               <input type="text" id="cfg-you-key" class="input-field text-xs w-full font-mono" placeholder="输入最新 API Key，保存后即刻生效...">
@@ -524,6 +531,7 @@
         const { settings } = await res.json();
         if (settings.guest_daily_limit) document.getElementById('cfg-guest-limit').value = settings.guest_daily_limit;
         if (settings.default_user_quota) document.getElementById('cfg-user-quota').value = settings.default_user_quota;
+        if (settings.brave_api_key) document.getElementById('cfg-brave-key').value = settings.brave_api_key;
         if (settings.you_api_key) document.getElementById('cfg-you-key').value = settings.you_api_key;
         if (settings.announcement !== undefined) document.getElementById('cfg-announcement').value = settings.announcement;
       } catch (e) { console.error(e); }
@@ -532,13 +540,14 @@
     async function saveAdminSettings() {
       const guest_daily_limit = document.getElementById('cfg-guest-limit')?.value;
       const default_user_quota = document.getElementById('cfg-user-quota')?.value;
+      const brave_api_key = document.getElementById('cfg-brave-key')?.value.trim();
       const you_api_key = document.getElementById('cfg-you-key')?.value.trim();
       const announcement = document.getElementById('cfg-announcement')?.value;
       try {
         const res = await fetch(`${API_BASE}/api/admin/settings`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
-          body: JSON.stringify({ settings: { guest_daily_limit, default_user_quota, you_api_key, announcement } })
+          body: JSON.stringify({ settings: { guest_daily_limit, default_user_quota, brave_api_key, you_api_key, announcement } })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || '保存失败');
