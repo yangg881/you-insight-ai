@@ -480,6 +480,84 @@ async def fetch_brave_news_search(query: str, count: int = 10, lang: Optional[st
         print(f"Brave news error: {e}")
     return None
 
+def extract_clean_article_markdown(raw_html: str, url: str) -> Dict[str, Any]:
+    """将原始网页 HTML 清洗并提取为纯净排版的 Markdown 正文"""
+    import re
+    from html import unescape
+    from urllib.parse import urlparse
+    
+    domain = urlparse(url).netloc
+    
+    # 1. 提取标题
+    title = ""
+    og_title = re.search(r'<meta[^>]*property=["\']og:title["\'][^>]*content=["\'](.*?)["\']', raw_html, re.I)
+    if og_title:
+        title = unescape(og_title.group(1)).strip()
+    if not title:
+        h1_m = re.search(r'<h1[^>]*>(.*?)</h1>', raw_html, re.I | re.DOTALL)
+        if h1_m:
+            title = re.sub(r'<[^>]*>', '', h1_m.group(1)).strip()
+            title = unescape(title)
+    if not title:
+        title_m = re.search(r'<title[^>]*>(.*?)</title>', raw_html, re.I | re.DOTALL)
+        if title_m:
+            title = re.sub(r'<[^>]*>', '', title_m.group(1)).strip()
+            title = unescape(title)
+    if not title:
+        title = domain or "网页正文"
+        
+    # 2. 剥离无用标签 (script, style, nav, footer, header, svg, noscript, form, iframe, etc.)
+    cleaned = re.sub(r'<(script|style|svg|noscript|header|footer|nav|form|iframe|aside)[^>]*>.*?</>', '', raw_html, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r'<!--.*?-->', '', cleaned, flags=re.DOTALL)
+    
+    # 3. 提取文章主体 (优先匹配 <article>, <main>, class/id 包含 content/article/post/entry/body 的容器)
+    main_match = re.search(r'<(article|main)[^>]*>(.*?)</>', cleaned, flags=re.DOTALL | re.IGNORECASE)
+    search_scope = main_match.group(2) if main_match else cleaned
+    
+    # 4. 结构化提取正文段落与标题
+    blocks = []
+    seen_texts = set()
+    
+    for m in re.finditer(r'<(h[1-6]|p|li|blockquote)[^>]*>(.*?)</>', search_scope, flags=re.DOTALL | re.IGNORECASE):
+        tag = m.group(1).lower()
+        inner_text = re.sub(r'<[^>]*>', '', m.group(2)).strip()
+        inner_text = unescape(inner_text)
+        inner_text = re.sub(r'\s+', ' ', inner_text) # 规整多余空格
+        
+        # 过滤过短或重复噪声（如导航、Cookie提示等）
+        if len(inner_text) < 5 or inner_text in seen_texts:
+            continue
+        if re.search(r'(cookie|privacy policy|terms of service|copyright|rights reserved|all rights reserved|sign in|log in|subscribe|newsletter)', inner_text, re.I) and len(inner_text) < 60:
+            continue
+            
+        seen_texts.add(inner_text)
+        
+        if tag.startswith('h'):
+            lvl = '#' * min(4, int(tag[1]))
+            blocks.append(f"{lvl} {inner_text}")
+        elif tag == 'li':
+            blocks.append(f"- {inner_text}")
+        elif tag == 'blockquote':
+            blocks.append(f"> {inner_text}")
+        else:
+            blocks.append(inner_text)
+            
+    markdown_content = "\n\n".join(blocks)
+    if not markdown_content or len(markdown_content) < 50:
+        # 降级备用：直接提取纯文本
+        plain = re.sub(r'<[^>]*>', ' ', cleaned)
+        plain = unescape(plain)
+        plain = re.sub(r'\n\s*\n+', '\n\n', plain).strip()
+        markdown_content = plain[:5000]
+        
+    return {
+        "url": url,
+        "domain": domain,
+        "title": title,
+        "markdown": markdown_content,
+        "word_count": len(markdown_content)
+    }
+
 CACHE = TTLCache(maxsize=128, ttl=300)
 shared_client: Optional[httpx.AsyncClient] = None
 

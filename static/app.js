@@ -1498,13 +1498,26 @@ function renderContentsItems(items) {
     result.innerHTML = '<div class="card p-8 text-center text-sm text-[var(--text-muted)]">未能提取到正文</div>';
     return;
   }
-  result.innerHTML = items.map(item => `
-    <div class="card p-6">
-      <div class="flex items-center justify-between mb-3 pb-2 border-b border-[var(--border-subtle)]">
-        <a href="${escapeHtml(item.url)}" target="_blank" class="text-xs text-indigo-400 font-mono truncate max-w-md">${escapeHtml(item.url)}</a>
-        <button onclick="navigator.clipboard.writeText(this.closest('.card').querySelector('.content-body').innerText); showToast('已复制正文', 'success');" class="btn-secondary text-xs">复制正文</button>
+  result.innerHTML = items.map((item, idx) => `
+    <div class="card p-6 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
+        <div class="min-w-0 flex-1">
+          <h3 class="text-base font-bold text-white mb-1.5">${escapeHtml(item.title || '网页正文')}</h3>
+          <div class="flex items-center gap-3 text-xs text-[var(--text-muted)]">
+            <span class="font-mono text-indigo-400">${escapeHtml(safeHostname(item.url))}</span>
+            <span>字数: <strong class="text-slate-200">${item.word_count || 0}</strong> 字</span>
+            <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">原网页 ↗</a>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="exportWord('content-md-${idx}', '${escapeHtml(item.title || '网页正文')}')" class="btn-secondary text-xs">📄 导出 Word</button>
+          <button onclick="exportPDF('content-md-${idx}', '${escapeHtml(item.title || '网页正文')}')" class="btn-secondary text-xs">📑 导出 PDF</button>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('content-md-${idx}').innerText); showToast('已复制纯文本', 'success');" class="btn-secondary text-xs">📋 复制</button>
+        </div>
       </div>
-      <div class="content-body text-xs text-slate-300 max-h-96 overflow-y-auto font-mono whitespace-pre-wrap">${escapeHtml(item.html || item.markdown || item.text || '无正文')}</div>
+      <div id="content-md-${idx}" class="markdown-body text-sm leading-relaxed max-h-[600px] overflow-y-auto custom-scrollbar p-5 bg-slate-950/40 rounded-xl border border-white/5">
+        ${renderMarkdown(item.markdown || item.text || '无正文内容')}
+      </div>
     </div>
   `).join('');
 }
