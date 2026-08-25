@@ -268,62 +268,95 @@ def init_db():
 
 init_db()
 
-# ==================== 短信与邮件发送模块 ====================
-def sign_aliyun_pop(params: dict, secret: str) -> str:
-    sorted_params = sorted(params.items(), key=lambda x: x[0])
-    query_str = urllib.parse.urlencode(sorted_params, quote_via=urllib.parse.quote)
-    string_to_sign = "GET&" + urllib.parse.quote("/", safe="") + "&" + urllib.parse.quote(query_str, safe="")
-    h = hmac.new((secret + "&").encode("utf-8"), string_to_sign.encode("utf-8"), hashlib.sha1)
-    return base64.b64encode(h.digest()).decode("utf-8")
+# ==================== 短信与邮件发送模块 (复刻职达简历 Dypns 融合认证) ====================
 
-def special_pop_quote(s):
-    res = urllib.parse.quote(str(s), safe="")
-    return res.replace("+", "%20").replace("*", "%2A").replace("%7E", "~")
+ALIYUN_AK_ID = os.getenv('ALIYUN_ACCESS_KEY_ID', '')
+ALIYUN_AK_SECRET = os.getenv('ALIYUN_ACCESS_KEY_SECRET', '')
+ALIYUN_DYPNS_ENDPOINT = os.getenv('ALIYUN_DYPNS_ENDPOINT', 'https://dypnsapi.aliyuncs.com/')
+ALIYUN_DYPNS_REGION_ID = os.getenv('ALIYUN_DYPNS_REGION_ID', 'cn-hangzhou')
+SMS_SIGN_NAME = os.getenv('SMS_SIGN_NAME', '恒创联众')
+SMS_SCHEME_NAME = os.getenv('SMS_SCHEME_NAME', 'jd-resume-ai')
+SMS_TEMPLATE_REGISTER = os.getenv('SMS_TEMPLATE_CODE_REGISTER', '100001')
+SMS_TEMPLATE_CHANGE = os.getenv('SMS_TEMPLATE_CODE_CHANGE_PHONE', '100002')
+SMS_TEMPLATE_RESET = os.getenv('SMS_TEMPLATE_CODE_RESET_PASSWORD', '100003')
 
-def sign_aliyun_pop_strict(params: dict, secret: str, method="GET") -> str:
-    sorted_keys = sorted(params.keys())
-    canonicalized = "&".join([f"{special_pop_quote(k)}={special_pop_quote(params[k])}" for k in sorted_keys])
-    string_to_sign = f"{method}&{special_pop_quote('/')}&{special_pop_quote(canonicalized)}"
-    h = hmac.new((secret + "&").encode("utf-8"), string_to_sign.encode("utf-8"), hashlib.sha1)
-    return base64.b64encode(h.digest()).decode("utf-8")
+def percent_encode_dypns(value: Any) -> str:
+    from urllib.parse import quote
+    return quote(str(value or ""), safe="").replace("+", "%20").replace("*", "%2A").replace("%7E", "~")
 
-async def send_aliyun_sms(phone: str, code: str) -> Dict[str, Any]:
-    # 默认签名名称
-    sign_name = ALIYUN_SIGN_NAME or "阿里云短信测试"
-    params = {
-        "AccessKeyId": ALIYUN_AK_ID,
-        "Action": "SendSms",
+def sign_dypns_pop(params: dict, secret: str, method="GET") -> str:
+    canonical = "&".join(f"{percent_encode_dypns(k)}={percent_encode_dypns(params[k])}" for k in sorted(params))
+    string_to_sign = f"{method}&%2F&{percent_encode_dypns(canonical)}"
+    digest = hmac.new(f"{secret}&".encode("utf-8"), string_to_sign.encode("utf-8"), hashlib.sha1).digest()
+    return base64.b64encode(digest).decode("utf-8")
+
+def get_dypns_template_for_scene(scene: str) -> str:
+    if scene in ('register', 'login'):
+        return SMS_TEMPLATE_REGISTER
+    elif scene in ('bind', 'change_phone'):
+        return SMS_TEMPLATE_CHANGE
+    return SMS_TEMPLATE_RESET
+
+async def send_aliyun_sms(phone: str, scene: str = 'register') -> Dict[str, Any]:
+    """复刻阿里云 Dypns 融合短信验证码发送 (恒创联众)"""
+    template_code = get_dypns_template_for_scene(scene)
+    base_params = {
+        "Action": "SendSmsVerifyCode",
+        "Version": "2017-05-25",
         "Format": "JSON",
-        "PhoneNumbers": phone,
-        "SignName": sign_name,
+        "AccessKeyId": ALIYUN_AK_ID,
         "SignatureMethod": "HMAC-SHA1",
         "SignatureNonce": str(uuid.uuid4()),
         "SignatureVersion": "1.0",
-        "TemplateCode": ALIYUN_TEMPLATE or "SMS_336470119",
-        "TemplateParam": json.dumps({"code": str(code)}),
-        "Timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "Version": "2017-05-25"
+        "Timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "RegionId": ALIYUN_DYPNS_REGION_ID,
+        "PhoneNumber": phone,
+        "SignName": SMS_SIGN_NAME,
+        "TemplateCode": template_code,
+        "TemplateParam": json.dumps({"code": "##code##", "min": "5"}, ensure_ascii=False, separators=(",", ":")),
+        "SchemeName": SMS_SCHEME_NAME,
     }
-    signature = sign_aliyun_pop_strict(params, ALIYUN_AK_SECRET)
-    params["Signature"] = signature
-    url = "https://dysmsapi.aliyuncs.com/?" + urllib.parse.urlencode(params)
+    base_params["Signature"] = sign_dypns_pop(base_params, ALIYUN_AK_SECRET)
     
     async with httpx.AsyncClient(timeout=10.0) as c:
         try:
-            resp = await c.get(url)
+            resp = await c.get(ALIYUN_DYPNS_ENDPOINT, params=base_params)
             data = resp.json()
-            resp_code = data.get("Code")
-            if resp_code == "OK":
+            if data.get("Code") == "OK" or data.get("Success") is True:
                 return {"success": True, "message": "短信验证码已发送至手机！"}
-            elif resp_code == "isv.SMS_TEST_SIGN_TEMPLATE_LIMIT":
-                return {
-                    "success": False,
-                    "message": "阿里云短信提示：当前测试模板仅支持发送至阿里云控制台已绑定的测试手机号。您可在阿里云【快速学习与测试】中绑定该号码，或直接使用邮箱接收验证码！"
-                }
             else:
-                return {"success": False, "message": f"短信发送失败: {data.get('Message', resp_code)}"}
+                return {"success": False, "message": f"阿里云短信: {data.get('Message', '发送失败')}"}
         except Exception as e:
             return {"success": False, "message": f"短信服务连接异常: {str(e)}"}
+
+async def check_dypns_sms_code(phone: str, code: str) -> bool:
+    """通过阿里云 Dypns 校验手机短信验证码"""
+    base_params = {
+        "Action": "CheckSmsVerifyCode",
+        "Version": "2017-05-25",
+        "Format": "JSON",
+        "AccessKeyId": ALIYUN_AK_ID,
+        "SignatureMethod": "HMAC-SHA1",
+        "SignatureNonce": str(uuid.uuid4()),
+        "SignatureVersion": "1.0",
+        "Timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "RegionId": ALIYUN_DYPNS_REGION_ID,
+        "PhoneNumber": phone,
+        "VerifyCode": str(code).strip(),
+        "SchemeName": SMS_SCHEME_NAME,
+    }
+    base_params["Signature"] = sign_dypns_pop(base_params, ALIYUN_AK_SECRET)
+    
+    async with httpx.AsyncClient(timeout=10.0) as c:
+        try:
+            resp = await c.get(ALIYUN_DYPNS_ENDPOINT, params=base_params)
+            data = resp.json()
+            verify_result = ((data.get("Model") or {}).get("VerifyResult") or data.get("VerifyResult") or "").upper()
+            if verify_result == "PASS" or data.get("Code") == "OK":
+                return True
+        except Exception as e:
+            print(f"Check SMS error: {e}")
+    return False
 
 async def send_resend_email(email: str, code: str, action_name: str = "登录/注册") -> Dict[str, Any]:
     url = "https://api.resend.com/emails"
@@ -821,7 +854,7 @@ async def api_send_code(req: SendCodeReq, request: Request):
     action_text = action_map.get(req.code_type, "验证操作")
     
     if is_phone:
-        res = await send_aliyun_sms(target, code)
+        res = await send_aliyun_sms(target, req.code_type or 'register')
     else:
         res = await send_resend_email(target, code, action_text)
         
