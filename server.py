@@ -63,6 +63,13 @@ ALIYUN_SIGN_NAME = os.getenv('ALIYUN_SMS_SIGN_NAME', '阿里云短信测试')
 # Resend 邮件
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
 RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'YouInsight AI <onboarding@resend.dev>')
+# SMTP 邮件配置
+SMTP_ENABLED = os.getenv('SMTP_ENABLED', '1') == '1'
+SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.139.com')
+SMTP_PORT = int(os.getenv('SMTP_PORT', '465'))
+SMTP_USER = os.getenv('SMTP_USER', 'yangg881@139.com')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+SMTP_FROM = os.getenv('SMTP_FROM', 'YouInsight AI <yangg881@139.com>')
 
 BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -358,9 +365,25 @@ async def check_dypns_sms_code(phone: str, code: str) -> bool:
             print(f"Check SMS error: {e}")
     return False
 
-async def send_resend_email(email: str, code: str, action_name: str = "登录/注册") -> Dict[str, Any]:
-    url = "https://api.resend.com/emails"
-    html_content = f"""
+def _sync_send_smtp(email: str, code: str, action_name: str = "安全验证") -> Dict[str, Any]:
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email.header import Header
+    from email.utils import formataddr, formatdate, make_msgid
+    
+    if not SMTP_USER or not SMTP_PASSWORD:
+        return {"success": False, "message": "SMTP 凭据未配置"}
+        
+    msg = MIMEMultipart('alternative')
+    msg['From'] = formataddr(('YouInsight AI', SMTP_USER))
+    msg['To'] = formataddr(('User', email))
+    msg['Subject'] = Header(f'【YouInsight AI】您的验证码: {code}', 'utf-8')
+    msg['Date'] = formatdate(localtime=True)
+    msg['Message-ID'] = make_msgid(domain='139.com')
+    
+    text_body = f'您好，您正在进行 YouInsight AI 账号 {action_name} 操作，验证码为 {code}，有效期 5 分钟。如非本人操作请忽略。'
+    html_body = f'''
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0b1329; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc;">
         <div style="text-align: center; margin-bottom: 24px;">
             <h2 style="color: #38bdf8; margin: 0; font-size: 22px; font-weight: 800;">⚡ YouInsight AI Studio</h2>
@@ -377,147 +400,53 @@ async def send_resend_email(email: str, code: str, action_name: str = "登录/�
             © 2026 YouInsight AI · 实时情报 · 深度研报 · 事实溯源
         </div>
     </div>
-    """
+    '''
+    msg.attach(MIMEText(text_body, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_body, 'html', 'utf-8'))
+    
+    try:
+        if SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10)
+        else:
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10)
+            server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(SMTP_USER, [email], msg.as_string())
+        server.quit()
+        return {"success": True, "message": "验证码邮件已成功发送至邮箱！"}
+    except Exception as e:
+        return {"success": False, "message": f"SMTP 邮件发送失败: {str(e)}"}
+
+async def send_resend_email(email: str, code: str, action_name: str = "登录/注册") -> Dict[str, Any]:
+    """优先走 SMTP 139邮箱 (全网直发)，备用走 Resend"""
+    if SMTP_ENABLED and SMTP_USER and SMTP_PASSWORD:
+        loop = asyncio.get_event_loop()
+        res = await loop.run_in_executor(None, _sync_send_smtp, email, code, action_name)
+        if res.get("success"):
+            return res
+            
+    # 备用走 Resend
+    url = "https://api.resend.com/emails"
     headers = {
         "Authorization": f"Bearer {RESEND_API_KEY}",
         "Content-Type": "application/json",
-        "User-Agent": "YouInsight-AI/2.1"
+        "User-Agent": "YouInsight-AI/2.2"
     }
     payload = {
         "from": RESEND_FROM_EMAIL,
         "to": [email],
         "subject": f"【YouInsight AI】您的验证码: {code}",
-        "html": html_content
+        "html": f"<p>您正在进行 {action_name} 操作，验证码为: <strong>{code}</strong>，5分钟有效。</p>"
     }
     async with httpx.AsyncClient(timeout=10.0) as c:
         try:
             resp = await c.post(url, headers=headers, json=payload)
             if resp.status_code in (200, 201):
-                return {"success": True, "message": "验证码邮件已成功发送，请检查收件箱（或垃圾箱）"}
+                return {"success": True, "message": "验证码邮件已发送！"}
             else:
-                raw_err = resp.text
-                if "only send testing emails to your own email address" in raw_err:
-                    return {
-                        "success": False,
-                        "message": "Resend 邮件通道处于测试沙盒模式：仅允许发送给管理员注册邮箱 (wenda9900@gmail.com)。如需向 QQ/163 等全网邮箱发信，请在 Resend 控制台添加并验证自定义域名，或配置通用 SMTP 邮件服务！"
-                    }
-                return {"success": False, "message": f"邮件发送失败: {raw_err[:120]}"}
+                return {"success": False, "message": f"邮件发送失败: {resp.text[:120]}"}
         except Exception as e:
             return {"success": False, "message": f"邮件服务连接异常: {str(e)}"}
-
-# ==================== TTL 缓存与全局连接池 ====================
-class TTLCache:
-    def __init__(self, maxsize: int = 128, ttl: int = 300):
-        self.maxsize, self.ttl = maxsize, ttl
-        self._data: dict = {}
-
-    def get(self, key: str):
-        item = self._data.get(key)
-        if not item: return None
-        ts, value = item
-        if time.time() - ts > self.ttl:
-            self._data.pop(key, None)
-            return None
-        return value
-
-    def set(self, key: str, value):
-        if len(self._data) >= self.maxsize:
-            oldest = min(self._data, key=lambda k: self._data[k][0])
-            self._data.pop(oldest, None)
-        self._data[key] = (time.time(), value)
-
-async def fetch_brave_web_search(query: str, count: int = 10, freshness: Optional[str] = None, lang: Optional[str] = 'zh') -> Optional[Dict[str, Any]]:
-    key = get_current_brave_api_key()
-    if not key:
-        return None
-    url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip",
-        "X-Subscription-Token": key
-    }
-    
-    # 智能中文优先处理
-    q_final = query
-    if lang == 'zh':
-        # 若是纯英文检索词且无中文，添加中文意图提示
-        if not any('\u4e00' <= char <= '\u9fff' for char in query):
-            q_final = f"{query} 中文 最新 评测 资讯"
-            
-    params = {
-        "q": q_final,
-        "count": min(20, count),
-        "extra_snippets": "true"
-    }
-    if lang == 'zh':
-        params["search_lang"] = "zh-hans"
-        params["country"] = "cn"
-    elif lang == 'en':
-        params["search_lang"] = "en"
-        
-    if freshness:
-        params["freshness"] = freshness
-        
-    try:
-        async with client(timeout=10.0) as c:
-            r = await c.get(url, headers=headers, params=params)
-            if r.status_code == 200:
-                raw = r.json()
-                results = []
-                for item in raw.get("web", {}).get("results", []):
-                    snippets = item.get("extra_snippets", [])
-                    desc = item.get("description", "")
-                    if snippets and len(snippets) > 0:
-                        desc = desc + " | " + " ".join(snippets[:2])
-                    results.append({
-                        "url": item.get("url"),
-                        "title": item.get("title"),
-                        "description": desc,
-                        "page_age": item.get("page_age") or item.get("age"),
-                        "snippets": snippets or [desc],
-                        "source": "Brave Search (独立索引)"
-                    })
-                return {"results": {"web": results}, "engine": "Brave Search"}
-    except Exception as e:
-        print(f"Brave search error: {e}")
-    return None
-
-async def fetch_brave_news_search(query: str, count: int = 10, lang: Optional[str] = 'zh') -> Optional[Dict[str, Any]]:
-    key = get_current_brave_api_key()
-    if not key:
-        return None
-    url = "https://api.search.brave.com/res/v1/news/search"
-    headers = {
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip",
-        "X-Subscription-Token": key
-    }
-    q_final = query
-    if lang == 'zh' and not any('\u4e00' <= char <= '\u9fff' for char in query):
-        q_final = f"{query} 中文 快讯"
-    params = {"q": q_final, "count": min(20, count)}
-    if lang == 'zh':
-        params["search_lang"] = "zh-hans"
-        params["country"] = "cn" 
-    try:
-        async with client(timeout=10.0) as c:
-            r = await c.get(url, headers=headers, params=params)
-            if r.status_code == 200:
-                raw = r.json()
-                results = []
-                for item in raw.get("results", []):
-                    results.append({
-                        "url": item.get("url"),
-                        "title": item.get("title"),
-                        "description": item.get("description", ""),
-                        "page_age": item.get("age") or item.get("page_age"),
-                        "snippets": [item.get("description", "")],
-                        "source": "Brave News"
-                    })
-                return {"results": {"news": results, "web": results}, "engine": "Brave News"}
-    except Exception as e:
-        print(f"Brave news error: {e}")
-    return None
 
 def extract_clean_article_markdown(raw_html: str, url: str) -> Dict[str, Any]:
     """将原始网页 HTML 清洗并提取为纯净排版的 Markdown 正文"""
