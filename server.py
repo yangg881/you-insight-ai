@@ -393,11 +393,17 @@ async def send_resend_email(email: str, code: str, action_name: str = "登录/�
         try:
             resp = await c.post(url, headers=headers, json=payload)
             if resp.status_code in (200, 201):
-                return {"success": True, "message": "邮件发送成功"}
+                return {"success": True, "message": "验证码邮件已成功发送，请检查收件箱（或垃圾箱）"}
             else:
-                return {"success": False, "message": f"Resend 邮件发送失败: {resp.text[:150]}"}
+                raw_err = resp.text
+                if "only send testing emails to your own email address" in raw_err:
+                    return {
+                        "success": False,
+                        "message": "Resend 邮件通道处于测试沙盒模式：仅允许发送给管理员注册邮箱 (wenda9900@gmail.com)。如需向 QQ/163 等全网邮箱发信，请在 Resend 控制台添加并验证自定义域名，或配置通用 SMTP 邮件服务！"
+                    }
+                return {"success": False, "message": f"邮件发送失败: {raw_err[:120]}"}
         except Exception as e:
-            return {"success": False, "message": f"邮件服务异常: {str(e)}"}
+            return {"success": False, "message": f"邮件服务连接异常: {str(e)}"}
 
 # ==================== TTL 缓存与全局连接池 ====================
 class TTLCache:
