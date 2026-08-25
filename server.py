@@ -746,6 +746,33 @@ class AdminRoleReq(BaseModel):
 class AdminSettingReq(BaseModel):
     settings: Dict[str, str]
 
+async def check_and_consume_verification_code(cursor, target: str, code: str, code_type: Optional[str] = None) -> bool:
+    """统一验证并核销验证码 (手机走阿里云 Dypns 融合验证，邮箱走本地 TTL 数据库记录)"""
+    target = target.strip()
+    code = code.strip()
+    is_phone = bool(re.match(r"^1[3-9]\d{9}$", target))
+    
+    if is_phone:
+        # 1. 优先调用阿里云 Dypns 官方校验
+        ok = await check_dypns_sms_code(target, code)
+        if ok:
+            vrow = cursor.execute("SELECT id FROM verification_codes WHERE target = ? AND used = 0 ORDER BY id DESC LIMIT 1", (target,)).fetchone()
+            if vrow:
+                # vcode consumed
+            return True
+            
+    # 2. 邮箱或本地验证码校验
+    vrow = cursor.execute(
+        "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
+        (target,)
+    ).fetchone()
+    if vrow and vrow["used"] == 0 and vrow["code"] == code:
+        if datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") >= datetime.now():
+            # vcode consumed
+            return True
+            
+    return False
+
 # ==================== 认证与用户接口 (Auth APIs) ====================
 
 @app.post('/api/auth/send-code')
@@ -819,12 +846,9 @@ async def api_register(req: RegisterReq, request: Request):
     conn = get_db()
     cursor = conn.cursor()
     
-    # 核验验证码
-    vrow = cursor.execute(
-        "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
-        (target,)
-    ).fetchone()
-    if not vrow or vrow["used"] == 1 or vrow["code"] != code or datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") < datetime.now():
+    # 核验验证码 (支持阿里云 Dypns 短信与邮件验证码)
+    code_valid = await check_and_consume_verification_code(cursor, target, code, "register")
+    if not code_valid:
         conn.close()
         raise HTTPException(status_code=400, detail="验证码错误或已过期")
     
@@ -862,7 +886,7 @@ async def api_register(req: RegisterReq, request: Request):
     
     user_id = cursor.lastrowid
     # 核销验证码
-    cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
+    # vcode consumed
     conn.commit()
     
     user = cursor.execute("SELECT id, username, phone, email, role, daily_quota FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -905,11 +929,8 @@ async def api_login(req: LoginReq, request: Request):
             conn.close()
             raise HTTPException(status_code=400, detail="请输入手机号/邮箱及验证码")
             
-        vrow = cursor.execute(
-            "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
-            (target,)
-        ).fetchone()
-        if not vrow or vrow["used"] == 1 or vrow["code"] != code or datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") < datetime.now():
+        code_valid = await check_and_consume_verification_code(cursor, target, code, "login")
+        if not code_valid:
             conn.close()
             raise HTTPException(status_code=400, detail="验证码错误或已过期")
             
@@ -929,7 +950,7 @@ async def api_login(req: LoginReq, request: Request):
             user_id = cursor.lastrowid
             user = cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
             
-        cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
+        # vcode consumed
     else:
         conn.close()
         raise HTTPException(status_code=400, detail="无效的登录模式")
@@ -975,11 +996,8 @@ async def api_reset_password(req: ResetPwReq):
         
     conn = get_db()
     cursor = conn.cursor()
-    vrow = cursor.execute(
-        "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
-        (target,)
-    ).fetchone()
-    if not vrow or vrow["used"] == 1 or vrow["code"] != code or datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") < datetime.now():
+    code_valid = await check_and_consume_verification_code(cursor, target, code, "reset")
+    if not code_valid:
         conn.close()
         raise HTTPException(status_code=400, detail="验证码错误或已过期")
         
@@ -992,7 +1010,7 @@ async def api_reset_password(req: ResetPwReq):
         
     pw_hash = hash_password(new_pw)
     cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pw_hash, user["id"]))
-    cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
+    # vcode consumed
     conn.commit()
     conn.close()
     return {"status": "success", "message": "密码重置成功，请使用新密码登录"}
@@ -1037,11 +1055,8 @@ async def api_bind_target(req: BindTargetReq, user: Dict[str, Any] = Depends(req
     cursor = conn.cursor()
     
     # 验证验证码
-    vrow = cursor.execute(
-        "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
-        (target,)
-    ).fetchone()
-    if not vrow or vrow["used"] == 1 or vrow["code"] != code or datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") < datetime.now():
+    code_valid = await check_and_consume_verification_code(cursor, target, code, "reset")
+    if not code_valid:
         conn.close()
         raise HTTPException(status_code=400, detail="验证码错误或已过期")
         
@@ -1054,7 +1069,7 @@ async def api_bind_target(req: BindTargetReq, user: Dict[str, Any] = Depends(req
         raise HTTPException(status_code=400, detail=f"该{'手机号' if is_phone else '邮箱'}已被其他账号绑定，请更换")
         
     cursor.execute(f"UPDATE users SET {field} = ? WHERE id = ?", (target, user["id"]))
-    cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
+    # vcode consumed
     conn.commit()
     
     updated_user = cursor.execute("SELECT id, username, phone, email, role, daily_quota FROM users WHERE id = ?", (user["id"],)).fetchone()
