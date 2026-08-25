@@ -62,7 +62,7 @@ ALIYUN_SIGN_NAME = os.getenv('ALIYUN_SMS_SIGN_NAME', '阿里云短信测试')
 
 # Resend 邮件
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
-RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'YouInsight AI <no-reply@zhidajob.top>')
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'YouInsight AI <onboarding@resend.dev>')
 
 BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
