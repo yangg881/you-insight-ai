@@ -1121,7 +1121,10 @@ async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[s
         resp = await c.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '实时搜索', req.query, int((time.time() - t0)*1000), 'failed')
-            raise HTTPException(status_code=resp.status_code, detail=f'Search API Error: {resp.text[:200]}')
+            detail_msg = resp.text[:200]
+            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
+                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
+            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
         data = resp.json()
     
     duration = int((time.time() - t0) * 1000)
@@ -1147,7 +1150,10 @@ async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, 
         resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'failed')
-            raise HTTPException(status_code=resp.status_code, detail=f'News API Error: {resp.text[:200]}')
+            detail_msg = resp.text[:200]
+            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
+                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
+            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
         data = resp.json()
         
     record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'success')
@@ -1234,7 +1240,10 @@ async def api_finance(req: FinanceRequest, request: Request, user: Optional[Dict
         resp = await c.post('https://api.you.com/v1/research', json={'input': f'请调取并深度分析该标的财报、核心财务指标与估值情况: {req.input}'}, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '企业财报', req.input, int((time.time() - t0)*1000), 'failed')
-            raise HTTPException(status_code=resp.status_code, detail=f'Finance API Error: {resp.text[:200]}')
+            detail_msg = resp.text[:200]
+            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
+                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
+            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
         record_gen_log(user, ip, '企业财报', req.input, int((time.time() - t0)*1000), 'success')
         return {'status': 'success', 'data': resp.json(), 'quota': quota_res}
 
@@ -1250,7 +1259,10 @@ async def api_contents(req: ContentsRequest, request: Request, user: Optional[Di
         resp = await c.post('https://api.you.com/v1/contents', json={'urls': req.urls}, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'failed')
-            raise HTTPException(status_code=resp.status_code, detail=f'Contents API Error: {resp.text[:200]}')
+            detail_msg = resp.text[:200]
+            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
+                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
+            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
         record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'success')
         return {'status': 'success', 'data': resp.json(), 'quota': quota_res}
 
