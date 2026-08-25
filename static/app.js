@@ -21,7 +21,22 @@ async function init() {
   await loadTemplates();
   await loadHistory();
   updateHistoryBadge();
-  switchTab('home');
+  
+  // 检查 URL 是否带 #admin 或 #digest 等锚点
+  const hash = window.location.hash.replace('#', '');
+  if (hash === 'admin') {
+    if (currentUser && ['admin', 'super_admin'].includes(currentUser.role)) {
+      switchTab('admin');
+    } else {
+      openAuthModal('login');
+      showToast('请登录管理员账号以进入后台', 'info');
+    }
+  } else if (hash && ['home', 'digest', 'research', 'search', 'news', 'finance', 'contents'].includes(hash)) {
+    switchTab(hash);
+  } else {
+    switchTab('home');
+  }
+
   loadSystemAnnouncement();
 }
 
@@ -392,7 +407,22 @@ function handleLogout() {
   localStorage.removeItem('youinsight_jwt_token');
   renderAuthHeader();
   closeProfileModal();
-  switchTab('home');
+  
+  // 检查 URL 是否带 #admin 或 #digest 等锚点
+  const hash = window.location.hash.replace('#', '');
+  if (hash === 'admin') {
+    if (currentUser && ['admin', 'super_admin'].includes(currentUser.role)) {
+      switchTab('admin');
+    } else {
+      openAuthModal('login');
+      showToast('请登录管理员账号以进入后台', 'info');
+    }
+  } else if (hash && ['home', 'digest', 'research', 'search', 'news', 'finance', 'contents'].includes(hash)) {
+    switchTab(hash);
+  } else {
+    switchTab('home');
+  }
+
   showToast('已安全退出登录', 'info');
 }
 

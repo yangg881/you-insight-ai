@@ -1189,6 +1189,11 @@ if not os.path.exists(static_dir):
 if not os.path.exists(static_dir):
     static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
 
+
+@app.get('/admin')
+async def admin_page():
+    return FileResponse(os.path.join(static_dir, 'index.html'))
+
 app.mount('/', StaticFiles(directory=static_dir, html=True), name='static')
 
 if __name__ == '__main__':
