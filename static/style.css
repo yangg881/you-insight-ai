@@ -277,3 +277,86 @@ body {
   animation: blink 0.8s infinite;
 }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+
+
+/* ==================== 移动端高保真响应式优化 ==================== */
+@media (max-width: 768px) {
+  .desktop-sidebar {
+    display: none !important;
+  }
+  
+  .mobile-nav {
+    display: block !important;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+  
+  .main-content {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 12px !important;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .card {
+    border-radius: 16px !important;
+    padding: 14px !important;
+  }
+
+  .template-card {
+    padding: 14px !important;
+  }
+
+  .input-field {
+    font-size: 14px !important;
+  }
+
+  /* 解决移动端表格与代码块横向撑破问题 */
+  .markdown-body {
+    font-size: 14px !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+  
+  .markdown-body pre {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+
+  .markdown-body table {
+    display: block !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
+}
+
+/* 移动端底部导航精细化设计 */
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  transition: all 0.15s ease;
+  min-width: 52px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mobile-nav-item span:first-child {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.mobile-nav-item.active {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.16);
+  font-weight: 700;
+  transform: translateY(-1px);
+}

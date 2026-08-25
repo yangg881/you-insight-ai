@@ -58,9 +58,9 @@
     </div>
   </header>
 
-  <main class="flex-1 flex max-w-7xl mx-auto w-full">
+  <main class="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full min-w-0">
     <!-- Desktop Sidebar -->
-    <aside class="desktop-sidebar w-64 border-r border-[var(--border-subtle)] p-4 flex flex-col gap-2">
+    <aside class="hidden md:flex flex-col w-64 border-r border-[var(--border-subtle)] p-4 gap-2 flex-shrink-0 desktop-sidebar">
       <button onclick="switchTab('home')" id="tab-home" class="tab-btn active"><span>🏠</span> 工作台</button>
       <button onclick="switchTab('digest')" id="tab-digest" class="tab-btn"><span>📰</span> 行业早报</button>
       <button onclick="switchTab('research')" id="tab-research" class="tab-btn"><span>🧠</span> 深度研报</button>
@@ -78,7 +78,7 @@
     </aside>
 
     <!-- Main Content -->
-    <div class="main-content flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar">
+    <div class="main-content flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto custom-scrollbar w-full min-w-0">
       
       <!-- ================= 0. Home Dashboard ================= -->
       <section id="panel-home" class="workspace-panel">
@@ -662,9 +662,9 @@
     </div>
   </div>
 
-  <!-- Mobile Bottom Tab Bar -->
-  <nav class="mobile-nav fixed bottom-0 left-0 right-0 bg-[var(--surface-secondary)]/95 backdrop-blur-xl border-t border-[var(--border-subtle)] z-40">
-    <div class="flex overflow-x-auto whitespace-nowrap px-2 py-2 gap-1 justify-start">
+  <!-- Mobile Bottom Tab Bar (高保真全适配) -->
+  <nav class="md:hidden mobile-nav fixed bottom-0 left-0 right-0 bg-[#070d1d]/95 backdrop-blur-2xl border-t border-white/10 z-40 shadow-2xl">
+    <div class="flex items-center justify-around px-1 py-1.5 overflow-x-auto custom-scrollbar">
       <button onclick="switchTab('home')" id="mob-tab-home" class="mobile-nav-item active flex-shrink-0"><span>🏠</span><span>工作台</span></button>
       <button onclick="switchTab('digest')" id="mob-tab-digest" class="mobile-nav-item flex-shrink-0"><span>📰</span><span>早报</span></button>
       <button onclick="switchTab('research')" id="mob-tab-research" class="mobile-nav-item flex-shrink-0"><span>🧠</span><span>研报</span></button>
