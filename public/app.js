@@ -1,3 +1,93 @@
+
+const PROMPT_TEMPLATES_MAP = {
+  competitor: {
+    icon: '⚔️',
+    name: '竞品深度分析',
+    desc: '对比功能、商业模式、技术架构与市场定价',
+    prompt: '请对以下两个或多个产品/公司进行多维度竞品深度分析，涵盖：核心功能差异、技术架构壁垒、商业模式与定价策略、目标客群与市场口碑优劣势：\n【请在此输入对比标的，如：DeepSeek vs OpenAI】'
+  },
+  tech: {
+    icon: '🔧',
+    name: '技术架构选型',
+    desc: '深度调研技术路线、生态活跃度与迁移成本',
+    prompt: '请对以下技术方案进行深度架构选型与可行性调研，包括：技术演进路线、性能基准指标、社区活跃度与生态成熟度、实施难度与长期维护迁移成本：\n【请在此输入技术选型主题】'
+  },
+  investment: {
+    icon: '💰',
+    name: '投资尽调体检',
+    desc: '行业天花板、市场规模、竞争壁垒与财务风险',
+    prompt: '请对以下企业/赛道进行机构级投资尽调全景分析，包含：行业市场空间(TAM)、上下游产业链格局、核心护城河壁垒、财务健康度与潜在监管/经营风险：\n【请在此输入尽调标的】'
+  },
+  market: {
+    icon: '🌍',
+    name: '市场进入策略',
+    desc: '政策监管、本地化需求、渠道策略与破局打法',
+    prompt: '请为以下业务/产品制定详细的市场进入(Go-To-Market)全景策略，涵盖：宏观政策与合规准入、本地化用户痛点、渠道冷启动与分销打法、增长飞轮与关键里程碑：\n【请在此输入目标市场与业务】'
+  },
+  academic: {
+    icon: '📚',
+    name: '前沿学术综述',
+    desc: '系统文献综述、关键里程碑论文与未来趋势',
+    prompt: '请针对以下前沿科学/技术课题进行系统性学术综述与文献脉络梳理，提炼：核心理论发展脉络、近年来代表性突破论文与方法论演进、当前技术瓶颈与未来5年研发趋势：\n【请在此输入学术研究课题】'
+  }
+};
+
+function applyPromptTemplate(tid, targetId = 'research-input') {
+  const t = PROMPT_TEMPLATES_MAP[tid];
+  if (!t) return;
+  const inputEl = document.getElementById(targetId);
+  if (!inputEl) return;
+  inputEl.value = t.prompt;
+  inputEl.focus();
+  
+  // 智能聚焦到括号内的提示文字
+  const startPos = t.prompt.indexOf('【');
+  const endPos = t.prompt.indexOf('】') + 1;
+  if (startPos !== -1 && endPos > startPos) {
+    inputEl.setSelectionRange(startPos, endPos);
+  }
+  closeSlashPromptMenu();
+}
+
+function handleSlashPrompt(el, context) {
+  const val = el.value;
+  const menu = document.getElementById(`slash-prompt-menu-${context}`);
+  if (!menu) return;
+  
+  if (val.trim().startsWith('/') || val.trim() === '') {
+    menu.innerHTML = `
+      <div class="px-2 py-1 text-[10px] font-bold text-indigo-400 uppercase tracking-wider border-b border-white/5 mb-1">
+        ✨ 快捷研报模板（点击直接选用）
+      </div>
+      ${Object.keys(PROMPT_TEMPLATES_MAP).map(key => {
+        const item = PROMPT_TEMPLATES_MAP[key];
+        return `
+          <div class="slash-prompt-item" onclick="applyPromptTemplate('${key}', '${el.id}')">
+            <span class="text-base">${item.icon}</span>
+            <div class="min-w-0 flex-1">
+              <p class="font-bold text-white leading-none mb-0.5">${escapeHtml(item.name)}</p>
+              <p class="text-[10px] text-[var(--text-muted)] truncate">${escapeHtml(item.desc)}</p>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    `;
+    menu.classList.remove('hidden');
+  } else {
+    menu.classList.add('hidden');
+  }
+}
+
+function closeSlashPromptMenu() {
+  document.querySelectorAll('.slash-prompt-menu').forEach(m => m.classList.add('hidden'));
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#panel-research') && !e.target.closest('.slash-prompt-menu')) {
+    closeSlashPromptMenu();
+  }
+});
+
+
 async function translateCard(btn, titleId, descId) {
   const titleEl = document.getElementById(titleId);
   const descEl = document.getElementById(descId);
@@ -307,38 +397,46 @@ async function sendAuthCode(targetInputId, btnId, codeType) {
     return;
   }
   const btn = document.getElementById(btnId);
-  btn.disabled = true;
-  btn.textContent = '发送中...';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '发送中...';
+  }
 
   try {
-    const res = await fetchWithTimeout(`${API_BASE}/api/auth/send-code`, {
+    const res = await fetch(`${API_BASE}/api/auth/send-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ target, code_type: codeType })
-    }, 15000, 0);
+    });
     
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || '验证码发送失败');
+    if (!res.ok) {
+      throw new Error(data.detail || data.message || '验证码下发失败');
+    }
 
-    showToast(data.message || '验证码已发送！', 'success');
+    showToast(data.message || '验证码已成功下发！', 'success');
 
     // 60秒倒计时
     let countdown = 60;
-    btn.textContent = `${countdown}s 后重新获取`;
-    const interval = setInterval(() => {
-      countdown--;
-      if (countdown <= 0) {
-        clearInterval(interval);
-        btn.disabled = false;
-        btn.textContent = '获取验证码';
-      } else {
-        btn.textContent = `${countdown}s 后重新获取`;
-      }
-    }, 1000);
+    if (btn) {
+      btn.textContent = `${countdown}s 后重新获取`;
+      const interval = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          clearInterval(interval);
+          btn.disabled = false;
+          btn.textContent = '获取验证码';
+        } else {
+          btn.textContent = `${countdown}s 后重新获取`;
+        }
+      }, 1000);
+    }
   } catch (err) {
-    showToast(err.message, 'error');
-    btn.disabled = false;
-    btn.textContent = '获取验证码';
+    showToast(err.message || '发送失败，请重试', 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '获取验证码';
+    }
   }
 }
 

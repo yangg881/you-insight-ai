@@ -74,10 +74,7 @@
         <span>⚙️</span> 管理后台
       </a>
 
-      <div class="mt-auto pt-4 border-t border-[var(--border-subtle)]">
-        <p class="text-xs text-[var(--text-muted)] mb-2">快捷模板</p>
-        <div id="template-list" class="space-y-2"></div>
-      </div>
+
     </aside>
 
     <!-- Main Content -->
@@ -193,9 +190,21 @@
           <p class="text-[var(--text-secondary)]">多源交叉验证、事实溯源与权威出处标注（支持导出 Word/PDF）</p>
         </div>
         <div class="card p-4 mb-6">
-          <div class="flex flex-col gap-3">
-            <textarea id="research-input" rows="3" class="input-field w-full resize-none" placeholder="输入深度研究课题，如：对比 DeepSeek 与 OpenAI 商业模式壁垒、2026 低空经济产业链深度尽调..."></textarea>
-            <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="flex flex-col gap-3 relative">
+            <div class="relative">
+              <textarea id="research-input" rows="3" class="input-field w-full resize-none" placeholder="输入深度研究课题（输入 / 快速唤起研报模板，或点击下方快捷指令）..." oninput="handleSlashPrompt(this, 'research')"></textarea>
+              <div id="slash-prompt-menu-research" class="slash-prompt-menu hidden"></div>
+            </div>
+            <!-- 灵感快捷指令 -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-[11px] text-[var(--text-muted)] font-medium flex items-center gap-1"><span>💡</span> 常用研报指令:</span>
+              <button type="button" onclick="applyPromptTemplate('competitor', 'research-input')" class="quick-chip">⚔️ 竞品分析</button>
+              <button type="button" onclick="applyPromptTemplate('tech', 'research-input')" class="quick-chip">🔧 技术选型</button>
+              <button type="button" onclick="applyPromptTemplate('investment', 'research-input')" class="quick-chip">💰 投资尽调</button>
+              <button type="button" onclick="applyPromptTemplate('market', 'research-input')" class="quick-chip">🌍 市场进入</button>
+              <button type="button" onclick="applyPromptTemplate('academic', 'research-input')" class="quick-chip">📚 学术综述</button>
+            </div>
+            <div class="flex items-center justify-between flex-wrap gap-2 pt-1">
               <div class="flex items-center gap-2">
                 <span class="text-xs text-[var(--text-muted)]">研报深度:</span>
                 <select id="research-depth" class="bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] text-xs text-white rounded-lg px-2.5 py-1.5 outline-none">
@@ -543,6 +552,10 @@
       <!-- ================= FORM 2: REGISTER (注册) ================= -->
       <div id="auth-form-register" class="space-y-3.5 hidden">
         <div>
+          <label class="block text-xs text-[var(--text-secondary)] mb-1">个性用户名 / 昵称 <span class="text-[10px] text-[var(--text-muted)]">(选填，留空自动生成)</span></label>
+          <input type="text" id="reg-username" class="input-field w-full text-sm" placeholder="如：Alex_2026 或 智研者">
+        </div>
+        <div>
           <label class="block text-xs text-[var(--text-secondary)] mb-1">手机号 或 邮箱 (二选一验证)</label>
           <input type="text" id="reg-target" class="input-field w-full text-sm" placeholder="输入 11 位手机号 或 邮箱地址">
         </div>
@@ -561,10 +574,6 @@
             <input type="password" id="reg-password" class="input-field w-full text-sm pr-10" placeholder="设置登录密码">
             <button type="button" onclick="togglePasswordVisibility('reg-password')" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-white">👁️</button>
           </div>
-        </div>
-        <div>
-          <label class="block text-xs text-[var(--text-secondary)] mb-1">个性用户名 / 昵称 <span class="text-[10px] text-[var(--text-muted)]">(选填，留空自动生成)</span></label>
-          <input type="text" id="reg-username" class="input-field w-full text-sm" placeholder="如：Alex_2026 或 智研者">
         </div>
 
         <button onclick="handleRegisterSubmit()" id="btn-reg-submit" class="btn-primary w-full py-2.5 text-sm font-bold mt-2">
