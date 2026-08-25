@@ -19,6 +19,18 @@ except Exception:
 
 # ==================== 核心配置 ====================
 API_KEY = os.getenv('YOU_API_KEY', '')
+
+def get_current_you_api_key() -> str:
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM system_settings WHERE key = 'you_api_key'").fetchone()
+        conn.close()
+        if row and row["value"]:
+            return row["value"].strip()
+    except Exception:
+        pass
+    return API_KEY
+
 PROXY_URL = os.getenv('PROXY_URL', 'http://127.0.0.1:10888')
 JWT_SECRET = os.getenv('JWT_SECRET', 'youinsight-super-jwt-secret-key-2026')
 
@@ -1007,7 +1019,7 @@ async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[s
     async with client() as c:
         params = {'query': req.query, 'count': req.count}
         if req.freshness: params['freshness'] = req.freshness
-        resp = await c.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': API_KEY})
+        resp = await c.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '实时搜索', req.query, int((time.time() - t0)*1000), 'failed')
             raise HTTPException(status_code=resp.status_code, detail=f'Search API Error: {resp.text[:200]}')
@@ -1033,7 +1045,7 @@ async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, 
         return {'status': 'success', 'data': hit, 'cached': True, 'quota': quota_res}
     
     async with client() as c:
-        resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': API_KEY})
+        resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'failed')
             raise HTTPException(status_code=resp.status_code, detail=f'News API Error: {resp.text[:200]}')
@@ -1062,7 +1074,7 @@ async def api_research_stream(req: ResearchRequest, request: Request, user: Opti
         try:
             async with client(timeout=180.0) as c:
                 payload = {'input': req.input, 'chat_history': req.chat_history or []}
-                resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': API_KEY})
+                resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': get_current_you_api_key()})
                 if resp.status_code != 200:
                     raise RuntimeError(f'上游研报服务返回 {resp.status_code}: {resp.text[:150]}')
                 data = resp.json()
@@ -1094,10 +1106,10 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
     t0 = time.time()
     async with client(timeout=120.0) as c:
         try:
-            search_task = c.get('https://api.you.com/v1/search', params={'query': f'{req.topic} 最新 进展 动态', 'count': 6}, headers={'X-API-Key': API_KEY})
-            news_task = c.get('https://api.you.com/v1/search', params={'query': req.topic, 'count': 5}, headers={'X-API-Key': API_KEY})
+            search_task = c.get('https://api.you.com/v1/search', params={'query': f'{req.topic} 最新 进展 动态', 'count': 6}, headers={'X-API-Key': get_current_you_api_key()})
+            news_task = c.get('https://api.you.com/v1/search', params={'query': req.topic, 'count': 5}, headers={'X-API-Key': get_current_you_api_key()})
             prompt = f'请针对主题【{req.topic}】生成一份结构化行业早报与情报综合分析。包含：1. 今日核心要点 2. 详细动态与深度解读 3. 发展趋势与商业洞察。必须保持事实准确与客观。'
-            research_task = c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': API_KEY})
+            research_task = c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
             
             search_res, news_res, research_res = await asyncio.gather(search_task, news_task, research_task, return_exceptions=True)
             search_data = search_res.json() if not isinstance(search_res, Exception) and search_res.status_code == 200 else {}
@@ -1120,7 +1132,7 @@ async def api_finance(req: FinanceRequest, request: Request, user: Optional[Dict
 
     t0 = time.time()
     async with client(timeout=120.0) as c:
-        resp = await c.post('https://api.you.com/v1/research', json={'input': f'请调取并深度分析该标的财报、核心财务指标与估值情况: {req.input}'}, headers={'X-API-Key': API_KEY})
+        resp = await c.post('https://api.you.com/v1/research', json={'input': f'请调取并深度分析该标的财报、核心财务指标与估值情况: {req.input}'}, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '企业财报', req.input, int((time.time() - t0)*1000), 'failed')
             raise HTTPException(status_code=resp.status_code, detail=f'Finance API Error: {resp.text[:200]}')
@@ -1136,7 +1148,7 @@ async def api_contents(req: ContentsRequest, request: Request, user: Optional[Di
 
     t0 = time.time()
     async with client() as c:
-        resp = await c.post('https://api.you.com/v1/contents', json={'urls': req.urls}, headers={'X-API-Key': API_KEY})
+        resp = await c.post('https://api.you.com/v1/contents', json={'urls': req.urls}, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
             record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'failed')
             raise HTTPException(status_code=resp.status_code, detail=f'Contents API Error: {resp.text[:200]}')
