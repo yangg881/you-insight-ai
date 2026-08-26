@@ -62,7 +62,7 @@ ALIYUN_SIGN_NAME = os.getenv('ALIYUN_SMS_SIGN_NAME', '阿里云短信测试')
 
 # Resend 邮件
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
-RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'YouInsight AI <onboarding@resend.dev>')
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'YouInsight AI <no-reply@wenda.cc.cd>')
 # SMTP 邮件配置
 SMTP_ENABLED = os.getenv('SMTP_ENABLED', '1') == '1'
 SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.139.com')
@@ -417,116 +417,47 @@ def _sync_send_smtp(email: str, code: str, action_name: str = "安全验证") ->
     except Exception as e:
         return {"success": False, "message": f"SMTP 邮件发送失败: {str(e)}"}
 
-async def send_resend_email(email: str, code: str, action_name: str = "登录/注册") -> Dict[str, Any]:
-    """优先走 SMTP 139邮箱 (全网直发)，备用走 Resend"""
-    if SMTP_ENABLED and SMTP_USER and SMTP_PASSWORD:
-        loop = asyncio.get_event_loop()
-        res = await loop.run_in_executor(None, _sync_send_smtp, email, code, action_name)
-        if res.get("success"):
-            return res
-            
-    # 备用走 Resend
+async def send_resend_email(email: str, code: str, action_name: str = "安全验证") -> Dict[str, Any]:
+    """通过已验证的专属独立域名 wenda.cc.cd 下发邮件验证码 (全网秒级送达)"""
     url = "https://api.resend.com/emails"
     headers = {
         "Authorization": f"Bearer {RESEND_API_KEY}",
         "Content-Type": "application/json",
         "User-Agent": "YouInsight-AI/2.2"
     }
+    html_content = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0b1329; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <h2 style="color: #38bdf8; margin: 0; font-size: 22px; font-weight: 800;">⚡ YouInsight AI Studio</h2>
+            <p style="color: #94a3b8; font-size: 13px; margin-top: 6px;">全网热点早报与深度研报生成器</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06); text-align: center;">
+            <p style="color: #e2e8f0; font-size: 14px; margin: 0 0 16px 0;">您正在进行 <strong>{action_name}</strong> 操作，验证码为：</p>
+            <div style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; padding: 14px 0; background: rgba(56,189,248,0.1); border-radius: 8px; border: 1px dashed rgba(56,189,248,0.3); margin-bottom: 16px;">
+                {code}
+            </div>
+            <p style="color: #64748b; font-size: 12px; margin: 0;">验证码有效期为 5 分钟。如非本人操作，请忽略此邮件。</p>
+        </div>
+        <div style="text-align: center; margin-top: 24px; color: #475569; font-size: 11px;">
+            © 2026 YouInsight AI · 实时情报 · 深度研报 · 事实溯源
+        </div>
+    </div>
+    """
     payload = {
         "from": RESEND_FROM_EMAIL,
         "to": [email],
         "subject": f"【YouInsight AI】您的验证码: {code}",
-        "html": f"<p>您正在进行 {action_name} 操作，验证码为: <strong>{code}</strong>，5分钟有效。</p>"
+        "html": html_content
     }
     async with httpx.AsyncClient(timeout=10.0) as c:
         try:
             resp = await c.post(url, headers=headers, json=payload)
             if resp.status_code in (200, 201):
-                return {"success": True, "message": "验证码邮件已发送！"}
+                return {"success": True, "message": "验证码邮件已成功发送，请注意查收！"}
             else:
-                return {"success": False, "message": f"邮件发送失败: {resp.text[:120]}"}
+                return {"success": False, "message": f"邮件发送失败: {resp.text[:150]}"}
         except Exception as e:
             return {"success": False, "message": f"邮件服务连接异常: {str(e)}"}
-
-def extract_clean_article_markdown(raw_html: str, url: str) -> Dict[str, Any]:
-    """将原始网页 HTML 清洗并提取为纯净排版的 Markdown 正文"""
-    import re
-    from html import unescape
-    from urllib.parse import urlparse
-    
-    domain = urlparse(url).netloc
-    
-    # 1. 提取标题
-    title = ""
-    og_title = re.search(r'<meta[^>]*property=["\']og:title["\'][^>]*content=["\'](.*?)["\']', raw_html, re.I)
-    if og_title:
-        title = unescape(og_title.group(1)).strip()
-    if not title:
-        h1_m = re.search(r'<h1[^>]*>(.*?)</h1>', raw_html, re.I | re.DOTALL)
-        if h1_m:
-            title = re.sub(r'<[^>]*>', '', h1_m.group(1)).strip()
-            title = unescape(title)
-    if not title:
-        title_m = re.search(r'<title[^>]*>(.*?)</title>', raw_html, re.I | re.DOTALL)
-        if title_m:
-            title = re.sub(r'<[^>]*>', '', title_m.group(1)).strip()
-            title = unescape(title)
-    if not title:
-        title = domain or "网页正文"
-        
-    # 2. 彻底剥离 <head>, <script>, <style>, <nav>, <footer> 等非正文区块
-    cleaned = re.sub(r'<head[\s\S]*?</head>', '', raw_html, flags=re.IGNORECASE)
-    cleaned = re.sub(r'<(script|style|svg|noscript|header|footer|nav|form|iframe|aside)[\s\S]*?</\1>', '', cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'<!--[\s\S]*?-->', '', cleaned)
-    
-    # 3. 提取文章主体 (优先匹配 <article>, <main>, class/id 包含 content/article/post/entry/body 的容器)
-    main_match = re.search(r'<(article|main)[^>]*>([\s\S]*?)</\1>', cleaned, flags=re.IGNORECASE)
-    search_scope = main_match.group(2) if main_match else cleaned
-    
-    # 4. 结构化提取正文段落与标题
-    blocks = []
-    seen_texts = set()
-    
-    for m in re.finditer(r'<(h[1-6]|p|li|blockquote)[^>]*>([\s\S]*?)</\1>', search_scope, flags=re.IGNORECASE):
-        tag = m.group(1).lower()
-        inner_text = re.sub(r'<[^>]*>', '', m.group(2)).strip()
-        inner_text = unescape(inner_text)
-        inner_text = re.sub(r'\s+', ' ', inner_text) # 规整多余空格
-        
-        # 过滤代码脚本或短噪点
-        if len(inner_text) < 6 or inner_text in seen_texts:
-            continue
-        if any(noise in inner_text for noise in ['function(', 'gtm.js', 'dataLayer', 'var ', 'const ', 'window.', 'document.']):
-            continue
-        if re.search(r'(cookie|privacy policy|terms of service|copyright|rights reserved|sign in|log in|subscribe|newsletter|skip to)', inner_text, re.I) and len(inner_text) < 60:
-            continue
-            
-        seen_texts.add(inner_text)
-        
-        if tag.startswith('h'):
-            lvl = '#' * min(4, int(tag[1]))
-            blocks.append(f"{lvl} {inner_text}")
-        elif tag == 'li':
-            blocks.append(f"- {inner_text}")
-        elif tag == 'blockquote':
-            blocks.append(f"> {inner_text}")
-        else:
-            blocks.append(inner_text)
-            
-    markdown_content = "\n\n".join(blocks)
-    if not markdown_content or len(markdown_content) < 50:
-        plain = re.sub(r'<[^>]*>', ' ', cleaned)
-        plain = unescape(plain)
-        plain = re.sub(r'\n\s*\n+', '\n\n', plain).strip()
-        markdown_content = plain[:5000]
-        
-    return {
-        "url": url,
-        "domain": domain,
-        "title": title,
-        "markdown": markdown_content,
-        "word_count": len(markdown_content)
-    }
 
 # ==================== TTL 缓存与全局连接池 ====================
 class TTLCache:
