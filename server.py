@@ -325,7 +325,7 @@ async def send_aliyun_sms(phone: str, scene: str = 'register') -> Dict[str, Any]
     }
     base_params["Signature"] = sign_dypns_pop(base_params, ALIYUN_AK_SECRET)
     
-    async with httpx.AsyncClient(timeout=10.0) as c:
+    async with httpx.AsyncClient(trust_env=False, timeout=10.0) as c:
         try:
             resp = await c.get(ALIYUN_DYPNS_ENDPOINT, params=base_params)
             data = resp.json()
@@ -354,7 +354,7 @@ async def check_dypns_sms_code(phone: str, code: str) -> bool:
     }
     base_params["Signature"] = sign_dypns_pop(base_params, ALIYUN_AK_SECRET)
     
-    async with httpx.AsyncClient(timeout=10.0) as c:
+    async with httpx.AsyncClient(trust_env=False, timeout=10.0) as c:
         try:
             resp = await c.get(ALIYUN_DYPNS_ENDPOINT, params=base_params)
             data = resp.json()
@@ -449,7 +449,7 @@ async def send_resend_email(email: str, code: str, action_name: str = "安全验
         "subject": f"【YouInsight AI】您的验证码: {code}",
         "html": html_content
     }
-    async with httpx.AsyncClient(timeout=10.0) as c:
+    async with httpx.AsyncClient(trust_env=False, timeout=10.0) as c:
         try:
             resp = await c.post(url, headers=headers, json=payload)
             if resp.status_code in (200, 201):
