@@ -20,10 +20,10 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.2.2">
+  <link rel="stylesheet" href="style.css?v=2.2.3">
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
-  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
+  <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
 
   <!-- Top Announcement Banner (If any) -->
   <div id="system-announcement-banner" class="hidden bg-gradient-to-r from-indigo-900/80 via-purple-900/80 to-indigo-900/80 border-b border-indigo-500/30 px-4 py-2 text-center text-xs text-indigo-200">
@@ -490,6 +490,7 @@
       </div>
 
       <!-- Main Switch Tabs: 登录 / 注册 -->
+      <div id="auth-alert-box" class="hidden text-xs rounded-xl p-3 mb-4 flex items-center gap-2 border transition-all"></div>
       <div id="auth-main-tabs" class="grid grid-cols-2 gap-2 p-1 bg-[var(--surface-tertiary)] rounded-xl mb-6">
         <button onclick="switchAuthTab('login')" id="auth-tab-btn-login" class="auth-main-tab active">🚀 登录账号</button>
         <button onclick="switchAuthTab('register')" id="auth-tab-btn-register" class="auth-main-tab">✨ 快速注册</button>
@@ -676,6 +677,6 @@
     </div>
   </nav>
 
-  <script src="app.js?v=2.2.2"></script>
+  <script src="app.js?v=2.2.3"></script>
 </body>
 </html>

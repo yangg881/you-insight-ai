@@ -869,7 +869,7 @@ async def api_register(req: RegisterReq, request: Request):
     exist = cursor.execute(f"SELECT id FROM users WHERE {field} = ?", (target,)).fetchone()
     if exist:
         conn.close()
-        raise HTTPException(status_code=400, detail=f"该{'手机号' if is_phone else '邮箱'}已注册，请直接登录")
+        raise HTTPException(status_code=400, detail=f"该{'手机号' if is_phone else '邮箱'}已注册，请切换至【登录账号】直接登录")
     
     # 用户名处理 (自定或自动生成)
     username = (req.username or '').strip()
@@ -884,7 +884,7 @@ async def api_register(req: RegisterReq, request: Request):
     else:
         if cursor.execute("SELECT id FROM users WHERE username = ?", (username,)).fetchone():
             conn.close()
-            raise HTTPException(status_code=400, detail="该个性用户名已被占用，请换一个")
+            raise HTTPException(status_code=400, detail=f"该个性用户名 '{username}' 已被占用，请换一个（留空可自动生成）")
             
     # 获取默认注册额度
     default_quota_row = cursor.execute("SELECT value FROM system_settings WHERE key = 'default_user_quota'").fetchone()

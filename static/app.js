@@ -337,7 +337,27 @@ window.addEventListener('click', closeUserDropdown);
 
 // ==================== 登录/注册弹窗交互 ====================
 
+function showAuthAlert(msg, type = 'error') {
+  const box = document.getElementById('auth-alert-box');
+  if (!box) return;
+  if (!msg) {
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    return;
+  }
+  box.classList.remove('hidden');
+  const styles = {
+    error: 'bg-rose-500/15 border-rose-500/30 text-rose-300',
+    success: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300',
+    info: 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'
+  };
+  const icons = { error: '⚠️', success: '✅', info: '💡' };
+  box.className = `text-xs rounded-xl p-3 mb-4 flex items-center gap-2 border ${styles[type] || styles.info} transition-all`;
+  box.innerHTML = `<span>${icons[type] || '✨'}</span><span class="flex-1">${escapeHtml(msg)}</span>`;
+}
+
 function openAuthModal(tab = 'login') {
+  showAuthAlert('');
   const modal = document.getElementById('auth-modal');
   if (modal) modal.classList.remove('hidden');
   switchAuthTab(tab);
@@ -349,6 +369,7 @@ function closeAuthModal() {
 }
 
 function switchAuthTab(tab) {
+  showAuthAlert('');
   const tabs = ['login', 'register', 'reset'];
   tabs.forEach(t => {
     const form = document.getElementById(`auth-form-${t}`);
@@ -415,6 +436,7 @@ async function sendAuthCode(targetInputId, btnId, codeType) {
     }
 
     showToast(data.message || '验证码已成功下发！', 'success');
+    showAuthAlert(data.message || '验证码已成功发送！', 'success');
 
     // 60秒倒计时
     let countdown = 60;
@@ -433,6 +455,7 @@ async function sendAuthCode(targetInputId, btnId, codeType) {
     }
   } catch (err) {
     showToast(err.message || '发送失败，请重试', 'error');
+    showAuthAlert(err.message || '发送失败，请重试', 'error');
     if (btn) {
       btn.disabled = false;
       btn.textContent = '获取验证码';
@@ -475,6 +498,7 @@ async function handleLoginSubmit() {
     await loadHistory();
   } catch (err) {
     showToast(err.message, 'error');
+    showAuthAlert(err.message, 'error');
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = '🚀 立即登录 ↗';
@@ -520,6 +544,7 @@ async function handleRegisterSubmit() {
     await loadHistory();
   } catch (err) {
     showToast(err.message, 'error');
+    showAuthAlert(err.message, 'error');
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = '✨ 立即注册并登录 ↗';
