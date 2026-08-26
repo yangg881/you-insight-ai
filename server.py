@@ -175,6 +175,16 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1")
     if 'last_login_at' not in user_cols:
         cursor.execute("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP")
+    if 'tier' not in user_cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'basic'")
+    cursor.execute('''
+    UPDATE users SET tier = CASE
+        WHEN role = 'super_admin' OR daily_quota = -1 THEN 'vip'
+        WHEN daily_quota >= 400 THEN 'pro'
+        WHEN daily_quota >= 100 THEN 'standard'
+        ELSE 'basic'
+    END WHERE tier IS NULL OR tier = ''
+    ''')
     
     # 2. 验证码记录表
     cursor.execute('''

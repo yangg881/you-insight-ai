@@ -512,68 +512,95 @@
       document.getElementById('card-username').textContent = currentUser.username;
       document.getElementById('card-uid').textContent = `#${currentUser.id}`;
 
-      const roleBadge = document.getElementById('card-role-badge');
+      const userTier = currentUser.tier || (currentUser.daily_quota >= 400 ? 'pro' : (currentUser.daily_quota >= 100 ? 'standard' : 'basic'));
+      const tierBadge = {
+        basic: { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30', planName: '🌱 基础版会员', quotaDesc: '10 次 / 每天' },
+        standard: { name: '⚡ 标准版会员', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-bold', planName: '⚡ 标准版会员', quotaDesc: '100 次 / 每天' },
+        pro: { name: '👑 专业版会员', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold', planName: '👑 专业版会员', quotaDesc: '400 次 / 每天' },
+        vip: { name: '💎 无限特权会员', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30 font-bold', planName: '💎 无限特权会员', quotaDesc: '无限次 / 终身畅享' }
+      }[userTier] || { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300', planName: '基础版会员', quotaDesc: '10 次 / 每天' };
+
       if (currentUser.role === 'super_admin') {
-        roleBadge.textContent = '👑 超级管理员';
-        roleBadge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300';
-      } else if (currentUser.role === 'admin') {
-        roleBadge.textContent = '🛡️ 运营管理';
-        roleBadge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/20 text-purple-300';
-      } else {
-        roleBadge.textContent = '✨ 正式会员';
-        roleBadge.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300';
+        tierBadge.name = '👑 超级管理员';
+        tierBadge.color = 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold';
+        tierBadge.planName = '👑 超级管理员 (无限特权)';
+        tierBadge.quotaDesc = '无限制畅享';
       }
 
-      // Stats
-      const remainingEl = document.getElementById('stat-remaining');
+      const roleBadge = document.getElementById('card-role-badge');
+      if (roleBadge) {
+        roleBadge.textContent = tierBadge.name;
+        roleBadge.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${tierBadge.color} mb-3`;
+      }
+
       const planNameEl = document.getElementById('stat-plan-name');
+      if (planNameEl) planNameEl.textContent = tierBadge.planName;
       const planQuotaEl = document.getElementById('stat-plan-quota');
+      if (planQuotaEl) planQuotaEl.textContent = tierBadge.quotaDesc;
+
+      const totalQuota = currentUser.daily_quota;
+      const usedToday = currentUser.used_today || 0;
+      const remaining = totalQuota === -1 ? 9999 : Math.max(0, totalQuota - usedToday);
+
+      const remainingEl = document.getElementById('stat-remaining');
+      if (remainingEl) remainingEl.textContent = totalQuota === -1 ? '无限次' : `${remaining} 次`;
+      
+      const totalCreatedEl = document.getElementById('stat-total-created');
+      if (totalCreatedEl) totalCreatedEl.textContent = `${currentUser.total_generations || 0} 篇`;
+
       const usedDetailEl = document.getElementById('text-used-detail');
+      if (usedDetailEl) usedDetailEl.textContent = totalQuota === -1 ? `${usedToday} 次 (无限额度)` : `${usedToday} / ${totalQuota}`;
+      
+      const percent = totalQuota === -1 ? 100 : Math.min(100, Math.round((usedToday / (totalQuota || 1)) * 100));
       const percentEl = document.getElementById('text-percent');
+      if (percentEl) percentEl.textContent = totalQuota === -1 ? '畅享中' : `${percent}%`;
+      
       const progressBar = document.getElementById('quota-progress-bar');
+      if (progressBar) progressBar.style.width = `${percent}%`;
 
-      if (currentUser.daily_quota === -1) {
-        remainingEl.textContent = '无限次';
-        planNameEl.textContent = '👑 旗舰无限版';
-        planQuotaEl.textContent = '无限次 / 终身可用';
-        usedDetailEl.textContent = `${currentUser.used_today} / 无限`;
-        percentEl.textContent = '100%';
-        progressBar.style.width = '100%';
-      } else {
-        remainingEl.textContent = `${currentUser.remaining_today} 次`;
-        planNameEl.textContent = '✨ 标准专业版';
-        planQuotaEl.textContent = `${currentUser.daily_quota} 次 / 每天`;
-        usedDetailEl.textContent = `${currentUser.used_today} / ${currentUser.daily_quota}`;
-        const pct = Math.min(100, Math.round((currentUser.used_today / currentUser.daily_quota) * 100));
-        percentEl.textContent = `${pct}% 已用`;
-        progressBar.style.width = `${pct}%`;
-      }
-
-      document.getElementById('stat-total-created').textContent = `${currentUser.total_generations || 0} 篇`;
+      // Update 3-tier card active states
+      ['basic', 'standard', 'pro'].forEach(t => {
+        const card = document.getElementById(`tier-card-${t}`);
+        const statusBtn = document.getElementById(`btn-tier-${t}-status`);
+        if (card && statusBtn) {
+          if (userTier === t) {
+            card.classList.add('ring-2', 'ring-emerald-400/60', 'bg-emerald-950/20');
+            statusBtn.className = 'text-center py-1.5 px-3 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+            statusBtn.textContent = '✓ 当前已生效';
+          } else {
+            card.classList.remove('ring-2', 'ring-emerald-400/60', 'bg-emerald-950/20');
+            statusBtn.className = 'text-center py-1.5 px-3 rounded-xl text-xs font-medium bg-slate-800 text-slate-400';
+            statusBtn.textContent = '联系管理员升级 ↗';
+          }
+        }
+      });
 
       // Security Tab
-      document.getElementById('input-edit-username').value = currentUser.username;
+      const editUsername = document.getElementById('input-edit-username');
+      if (editUsername) editUsername.value = currentUser.username || '';
       
-      // Render Phone Binding Status
       const phoneLabel = document.getElementById('label-bound-phone');
       const phoneBtn = document.getElementById('btn-toggle-bind-phone');
-      if (currentUser.phone) {
-        phoneLabel.textContent = `已绑定: ${maskPhone(currentUser.phone)}`;
-        phoneBtn.textContent = '更换手机号';
-      } else {
-        phoneLabel.textContent = '未绑定';
-        phoneBtn.textContent = '立即绑定';
+      if (phoneLabel && phoneBtn) {
+        if (currentUser.phone) {
+          phoneLabel.textContent = `已绑定: ${maskPhone(currentUser.phone)}`;
+          phoneBtn.textContent = '更换手机号';
+        } else {
+          phoneLabel.textContent = '未绑定';
+          phoneBtn.textContent = '立即绑定';
+        }
       }
 
-      // Render Email Binding Status
       const emailLabel = document.getElementById('label-bound-email');
       const emailBtn = document.getElementById('btn-toggle-bind-email');
-      if (currentUser.email) {
-        emailLabel.textContent = `已绑定: ${maskEmail(currentUser.email)}`;
-        emailBtn.textContent = '更换邮箱';
-      } else {
-        emailLabel.textContent = '未绑定';
-        emailBtn.textContent = '立即绑定';
+      if (emailLabel && emailBtn) {
+        if (currentUser.email) {
+          emailLabel.textContent = `已绑定: ${maskEmail(currentUser.email)}`;
+          emailBtn.textContent = '更换邮箱';
+        } else {
+          emailLabel.textContent = '未绑定';
+          emailBtn.textContent = '立即绑定';
+        }
       }
     }
 
