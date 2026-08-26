@@ -19,7 +19,7 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="style.css?v=2.3.1">
+  <link rel="stylesheet" href="style.css?v=2.3.2">
   <style>
     .admin-nav-item {
       display: flex;
@@ -601,14 +601,14 @@
       toast.innerHTML = `<span style="font-size: 1.25rem;">${icons[type] || '✨'}</span><span style="flex: 1;">${escapeHtml(message)}</span>`;
       toast.onclick = () => {
         toast.style.opacity = '0';
-        toast.style.transform = 'scale(0.8) translateY(-10px)';
+        toast.style.transform = 'scale(0.8) translateY(-15px)';
         setTimeout(() => toast.remove(), 250);
       };
       container.appendChild(toast);
       setTimeout(() => {
         if (toast.parentElement) {
           toast.style.opacity = '0';
-          toast.style.transform = 'scale(0.8) translateY(-10px)';
+          toast.style.transform = 'scale(0.8) translateY(-15px)';
           setTimeout(() => toast.remove(), 250);
         }
       }, 2600);

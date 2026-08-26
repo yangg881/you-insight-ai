@@ -443,11 +443,13 @@ async def send_resend_email(email: str, code: str, action_name: str = "安全验
         </div>
     </div>
     """
+    plain_text = f"【YouInsight AI】您正在进行 {action_name} 操作，验证码为：{code} (5分钟内有效)。如非本人操作请忽略此邮件。"
     payload = {
         "from": RESEND_FROM_EMAIL,
         "to": [email],
         "subject": f"【YouInsight AI】您的验证码: {code}",
-        "html": html_content
+        "html": html_content,
+        "text": plain_text
     }
     async with httpx.AsyncClient(trust_env=False, timeout=10.0) as c:
         try:

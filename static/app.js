@@ -274,7 +274,7 @@ function showToast(message, type = 'success') {
   // 点击即可立即关闭
   toast.onclick = () => {
     toast.style.opacity = '0';
-    toast.style.transform = 'scale(0.8) translateY(-10px)';
+    toast.style.transform = 'scale(0.8) translateY(-15px)';
     setTimeout(() => toast.remove(), 250);
   };
   
@@ -284,7 +284,7 @@ function showToast(message, type = 'success') {
   setTimeout(() => {
     if (toast.parentElement) {
       toast.style.opacity = '0';
-      toast.style.transform = 'scale(0.8) translateY(-10px)';
+      toast.style.transform = 'scale(0.8) translateY(-15px)';
       setTimeout(() => toast.remove(), 250);
     }
   }, 2600);

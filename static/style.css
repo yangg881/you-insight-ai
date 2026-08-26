@@ -177,9 +177,9 @@ body {
 /* ==================== 屏幕正中央弹窗提示 (Centered Floating Modal Toast) ==================== */
 #toast-container {
   position: fixed !important;
-  top: 50% !important;
+  top: 15% !important;
   left: 50% !important;
-  transform: translate(-50%, -50%) !important;
+  transform: translateX(-50%) !important;
   z-index: 999999 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -227,7 +227,7 @@ body {
 .toast.info { border-top: 5px solid #38bdf8 !important; }
 
 @keyframes centerToastPop {
-  0% { transform: scale(0.6) translateY(20px); opacity: 0; }
+  0% { transform: scale(0.7) translateY(-20px); opacity: 0; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
