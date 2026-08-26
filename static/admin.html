@@ -19,7 +19,7 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="style.css?v=2.3.0">
+  <link rel="stylesheet" href="style.css?v=2.3.1">
   <style>
     .admin-nav-item {
       display: flex;
@@ -330,6 +330,7 @@
     let adminToken = localStorage.getItem('youinsight_jwt_token') || null;
 
     async function initAdmin() {
+      initTheme();
       if (adminToken) {
         try {
           const res = await fetch(`${API_BASE}/api/auth/me`, {
@@ -589,14 +590,58 @@
       } catch (err) { showToast(err.message, 'error'); }
     }
 
+    // ==================== 屏幕正中央弹窗提示 (Centered Toast Modal) ====================
     function showToast(message, type = 'success') {
       const container = document.getElementById('toast-container');
       if (!container) return;
+      container.innerHTML = '';
       const toast = document.createElement('div');
       toast.className = `toast ${type}`;
-      toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span><span>${escapeHtml(message)}</span>`;
+      const icons = { success: '✅', error: '⚠️', info: '💡' };
+      toast.innerHTML = `<span style="font-size: 1.25rem;">${icons[type] || '✨'}</span><span style="flex: 1;">${escapeHtml(message)}</span>`;
+      toast.onclick = () => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'scale(0.8) translateY(-10px)';
+        setTimeout(() => toast.remove(), 250);
+      };
       container.appendChild(toast);
-      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3200);
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.style.opacity = '0';
+          toast.style.transform = 'scale(0.8) translateY(-10px)';
+          setTimeout(() => toast.remove(), 250);
+        }
+      }, 2600);
+    }
+
+    // ==================== 白天/黑夜主题切换 (Theme Switcher) ====================
+    function initTheme() {
+      const savedTheme = localStorage.getItem('youinsight_theme') || 'dark';
+      applyTheme(savedTheme, false);
+    }
+
+    function applyTheme(theme, notify = true) {
+      const html = document.documentElement;
+      const icon = document.getElementById('theme-icon');
+      if (theme === 'light') {
+        html.classList.remove('dark');
+        html.setAttribute('data-theme', 'light');
+        if (icon) icon.textContent = '☀️';
+      } else {
+        html.classList.add('dark');
+        html.setAttribute('data-theme', 'dark');
+        if (icon) icon.textContent = '🌙';
+      }
+      localStorage.setItem('youinsight_theme', theme);
+      if (notify) {
+        showToast(theme === 'light' ? '已切换至 ☀️ 白天模式' : '已切换至 🌙 黑夜模式', 'info');
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme, true);
     }
 
     function escapeHtml(text) {
