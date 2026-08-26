@@ -1,3 +1,33 @@
+// ==================== 白天/黑夜主题切换 (Theme Switcher) ====================
+function initTheme() {
+  const savedTheme = localStorage.getItem('youinsight_theme') || 'dark';
+  applyTheme(savedTheme, false);
+}
+
+function applyTheme(theme, notify = true) {
+  const html = document.documentElement;
+  const icon = document.getElementById('theme-icon');
+  if (theme === 'light') {
+    html.classList.remove('dark');
+    html.setAttribute('data-theme', 'light');
+    if (icon) icon.textContent = '☀️';
+  } else {
+    html.classList.add('dark');
+    html.setAttribute('data-theme', 'dark');
+    if (icon) icon.textContent = '🌙';
+  }
+  localStorage.setItem('youinsight_theme', theme);
+  if (notify) {
+    showToast(theme === 'light' ? '已切换至 ☀️ 白天模式' : '已切换至 🌙 黑夜模式', 'info');
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const nextTheme = current === 'dark' ? 'light' : 'dark';
+  applyTheme(nextTheme, true);
+}
+
 
 const PROMPT_TEMPLATES_MAP = {
   competitor: {
@@ -228,19 +258,36 @@ async function fetchWithTimeout(url, options = {}, ms = 120000, retries = 1) {
   throw lastErr;
 }
 
-// ==================== Toast 提示组件 ====================
+// ==================== 屏幕正中央弹窗提示 (Centered Toast Modal) ====================
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   if (!container) return;
+  
+  // 清理现有旧弹窗，保持单条中央聚焦
+  container.innerHTML = '';
+  
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   const icons = { success: '✅', error: '⚠️', info: '💡' };
-  toast.innerHTML = `<span>${icons[type] || '✨'}</span><span>${escapeHtml(message)}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => {
+  toast.innerHTML = `<span style="font-size: 1.25rem;">${icons[type] || '✨'}</span><span style="flex: 1;">${escapeHtml(message)}</span>`;
+  
+  // 点击即可立即关闭
+  toast.onclick = () => {
     toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
+    toast.style.transform = 'scale(0.8) translateY(-10px)';
+    setTimeout(() => toast.remove(), 250);
+  };
+  
+  container.appendChild(toast);
+  
+  // 2.5秒后优雅自动消失
+  setTimeout(() => {
+    if (toast.parentElement) {
+      toast.style.opacity = '0';
+      toast.style.transform = 'scale(0.8) translateY(-10px)';
+      setTimeout(() => toast.remove(), 250);
+    }
+  }, 2600);
 }
 
 // ==================== 用户认证与状态管理 ====================

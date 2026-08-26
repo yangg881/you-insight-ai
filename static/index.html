@@ -20,7 +20,19 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.2.3">
+  <link rel="stylesheet" href="style.css?v=2.3.0">
+<script>
+    (function() {
+      const savedTheme = localStorage.getItem('youinsight_theme') || 'dark';
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
@@ -50,6 +62,10 @@
           <!-- Populated by app.js: Either Guest button or User dropdown -->
         </div>
 
+        <!-- Theme Toggle (白天/黑夜模式切换) -->
+        <button onclick="toggleTheme()" id="theme-toggle-btn" class="btn-secondary flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 p-0 rounded-xl text-sm sm:text-base" title="切换白天/黑夜模式">
+          <span id="theme-icon">🌙</span>
+        </button>
         <button onclick="toggleHistoryDrawer()" class="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm py-1.5 px-3">
           <span>📜</span><span class="hidden sm:inline">历史</span>
           <span id="history-count-badge" class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded text-xs font-mono">0</span>
@@ -677,6 +693,6 @@
     </div>
   </nav>
 
-  <script src="app.js?v=2.2.3"></script>
+  <script src="app.js?v=2.3.0"></script>
 </body>
 </html>
