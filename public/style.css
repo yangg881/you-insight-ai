@@ -465,3 +465,175 @@ body {
   border-color: #e2e8f0 !important;
   box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
 }
+
+/* ==================== Tier-1 High-End Sidebar Nav Items ==================== */
+.sidebar-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  position: relative;
+  cursor: pointer;
+  background: transparent;
+}
+
+.sidebar-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  transform: translateX(3px);
+}
+
+.sidebar-nav-item:hover .sidebar-icon-box {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.sidebar-nav-item.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.1));
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #a5b4fc !important;
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.18);
+}
+
+.sidebar-nav-item.active .nav-title {
+  color: #a5b4fc !important;
+  font-weight: 600;
+}
+
+.sidebar-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 22%;
+  height: 56%;
+  width: 3.5px;
+  border-radius: 4px;
+  background: linear-gradient(to bottom, #6366f1, #a855f7);
+  box-shadow: 0 0 10px #6366f1;
+}
+
+.sidebar-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light Theme overrides for Sidebar */
+[data-theme="light"] .sidebar-nav-item {
+  color: #475569;
+}
+
+[data-theme="light"] .sidebar-nav-item .nav-title {
+  color: #334155;
+}
+
+[data-theme="light"] .sidebar-nav-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+[data-theme="light"] .sidebar-nav-item:hover .nav-title {
+  color: #0f172a;
+}
+
+[data-theme="light"] .sidebar-nav-item.active {
+  background: #eef2ff !important;
+  border-color: #c7d2fe !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.1) !important;
+}
+
+[data-theme="light"] .sidebar-nav-item.active .nav-title {
+  color: #4338ca !important;
+  font-weight: 700;
+}
+
+[data-theme="light"] .sidebar-nav-item.active::before {
+  background: #4f46e5;
+  box-shadow: 0 0 8px rgba(79, 70, 229, 0.4);
+}
+
+/* ==================== Profile & Admin Nav Item Polish ==================== */
+.prof-nav-item,
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  position: relative;
+  cursor: pointer;
+  background: transparent;
+}
+
+.prof-nav-item:hover,
+.admin-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  transform: translateX(3px);
+}
+
+.prof-nav-item:hover .sidebar-icon-box,
+.admin-nav-item:hover .sidebar-icon-box {
+  transform: scale(1.08);
+}
+
+.prof-nav-item.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.1));
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #a5b4fc !important;
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.18);
+}
+
+.prof-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 22%;
+  height: 56%;
+  width: 3.5px;
+  border-radius: 4px;
+  background: linear-gradient(to bottom, #6366f1, #a855f7);
+  box-shadow: 0 0 10px #6366f1;
+}
+
+.admin-nav-item.active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(217, 119, 6, 0.1));
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24 !important;
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.18);
+}
+
+.admin-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  top: 22%;
+  height: 56%;
+  width: 3.5px;
+  border-radius: 4px;
+  background: linear-gradient(to bottom, #f59e0b, #d97706);
+  box-shadow: 0 0 10px #f59e0b;
+}
