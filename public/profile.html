@@ -283,17 +283,20 @@
           </div>
         </div>
 
-        <!-- 4. ⚠️ 危险操作区 (注销账号) -->
-        <div class="card p-6 max-w-2xl border-rose-500/30 bg-rose-950/10 space-y-3">
-          <h3 class="font-bold text-rose-400 text-sm flex items-center gap-2">
-            <span>⚠️</span><span>危险区域：注销账户</span>
-          </h3>
-          <p class="text-xs text-[var(--text-muted)] leading-relaxed">
-            注销账户是不可逆的高风险操作。注销后，您的账号凭证、所有生成的深度研报与历史资产、每日配额等将被<strong>永久抹除且无法找回</strong>。
-          </p>
-          <div class="pt-2">
-            <button onclick="openDeleteAccountModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-rose-300 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 transition-colors flex items-center gap-1.5">
-              <span>🗑️</span><span>申请注销当前账户</span>
+        <!-- 4. 注销账户 (低调内敛，兼顾风险警示) -->
+        <div class="pt-4 mt-6 border-t border-white/5 max-w-2xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-rose-500/20 transition-all">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-slate-300">注销账户</span>
+                <span class="text-[10px] text-rose-400/90 px-1.5 py-0.5 bg-rose-500/10 rounded border border-rose-500/20 font-mono">不可逆</span>
+              </div>
+              <p class="text-[11px] text-slate-500">
+                永久抹除账号凭证、历史研报资产及剩余配额，注销后不可找回
+              </p>
+            </div>
+            <button onclick="openDeleteAccountModal()" class="self-start sm:self-auto text-xs text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/15 px-3 py-1.5 rounded-lg border border-rose-500/20 transition-colors whitespace-nowrap">
+              注销账号
             </button>
           </div>
         </div>
