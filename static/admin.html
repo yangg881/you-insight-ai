@@ -19,7 +19,7 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="style.css?v=2.4.0">
+  <link rel="stylesheet" href="style.css?v=2.4.1">
   <style>
     .admin-nav-item {
       display: flex;
@@ -105,28 +105,28 @@
 
   <!-- ================= 2. ADMIN CONSOLE (已登录管理员全屏中台) ================= -->
   <div id="admin-console-view" class="flex-1 flex flex-col hidden">
-    <!-- Top Admin Header -->
-    <header class="bg-[var(--surface-secondary)]/90 backdrop-blur-xl border-b border-[var(--border-subtle)] px-6 py-3 sticky top-0 z-30">
+    <!-- Top Admin Header (Mobile Optimized) -->
+    <header class="bg-[var(--surface-secondary)]/90 backdrop-blur-xl border-b border-[var(--border-subtle)] px-3.5 sm:px-6 py-2.5 sm:py-3 sticky top-0 z-30">
       <div class="flex items-center justify-between max-w-7xl mx-auto">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md">
-            <span class="text-lg">⚙️</span>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
+            <span class="text-base sm:text-lg">⚙️</span>
           </div>
           <div>
-            <h1 class="font-bold text-white text-base flex items-center gap-2">
-              <span>YouInsight 综合管理控制台</span>
-              <span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-mono">v2.2 Pro</span>
+            <h1 class="font-bold text-white text-sm sm:text-base flex items-center gap-1.5 sm:gap-2">
+              <span>YouInsight 管理中台</span>
+              <span class="px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 font-mono hidden sm:inline">v2.4 Pro</span>
             </h1>
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
-          <a href="index.html" class="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-indigo-300 hover:text-white">
-            <span>🌐</span><span>前台工作台</span>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <a href="index.html" class="btn-secondary text-xs py-1.5 px-2.5 sm:px-3.5 flex items-center gap-1 text-indigo-300 hover:text-white">
+            <span>🌐</span><span class="hidden sm:inline">前台</span><span>工作台</span>
           </a>
-          <div class="flex items-center gap-2 pl-3 border-l border-white/10">
-            <span class="text-xs font-bold text-amber-300" id="adm-display-name">Admin</span>
-            <button onclick="handleAdminLogout()" class="text-xs text-rose-400 hover:text-rose-300 py-1 px-2 rounded hover:bg-rose-500/10 transition-colors">
+          <div class="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-3 border-l border-white/10">
+            <span class="text-xs font-bold text-amber-300 max-w-[70px] truncate" id="adm-display-name">Admin</span>
+            <button onclick="handleAdminLogout()" class="text-xs text-rose-400 hover:text-rose-300 py-1.5 px-2 rounded hover:bg-rose-500/10 transition-colors">
               退出
             </button>
           </div>
@@ -136,19 +136,31 @@
 
     <!-- Main Workspace Area -->
     <div class="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full p-3 sm:p-6 gap-4 sm:gap-6 min-w-0">
-      <!-- Admin Sidebar -->
-      <aside class="w-full md:w-56 flex-shrink-0 flex flex-row md:flex-col overflow-x-auto gap-1.5 pb-1 custom-scrollbar">
-        <button onclick="switchSection('metrics')" id="nav-metrics" class="admin-nav-item active">
-          <span>📊</span><span>运营数据大盘</span>
+      <!-- Admin Navigation (Horizontal Pill Bar on Mobile, Vertical Sidebar on Desktop) -->
+      <aside class="w-full md:w-60 flex-shrink-0 flex flex-row md:flex-col overflow-x-auto gap-2 pb-1.5 md:pb-0 no-scrollbar select-none flex-nowrap">
+        <button onclick="switchSection('metrics')" id="nav-metrics" class="admin-nav-item active flex-shrink-0">
+          <div class="sidebar-icon-box bg-amber-500/15 text-amber-400 border border-amber-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">运营数据大盘</span>
         </button>
-        <button onclick="switchSection('users')" id="nav-users" class="admin-nav-item">
-          <span>👥</span><span>用户与配额管理</span>
+        <button onclick="switchSection('users')" id="nav-users" class="admin-nav-item flex-shrink-0">
+          <div class="sidebar-icon-box bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">用户与配额管理</span>
         </button>
-        <button onclick="switchSection('logs')" id="nav-logs" class="admin-nav-item">
-          <span>📑</span><span>全站生成审计日志</span>
+        <button onclick="switchSection('logs')" id="nav-logs" class="admin-nav-item flex-shrink-0">
+          <div class="sidebar-icon-box bg-purple-500/15 text-purple-400 border border-purple-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">全站审计日志</span>
         </button>
-        <button onclick="switchSection('settings')" id="nav-settings" class="admin-nav-item">
-          <span>⚙️</span><span>运营与安全策略</span>
+        <button onclick="switchSection('settings')" id="nav-settings" class="admin-nav-item flex-shrink-0">
+          <div class="sidebar-icon-box bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">运营安全策略</span>
         </button>
       </aside>
 
@@ -225,7 +237,8 @@
             </div>
           </div>
 
-          <div class="card overflow-hidden">
+          <!-- Desktop Table View -->
+          <div class="hidden md:block card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs">
                 <thead class="bg-[var(--surface-tertiary)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
@@ -249,6 +262,11 @@
               </table>
             </div>
           </div>
+
+          <!-- Mobile Responsive Card Stream View -->
+          <div class="block md:hidden space-y-3" id="user-mobile-card-list">
+            <!-- Populated dynamically for Mobile -->
+          </div>
         </div>
 
         <!-- Section 3: Audit Logs -->
@@ -258,7 +276,8 @@
             <button onclick="loadAdminLogs()" class="btn-secondary text-xs py-1.5 px-3">🔄 刷新日志</button>
           </div>
 
-          <div class="card overflow-hidden">
+          <!-- Desktop Logs Table -->
+          <div class="hidden md:block card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full text-left text-xs">
                 <thead class="bg-[var(--surface-tertiary)] text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
@@ -277,6 +296,11 @@
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <!-- Mobile Logs Card Stream -->
+          <div class="block md:hidden space-y-2.5" id="logs-mobile-card-list">
+            <!-- Populated dynamically for Mobile -->
           </div>
         </div>
 
@@ -579,6 +603,8 @@
           tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-[var(--text-muted)]">未找到匹配的用户</td></tr>`;
           return;
         }
+        const mobList = document.getElementById('user-mobile-card-list');
+        
         tbody.innerHTML = data.users.map(u => {
           const userTier = u.tier || (u.daily_quota >= 400 ? 'pro' : (u.daily_quota >= 100 ? 'standard' : (u.daily_quota === -1 ? 'vip' : 'basic')));
           const tierBadges = {
@@ -625,6 +651,74 @@
             </td>
           </tr>
         `}).join('');
+
+        if (mobList) {
+          mobList.innerHTML = data.users.map(u => {
+            const userTier = u.tier || (u.daily_quota >= 400 ? 'pro' : (u.daily_quota >= 100 ? 'standard' : (u.daily_quota === -1 ? 'vip' : 'basic')));
+            const tierBadges = {
+              basic: '<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">🌱 基础版</span>',
+              standard: '<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-cyan-500/15 text-cyan-300 border border-cyan-500/25 font-bold">⚡ 标准版</span>',
+              pro: '<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">👑 专业版</span>',
+              vip: '<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold">💎 无限特权</span>'
+            };
+            const tierDisplay = u.role === 'super_admin' 
+              ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">👑 超级管理员</span>'
+              : (tierBadges[userTier] || tierBadges.basic);
+
+            return `
+            <div class="card p-4 space-y-3 relative border-[var(--border-subtle)]">
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <input type="checkbox" class="user-row-chk w-4 h-4 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer flex-shrink-0" value="${u.id}" data-username="${escapeHtml(u.username)}" data-role="${u.role}" onchange="updateSelectedBatchBar()">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-bold text-white text-sm truncate">${escapeHtml(u.username)}</span>
+                      <span class="font-mono text-[10px] text-[var(--text-muted)]">#${u.id}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex-shrink-0">${tierDisplay}</div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 text-xs py-2 border-y border-[var(--border-subtle)] bg-white/[0.02] -mx-4 px-4">
+                <div>
+                  <span class="text-[10px] text-[var(--text-muted)] block mb-0.5">绑定账号</span>
+                  <span class="text-slate-300 font-mono text-[11px] break-all">${escapeHtml(u.phone || u.email || '未绑定')}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-[var(--text-muted)] block mb-0.5">每日可用额度</span>
+                  <span class="text-emerald-400 font-bold font-mono text-[11px]">${u.daily_quota === -1 ? '无限' : u.daily_quota + '次/天'}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-[var(--text-muted)] block mb-0.5">账号状态</span>
+                  <span class="text-[10px] px-1.5 py-0.2 rounded font-medium ${u.is_active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-rose-500/15 text-rose-300'}">
+                    ${u.is_active ? '✓ 正常可用' : '✕ 账号已冻结'}
+                  </span>
+                </div>
+                <div>
+                  <span class="text-[10px] text-[var(--text-muted)] block mb-0.5">注册时间</span>
+                  <span class="text-[var(--text-muted)] font-mono text-[10px]">${u.created_at || '—'}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5 pt-0.5">
+                <button onclick="openSingleTierModal(${u.id}, '${escapeHtml(u.username)}', '${userTier}')" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 text-center">
+                  👑 设等级
+                </button>
+                <button onclick="openSingleQuotaModal(${u.id}, '${escapeHtml(u.username)}', ${u.daily_quota})" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 text-center">
+                  ⚙️ 调额度
+                </button>
+                <button onclick="toggleUser(${u.id})" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold text-center ${u.is_active ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'}">
+                  ${u.is_active ? '❄️ 冻结' : '🔓 解封'}
+                </button>
+                <button onclick="deleteSingleUser(${u.id}, '${escapeHtml(u.username)}', '${u.role}')" class="py-1.5 px-2.5 rounded-xl text-xs text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20" title="删除用户">
+                  🗑️
+                </button>
+              </div>
+            </div>
+            `;
+          }).join('');
+        }
       } catch (e) { console.error(e); }
     }
 
