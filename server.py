@@ -752,7 +752,20 @@ class UpdateProfileReq(BaseModel):
     old_password: Optional[str] = None
 
 class AdminQuotaReq(BaseModel):
-    daily_quota: int # -1 为无限
+    daily_quota: int # 具体数值或增减量，-1 为无限
+    mode: Optional[str] = 'set' # 'set' 直接设定, 'delta' 增减
+
+class AdminBatchQuotaReq(BaseModel):
+    uids: List[int]
+    daily_quota: int
+    mode: Optional[str] = 'set' # 'set' 或 'delta'
+
+class AdminBatchStatusReq(BaseModel):
+    uids: List[int]
+    is_active: int # 0 为冻结, 1 为解冻
+
+class AdminBatchDeleteReq(BaseModel):
+    uids: List[int]
 
 class AdminRoleReq(BaseModel):
     role: str # 'user', 'admin', 'super_admin'
@@ -1232,10 +1245,108 @@ async def admin_get_users(query: str = '', page: int = 1, page_size: int = 20, a
 @app.post('/api/admin/users/{uid}/quota')
 async def admin_set_quota(uid: int, req: AdminQuotaReq, admin: Dict[str, Any] = Depends(require_admin)):
     conn = get_db()
-    conn.execute("UPDATE users SET daily_quota = ? WHERE id = ?", (req.daily_quota, uid))
+    cursor = conn.cursor()
+    user = cursor.execute("SELECT id, username, daily_quota FROM users WHERE id = ?", (uid,)).fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    current_q = user["daily_quota"]
+    if req.mode == 'delta':
+        if current_q == -1:
+            new_q = -1
+        else:
+            new_q = max(0, current_q + req.daily_quota)
+    else:
+        new_q = req.daily_quota
+        
+    cursor.execute("UPDATE users SET daily_quota = ? WHERE id = ?", (new_q, uid))
     conn.commit()
     conn.close()
-    return {"status": "success", "message": f"用户 #{uid} 每日额度已修改为: {'无限' if req.daily_quota == -1 else req.daily_quota}"}
+    return {"status": "success", "message": f"用户 #{uid} ({user['username']}) 每日额度已更新为: {'无限' if new_q == -1 else f'{new_q} 次/天'}"}
+
+@app.post('/api/admin/users/batch-quota')
+async def admin_batch_quota(req: AdminBatchQuotaReq, admin: Dict[str, Any] = Depends(require_admin)):
+    if not req.uids:
+        raise HTTPException(status_code=400, detail="未选择任何用户")
+    conn = get_db()
+    cursor = conn.cursor()
+    updated_count = 0
+    for uid in req.uids:
+        user = cursor.execute("SELECT id, daily_quota FROM users WHERE id = ?", (uid,)).fetchone()
+        if not user:
+            continue
+        current_q = user["daily_quota"]
+        if req.mode == 'delta':
+            if current_q == -1:
+                new_q = -1
+            else:
+                new_q = max(0, current_q + req.daily_quota)
+        else:
+            new_q = req.daily_quota
+        cursor.execute("UPDATE users SET daily_quota = ? WHERE id = ?", (new_q, uid))
+        updated_count += 1
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"已成功为 {updated_count} 位选中的用户调配每日额度"}
+
+@app.post('/api/admin/users/batch-status')
+async def admin_batch_status(req: AdminBatchStatusReq, admin: Dict[str, Any] = Depends(require_admin)):
+    if not req.uids:
+        raise HTTPException(status_code=400, detail="未选择任何用户")
+    conn = get_db()
+    cursor = conn.cursor()
+    target_status = 1 if req.is_active else 0
+    updated_count = 0
+    for uid in req.uids:
+        user = cursor.execute("SELECT id, role FROM users WHERE id = ?", (uid,)).fetchone()
+        if not user or user["role"] == 'super_admin' or user["id"] == admin["id"]:
+            continue
+        cursor.execute("UPDATE users SET is_active = ? WHERE id = ?", (target_status, uid))
+        updated_count += 1
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"已成功批量{'解封' if target_status == 1 else '冻结'} {updated_count} 位用户"}
+
+@app.delete('/api/admin/users/{uid}')
+async def admin_delete_user(uid: int, admin: Dict[str, Any] = Depends(require_admin)):
+    conn = get_db()
+    cursor = conn.cursor()
+    user = cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (uid,)).fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if user["role"] == 'super_admin' or user["id"] == admin["id"]:
+        conn.close()
+        raise HTTPException(status_code=400, detail="不能删除超级管理员或当前登录的管理员账号")
+    
+    cursor.execute("DELETE FROM history WHERE user_id = ?", (uid,))
+    cursor.execute("DELETE FROM daily_usage WHERE user_id = ?", (uid,))
+    cursor.execute("DELETE FROM generation_logs WHERE user_id = ?", (uid,))
+    cursor.execute("DELETE FROM users WHERE id = ?", (uid,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"用户 #{uid} ({user['username']}) 及其关联研报资产已被彻底删除"}
+
+@app.post('/api/admin/users/batch-delete')
+async def admin_batch_delete(req: AdminBatchDeleteReq, admin: Dict[str, Any] = Depends(require_admin)):
+    if not req.uids:
+        raise HTTPException(status_code=400, detail="未选择任何用户")
+    conn = get_db()
+    cursor = conn.cursor()
+    deleted_count = 0
+    for uid in req.uids:
+        user = cursor.execute("SELECT id, role FROM users WHERE id = ?", (uid,)).fetchone()
+        if not user or user["role"] == 'super_admin' or user["id"] == admin["id"]:
+            continue
+        cursor.execute("DELETE FROM history WHERE user_id = ?", (uid,))
+        cursor.execute("DELETE FROM daily_usage WHERE user_id = ?", (uid,))
+        cursor.execute("DELETE FROM generation_logs WHERE user_id = ?", (uid,))
+        cursor.execute("DELETE FROM users WHERE id = ?", (uid,))
+        deleted_count += 1
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"已成功批量彻底删除 {deleted_count} 位用户及其资产"}
 
 @app.post('/api/admin/users/{uid}/role')
 async def admin_set_role(uid: int, req: AdminRoleReq, admin: Dict[str, Any] = Depends(require_admin)):
@@ -1262,7 +1373,7 @@ async def admin_toggle_status(uid: int, admin: Dict[str, Any] = Depends(require_
     conn.execute("UPDATE users SET is_active = ? WHERE id = ?", (new_status, uid))
     conn.commit()
     conn.close()
-    return {"status": "success", "message": f"用户 #{uid} 已{'封禁' if new_status == 0 else '解封'}"}
+    return {"status": "success", "message": f"用户 #{uid} 已{'冻结' if new_status == 0 else '解封'}"}
 
 @app.get('/api/admin/logs')
 async def admin_get_logs(page: int = 1, page_size: int = 30, admin: Dict[str, Any] = Depends(require_admin)):
