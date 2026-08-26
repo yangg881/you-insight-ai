@@ -19,7 +19,7 @@
       }
     }
   </script>
-  <link rel="stylesheet" href="style.css?v=2.3.5">
+  <link rel="stylesheet" href="style.css?v=2.4.0">
   <style>
     .admin-nav-item {
       display: flex;
@@ -207,7 +207,10 @@
               <span class="text-slate-200">已勾选 <strong id="selected-user-count" class="text-amber-400 font-bold font-mono text-sm">0</strong> 位用户</span>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-              <button onclick="openBatchQuotaModal()" class="btn-primary text-xs py-1.5 px-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 flex items-center gap-1 font-bold border-none shadow-md shadow-indigo-600/30">
+              <button onclick="openBatchTierModal()" class="btn-primary text-xs py-1.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 flex items-center gap-1 font-bold border-none shadow-md shadow-amber-500/25">
+                <span>👑</span><span>批量设置等级</span>
+              </button>
+              <button onclick="openBatchQuotaModal()" class="btn-secondary text-xs py-1.5 px-3 text-indigo-300 hover:text-white border-indigo-500/30 hover:bg-indigo-500/10 flex items-center gap-1 font-semibold">
                 <span>⚡</span><span>批量增减额度</span>
               </button>
               <button onclick="executeBatchStatus(0)" class="btn-secondary text-xs py-1.5 px-3 text-rose-300 hover:text-rose-200 border-rose-500/30 hover:bg-rose-500/10 flex items-center gap-1">
@@ -233,7 +236,7 @@
                     <th class="p-3.5">UID</th>
                     <th class="p-3.5">用户昵称</th>
                     <th class="p-3.5">绑定账号</th>
-                    <th class="p-3.5">角色权限</th>
+                    <th class="p-3.5">会员等级与权限</th>
                     <th class="p-3.5">每日可用额度</th>
                     <th class="p-3.5">账号状态</th>
                     <th class="p-3.5">注册时间</th>
@@ -488,6 +491,75 @@
       }, 400);
     }
 
+    let activeTierTarget = null; // { type: 'single', uid: 3, username: '...' } or { type: 'batch', uids: [1,2,3] }
+
+    function openSingleTierModal(uid, username, currentTier) {
+      activeTierTarget = { type: 'single', uid, username };
+      document.getElementById('tier-modal-title').textContent = `设置用户会员等级 - #${uid} (${username})`;
+      document.getElementById('tier-modal-target').textContent = `用户 #${uid} (${username}) · 当前等级: ${currentTier || '基础版'}`;
+      
+      const radio = document.querySelector(`input[name="target-tier-radio"][value="${currentTier || 'basic'}"]`);
+      if (radio) radio.checked = true;
+      document.getElementById('chk-sync-tier-quota').checked = true;
+      document.getElementById('tier-modal').classList.remove('hidden');
+    }
+
+    function openBatchTierModal() {
+      const uids = getSelectedUserIds();
+      if (uids.length === 0) {
+        showToast('请先勾选需要设置等级的用户', 'info');
+        return;
+      }
+      activeTierTarget = { type: 'batch', uids };
+      document.getElementById('tier-modal-title').textContent = `批量设置 ${uids.length} 位用户的会员等级`;
+      document.getElementById('tier-modal-target').textContent = `已选中 ${uids.length} 位用户 (UID: ${uids.slice(0, 5).join(', ')}${uids.length > 5 ? '...' : ''})`;
+      document.getElementById('chk-sync-tier-quota').checked = true;
+      document.getElementById('tier-modal').classList.remove('hidden');
+    }
+
+    function closeTierModal() {
+      document.getElementById('tier-modal').classList.add('hidden');
+      activeTierTarget = null;
+    }
+
+    async function submitTierModal() {
+      if (!activeTierTarget) return;
+      const selectedTier = document.querySelector('input[name="target-tier-radio"]:checked')?.value || 'basic';
+      const syncQuota = document.getElementById('chk-sync-tier-quota')?.checked ?? true;
+      const btn = document.getElementById('btn-submit-tier');
+      btn.disabled = true;
+      btn.textContent = '正在应用...';
+
+      try {
+        if (activeTierTarget.type === 'single') {
+          const res = await fetch(`${API_BASE}/api/admin/users/${activeTierTarget.uid}/tier`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ tier: selectedTier, sync_quota: syncQuota })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || '设置失败');
+          showToast(data.message, 'success');
+        } else if (activeTierTarget.type === 'batch') {
+          const res = await fetch(`${API_BASE}/api/admin/users/batch-tier`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+            body: JSON.stringify({ uids: activeTierTarget.uids, tier: selectedTier, sync_quota: syncQuota })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || '批量设置失败');
+          showToast(data.message, 'success');
+        }
+        closeTierModal();
+        loadAdminUsers();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 确认保存等级设置';
+      }
+    }
+
     let activeQuotaTarget = null; // { type: 'single', uid: 3, username: '...' } or { type: 'batch', uids: [1,2,3] }
     let pendingDeleteTarget = null; // { type: 'single', uid: 3, username: '...' } or { type: 'batch', uids: [1,2,3] }
 
@@ -507,7 +579,19 @@
           tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-[var(--text-muted)]">未找到匹配的用户</td></tr>`;
           return;
         }
-        tbody.innerHTML = data.users.map(u => `
+        tbody.innerHTML = data.users.map(u => {
+          const userTier = u.tier || (u.daily_quota >= 400 ? 'pro' : (u.daily_quota >= 100 ? 'standard' : (u.daily_quota === -1 ? 'vip' : 'basic')));
+          const tierBadges = {
+            basic: '<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">🌱 基础版 (10次)</span>',
+            standard: '<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-cyan-500/15 text-cyan-300 border border-cyan-500/25 font-bold">⚡ 标准版 (100次)</span>',
+            pro: '<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">👑 专业版 (400次)</span>',
+            vip: '<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold">💎 无限特权</span>'
+          };
+          const tierDisplay = u.role === 'super_admin' 
+            ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">👑 超级管理员</span>'
+            : (tierBadges[userTier] || tierBadges.basic);
+
+          return `
           <tr class="hover:bg-[var(--surface-tertiary)] transition-colors">
             <td class="p-3.5 text-center">
               <input type="checkbox" class="user-row-chk w-4 h-4 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer" value="${u.id}" data-username="${escapeHtml(u.username)}" data-role="${u.role}" onchange="updateSelectedBatchBar()">
@@ -516,9 +600,7 @@
             <td class="p-3.5 font-bold text-white">${escapeHtml(u.username)}</td>
             <td class="p-3.5 font-mono text-slate-300">${escapeHtml(u.phone || u.email || '—')}</td>
             <td class="p-3.5">
-              <span class="px-2 py-0.5 rounded text-[11px] font-medium ${u.role === 'super_admin' ? 'bg-amber-500/20 text-amber-300' : (u.role === 'admin' ? 'bg-purple-500/20 text-purple-300' : 'bg-indigo-500/20 text-indigo-300')}">
-                ${u.role}
-              </span>
+              ${tierDisplay}
             </td>
             <td class="p-3.5 font-mono text-emerald-400 font-bold">${u.daily_quota === -1 ? '无限' : u.daily_quota + '次/天'}</td>
             <td class="p-3.5">
@@ -528,7 +610,10 @@
             </td>
             <td class="p-3.5 text-[var(--text-muted)]">${u.created_at || '—'}</td>
             <td class="p-3.5 text-right space-x-1.5 whitespace-nowrap">
-              <button onclick="openSingleQuotaModal(${u.id}, '${escapeHtml(u.username)}', ${u.daily_quota})" class="btn-secondary text-[11px] py-1 px-2.5 hover:border-indigo-500/50 hover:text-indigo-300">
+              <button onclick="openSingleTierModal(${u.id}, '${escapeHtml(u.username)}', '${userTier}')" class="btn-secondary text-[11px] py-1 px-2.5 hover:border-amber-500/50 hover:text-amber-300" title="设置会员等级">
+                👑 设等级
+              </button>
+              <button onclick="openSingleQuotaModal(${u.id}, '${escapeHtml(u.username)}', ${u.daily_quota})" class="btn-secondary text-[11px] py-1 px-2.5 hover:border-indigo-500/50 hover:text-indigo-300" title="增减调整额度">
                 ⚙️ 调额度
               </button>
               <button onclick="toggleUser(${u.id})" class="btn-secondary text-[11px] py-1 px-2.5 ${u.is_active ? 'text-rose-400 hover:border-rose-500/50' : 'text-emerald-400 hover:border-emerald-500/50'}">
@@ -539,7 +624,7 @@
               </button>
             </td>
           </tr>
-        `).join('');
+        `}).join('');
       } catch (e) { console.error(e); }
     }
 
@@ -949,6 +1034,89 @@
         <button type="button" onclick="confirmExecuteDelete()" id="btn-confirm-del-exec" class="btn-primary py-2 px-5 text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 border-none shadow-lg shadow-red-600/30">
           🗑️ 确认永久彻底删除
         </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= Tier Adjustment Modal (单人/批量会员等级设定) ================= -->
+  <div id="tier-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+    <div class="w-full max-w-md bg-[var(--surface-secondary)] border border-amber-500/40 rounded-3xl p-6 shadow-2xl relative overflow-hidden animate-fade-in">
+      <div class="flex items-center justify-between pb-4 mb-4 border-b border-[var(--border-subtle)]">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>👑</span><span id="tier-modal-title">设置用户会员等级</span>
+        </h3>
+        <button onclick="closeTierModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition-colors">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="p-3 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)]">
+          <span class="text-[var(--text-muted)]">调配目标：</span>
+          <span id="tier-modal-target" class="font-bold text-amber-300 font-mono">用户 #3 (yang)</span>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-300 mb-2">选择会员等级方案</label>
+          <div class="space-y-2">
+            <label class="flex items-center justify-between p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-tertiary)] hover:border-indigo-500/40 cursor-pointer transition-colors">
+              <div class="flex items-center gap-2.5">
+                <input type="radio" name="target-tier-radio" value="basic" checked class="text-indigo-600 focus:ring-0">
+                <div>
+                  <span class="font-bold text-white">🌱 基础版会员</span>
+                  <p class="text-[11px] text-[var(--text-muted)]">标准配额 10 次 / 每天</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 font-mono">10次/天</span>
+            </label>
+
+            <label class="flex items-center justify-between p-3 rounded-xl border border-cyan-500/30 bg-cyan-950/20 hover:border-cyan-500/60 cursor-pointer transition-colors">
+              <div class="flex items-center gap-2.5">
+                <input type="radio" name="target-tier-radio" value="standard" class="text-cyan-500 focus:ring-0">
+                <div>
+                  <span class="font-bold text-cyan-300">⚡ 标准版会员</span>
+                  <p class="text-[11px] text-[var(--text-muted)]">标准配额 100 次 / 每天 · 独立分析师</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-300 font-mono">100次/天</span>
+            </label>
+
+            <label class="flex items-center justify-between p-3 rounded-xl border border-amber-500/30 bg-amber-950/20 hover:border-amber-500/60 cursor-pointer transition-colors">
+              <div class="flex items-center gap-2.5">
+                <input type="radio" name="target-tier-radio" value="pro" class="text-amber-500 focus:ring-0">
+                <div>
+                  <span class="font-bold text-amber-300">👑 专业版会员</span>
+                  <p class="text-[11px] text-[var(--text-muted)]">标准配额 400 次 / 每天 · 机构级旗舰</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-mono">400次/天</span>
+            </label>
+
+            <label class="flex items-center justify-between p-3 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:border-purple-500/60 cursor-pointer transition-colors">
+              <div class="flex items-center gap-2.5">
+                <input type="radio" name="target-tier-radio" value="vip" class="text-purple-500 focus:ring-0">
+                <div>
+                  <span class="font-bold text-purple-300">💎 无限特权</span>
+                  <p class="text-[11px] text-[var(--text-muted)]">无限额度 (-1) · 终身不限次</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-purple-500/20 text-purple-300 font-mono">无限次</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-white/5">
+            <input type="checkbox" id="chk-sync-tier-quota" checked class="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700 focus:ring-0">
+            <span class="text-slate-200">自动同步将每日可用额度重置为此等级标准配额</span>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)]">
+          <button type="button" onclick="closeTierModal()" class="btn-secondary py-2 px-4 text-xs">取消</button>
+          <button type="button" onclick="submitTierModal()" id="btn-submit-tier" class="btn-primary py-2 px-5 text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 border-none shadow-lg shadow-amber-500/20">
+            💾 确认保存等级设置
+          </button>
+        </div>
       </div>
     </div>
   </div>

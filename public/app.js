@@ -323,7 +323,8 @@ function renderAuthHeader() {
 
   if (currentUser) {
     const quotaText = currentUser.daily_quota === -1 ? '无限' : `${currentUser.remaining_today}次`;
-    const roleBadge = currentUser.role === 'super_admin' ? '👑 超管' : (currentUser.role === 'admin' ? '🛡️ 管理' : '✨ 会员');
+    const userTier = currentUser.tier || (currentUser.daily_quota >= 400 ? 'pro' : (currentUser.daily_quota >= 100 ? 'standard' : 'basic'));
+    const roleBadge = currentUser.role === 'super_admin' ? '👑 超管' : (userTier === 'pro' ? '👑 专业版' : (userTier === 'standard' ? '⚡ 标准版' : '🌱 基础版'));
     
     container.innerHTML = `
       <div class="relative">

@@ -153,6 +153,7 @@ def init_db():
         password_hash TEXT,
         role TEXT DEFAULT 'user',
         daily_quota INTEGER DEFAULT 10,
+            tier TEXT DEFAULT 'basic',
         is_active INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login_at TIMESTAMP
@@ -611,7 +612,7 @@ async def get_current_user_optional(authorization: Optional[str] = Header(None))
         return None
     
     conn = get_db()
-    user = conn.execute("SELECT id, username, phone, email, role, daily_quota, is_active FROM users WHERE id = ?", (payload["uid"],)).fetchone()
+    user = conn.execute("SELECT id, username, phone, email, role, daily_quota, tier, is_active FROM users WHERE id = ?", (payload["uid"],)).fetchone()
     conn.close()
     if not user or not user["is_active"]:
         return None
@@ -766,6 +767,30 @@ class AdminBatchStatusReq(BaseModel):
 
 class AdminBatchDeleteReq(BaseModel):
     uids: List[int]
+
+TIER_QUOTA_MAP = {
+    "basic": 10,
+    "standard": 100,
+    "pro": 400,
+    "vip": -1
+}
+
+TIER_NAME_MAP = {
+    "basic": "基础版",
+    "standard": "标准版",
+    "pro": "专业版",
+    "vip": "无限特权"
+}
+
+class AdminTierReq(BaseModel):
+    tier: str # 'basic', 'standard', 'pro', 'vip'
+    sync_quota: Optional[bool] = True
+    custom_quota: Optional[int] = None
+
+class AdminBatchTierReq(BaseModel):
+    uids: List[int]
+    tier: str
+    sync_quota: Optional[bool] = True
 
 class AdminRoleReq(BaseModel):
     role: str # 'user', 'admin', 'super_admin'
@@ -1003,6 +1028,8 @@ async def api_login(req: LoginReq, request: Request):
         "email": user["email"],
         "role": user["role"],
         "daily_quota": user["daily_quota"],
+        "tier": user["tier"] if "tier" in user.keys() else "basic",
+        "tier_name": TIER_NAME_MAP.get(user["tier"] if "tier" in user.keys() else "basic", "基础版"),
         "used_today": used_today,
         "remaining_today": 9999 if user["daily_quota"] == -1 else max(0, user["daily_quota"] - used_today)
     }
@@ -1061,6 +1088,8 @@ async def api_get_me(user: Dict[str, Any] = Depends(require_auth)):
             "email": user["email"],
             "role": user["role"],
             "daily_quota": quota,
+            "tier": user.get("tier", "basic"),
+            "tier_name": TIER_NAME_MAP.get(user.get("tier", "basic"), "基础版"),
             "used_today": used_today,
             "remaining_today": 9999 if quota == -1 else max(0, quota - used_today),
             "total_generations": total_gen
@@ -1224,7 +1253,7 @@ async def admin_get_users(query: str = '', page: int = 1, page_size: int = 20, a
     if query:
         total = conn.execute("SELECT COUNT(*) AS c FROM users WHERE username LIKE ? OR phone LIKE ? OR email LIKE ?", (q_str, q_str, q_str)).fetchone()["c"]
         rows = conn.execute("""
-        SELECT id, username, phone, email, role, daily_quota, is_active,
+        SELECT id, username, phone, email, role, daily_quota, tier, is_active,
                datetime(created_at, 'localtime') AS created_at,
                datetime(last_login_at, 'localtime') AS last_login_at
         FROM users WHERE username LIKE ? OR phone LIKE ? OR email LIKE ?
@@ -1233,7 +1262,7 @@ async def admin_get_users(query: str = '', page: int = 1, page_size: int = 20, a
     else:
         total = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
         rows = conn.execute("""
-        SELECT id, username, phone, email, role, daily_quota, is_active,
+        SELECT id, username, phone, email, role, daily_quota, tier, is_active,
                datetime(created_at, 'localtime') AS created_at,
                datetime(last_login_at, 'localtime') AS last_login_at
         FROM users ORDER BY id DESC LIMIT ? OFFSET ?
@@ -1347,6 +1376,55 @@ async def admin_batch_delete(req: AdminBatchDeleteReq, admin: Dict[str, Any] = D
     conn.commit()
     conn.close()
     return {"status": "success", "message": f"已成功批量彻底删除 {deleted_count} 位用户及其资产"}
+
+@app.post('/api/admin/users/{uid}/tier')
+async def admin_set_user_tier(uid: int, req: AdminTierReq, admin: Dict[str, Any] = Depends(require_admin)):
+    conn = get_db()
+    cursor = conn.cursor()
+    user = cursor.execute("SELECT id, username, role, daily_quota, tier FROM users WHERE id = ?", (uid,)).fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    target_tier = req.tier if req.tier in TIER_QUOTA_MAP else 'basic'
+    if req.custom_quota is not None:
+        target_quota = req.custom_quota
+    elif req.sync_quota:
+        target_quota = TIER_QUOTA_MAP[target_tier]
+    else:
+        target_quota = user["daily_quota"]
+        
+    cursor.execute("UPDATE users SET tier = ?, daily_quota = ? WHERE id = ?", (target_tier, target_quota, uid))
+    conn.commit()
+    conn.close()
+    return {
+        "status": "success",
+        "message": f"用户 #{uid} ({user['username']}) 等级已更新为: {TIER_NAME_MAP[target_tier]} (每日可用额度: {'无限' if target_quota == -1 else f'{target_quota}次/天'})"
+    }
+
+@app.post('/api/admin/users/batch-tier')
+async def admin_batch_user_tier(req: AdminBatchTierReq, admin: Dict[str, Any] = Depends(require_admin)):
+    if not req.uids:
+        raise HTTPException(status_code=400, detail="未选择任何用户")
+    target_tier = req.tier if req.tier in TIER_QUOTA_MAP else 'basic'
+    target_quota = TIER_QUOTA_MAP[target_tier] if req.sync_quota else None
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    updated_count = 0
+    for uid in req.uids:
+        user = cursor.execute("SELECT id, role, daily_quota FROM users WHERE id = ?", (uid,)).fetchone()
+        if not user:
+            continue
+        new_q = target_quota if target_quota is not None else user["daily_quota"]
+        cursor.execute("UPDATE users SET tier = ?, daily_quota = ? WHERE id = ?", (target_tier, new_q, uid))
+        updated_count += 1
+    conn.commit()
+    conn.close()
+    return {
+        "status": "success",
+        "message": f"已成功批量为 {updated_count} 位用户调整等级为: {TIER_NAME_MAP[target_tier]}{' (每日额度已同步调整)' if req.sync_quota else ''}"
+    }
 
 @app.post('/api/admin/users/{uid}/role')
 async def admin_set_role(uid: int, req: AdminRoleReq, admin: Dict[str, Any] = Depends(require_admin)):
