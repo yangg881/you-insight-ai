@@ -3,12 +3,16 @@ from datetime import datetime, date, timezone
 from typing import List, Optional, Dict, Any
 from contextlib import asynccontextmanager
 import urllib.parse
+import socket
+from urllib.parse import urljoin, urlsplit, urlunsplit
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Header, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from ipaddress import ip_address, ip_network
+from urllib.parse import urlsplit
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 try:
     from dotenv import load_dotenv
@@ -19,8 +23,9 @@ except Exception:
 
 # ==================== 核心配置 ====================
 API_KEY = os.getenv('YOU_API_KEY', '')
-
-BRAVE_API_KEY = os.getenv('BRAVE_API_KEY', 'BSAfv29c3W0c8ZQ9O9hpxDVmoRX8p01')
+BRAVE_API_KEY = os.getenv('BRAVE_API_KEY', '')
+PARALLEL_API_KEY = os.getenv('PARALLEL_API_KEY', 'KnlzNBPLDtfwMXQT04jQpgmv1bXwIeX6Pbfgz3Ul')
+MONID_API_KEY = os.getenv('MONID_API_KEY', 'monid_live_2JLwCcHPiaNJhofxypvrKj4x')
 
 def get_current_brave_api_key() -> str:
     try:
@@ -44,6 +49,178 @@ def get_current_you_api_key() -> str:
         pass
     return API_KEY
 
+
+def get_current_parallel_api_key() -> str:
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM system_settings WHERE key = 'parallel_api_key'").fetchone()
+        conn.close()
+        if row and row["value"] and row["value"].strip():
+            return row["value"].strip()
+    except Exception:
+        pass
+    return PARALLEL_API_KEY
+
+async def fetch_parallel_search(query: str, objective: str = None, count: int = 4) -> Optional[Dict[str, Any]]:
+    key = get_current_parallel_api_key()
+    if not key:
+        return None
+    try:
+        async with client(timeout=25.0) as c:
+            obj = objective or f"全面检索关于【{query}】的最新权威事实、技术评测大表、行业对比与核心参数"
+            payload = {
+                "objective": obj,
+                "search_queries": [
+                    query,
+                    f"{query} 核心数据 参数",
+                    f"{query} 评测 对比"
+                ][:count]
+            }
+            r = await c.post(
+                "https://api.parallel.ai/v1/search",
+                headers={"x-api-key": key, "Content-Type": "application/json"},
+                json=payload
+            )
+            if r.status_code == 200:
+                return r.json()
+            else:
+                print(f"Parallel Search Error: {r.status_code} - {r.text[:200]}")
+    except Exception as e:
+        print(f"Error fetching Parallel search: {e}")
+    return None
+
+async def fetch_parallel_extract(urls: List[str], objective: str = None) -> List[Dict[str, Any]]:
+    key = get_current_parallel_api_key()
+    if not key:
+        return []
+    try:
+        async with client(timeout=10.0) as c:
+            payload = {"urls": urls[:3]}
+            if objective:
+                payload["objective"] = objective
+            r = await c.post(
+                "https://api.parallel.ai/v1/extract",
+                headers={"x-api-key": key, "Content-Type": "application/json"},
+                json=payload
+            )
+            if r.status_code == 200:
+                data = r.json()
+                items = []
+                for res in data.get("results", []):
+                    u = res.get("url", "")
+                    t = res.get("title") or "提取内容"
+                    excerpts = res.get("excerpts", [])
+                    full = res.get("full_content") or ""
+                    content_md = full if full else "\n\n".join(excerpts)
+                    if not content_md.strip():
+                        content_md = "> ⚠️ 该网页暂无可用文本内容"
+                    items.append({
+                        "url": u,
+                        "domain": urlsplit(u).netloc,
+                        "title": t,
+                        "markdown": content_md,
+                        "word_count": len(content_md),
+                        "engine": "Parallel.ai"
+                    })
+                return items
+            else:
+                print(f"Parallel Extract Error: {r.status_code} - {r.text[:200]}")
+    except Exception as e:
+        print(f"Error fetching Parallel extract: {e}")
+    return []
+
+def get_current_monid_api_key() -> str:
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM system_settings WHERE key = 'monid_api_key'").fetchone()
+        conn.close()
+        if row and row["value"]:
+            return row["value"].strip()
+    except Exception:
+        pass
+    return os.getenv('MONID_API_KEY', 'monid_live_2JLwCcHPiaNJhofxypvrKj4x')
+
+
+# ==================== 商汤 SenseNova U1 Fast 商业生图引擎 ====================
+SENSENOVA_API_KEY = os.getenv('SENSENOVA_API_KEY', 'sk-ZuZghWayQ2tNUQ5BDklYaszFPmB8ICDH')
+
+def get_current_sensenova_api_key() -> str:
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM system_settings WHERE key = 'sensenova_api_key'").fetchone()
+        conn.close()
+        if row and row["value"]:
+            return row["value"].strip()
+    except Exception:
+        pass
+    return SENSENOVA_API_KEY
+
+def is_sensenova_enabled() -> bool:
+    try:
+        conn = get_db()
+        row = conn.execute("SELECT value FROM system_settings WHERE key = 'sensenova_enabled'").fetchone()
+        conn.close()
+        if row and row["value"] is not None:
+            return str(row["value"]).strip() in ('1', 'true', 'True')
+    except Exception:
+        pass
+    return True
+
+async def fetch_sensenova_image(topic: str, context_type: str = 'research') -> Optional[Dict[str, Any]]:
+    """调用商汤 SenseNova U1 Fast 极速大模型生成专业 2496x1664 (3:2横版) 商业全景信息图"""
+    if not is_sensenova_enabled():
+        return None
+    api_key = get_current_sensenova_api_key()
+    if not api_key:
+        return None
+        
+    topic_clean = re.sub(r'[\r\n\t]+', ' ', (topic or '')).strip()[:100]
+    if not topic_clean:
+        return None
+        
+    if context_type in ('company', 'enrich'):
+        prompt = f"企业全景商业档案与生态矩阵配图，主题：【{topic_clean}】，现代商业科技咨询图表风格，包含核心业务、产品矩阵、全球布局与竞争壁垒，深蓝科技质感，4K超清"
+    elif context_type == 'digest':
+        prompt = f"行业商业每日早报视觉海报封面，主题：【{topic_clean}】，现代科技资讯信息图风格，今日核心热点快报，商务深蓝渐变色调，4K高清"
+    elif context_type == 'finance':
+        prompt = f"企业核心财务洞察与商业估值全景配图，主题：【{topic_clean}】，现代金融商务图表风格，深蓝金渐变质感，4K超清"
+    elif context_type == 'social':
+        prompt = f"全网社媒声量与舆情口碑分析全景图，主题：【{topic_clean}】，现代数据可视化信息图风格，多源互动声量与情感洞察，深蓝紫科技感，4K超清"
+    else:
+        prompt = f"商业深度研究报告配图，主题：【{topic_clean}】，现代科技与商业咨询信息图风格，包含全景矩阵、产业链上下游与发展趋势，深蓝高科技色调，商务现代极简风，4K超清"
+        
+    url = "https://token.sensenova.cn/v1/images/generations"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "sensenova-u1-fast",
+        "prompt": prompt,
+        "n": 1,
+        "size": "2496x1664"
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False) as c:
+            r = await c.post(url, headers=headers, json=payload)
+            if r.status_code == 200:
+                data = r.json()
+                img_data = data.get("data", [{}])[0]
+                img_url = img_data.get("url")
+                if img_url:
+                    return {
+                        "url": img_url,
+                        "prompt": prompt,
+                        "model": "sensenova-u1-fast",
+                        "resolution": "2496x1664"
+                    }
+            else:
+                print(f"SenseNova Image Error: {r.status_code} - {r.text[:200]}")
+    except Exception as e:
+        print(f"SenseNova Image Exception: {e}")
+    return None
+
 PROXY_URL = os.getenv('PROXY_URL', 'http://127.0.0.1:10888')
 # ==================== 全局代理覆盖 (Global Proxy Coverage) ====================
 if PROXY_URL:
@@ -52,7 +229,8 @@ if PROXY_URL:
     os.environ['ALL_PROXY'] = PROXY_URL
     os.environ['http_proxy'] = PROXY_URL
     os.environ['https_proxy'] = PROXY_URL
-JWT_SECRET = os.getenv('JWT_SECRET', 'youinsight-super-jwt-secret-key-2026')
+JWT_SECRET = os.getenv('JWT_SECRET', '')
+ADMIN_DEFAULT_PASSWORD = os.getenv('ADMIN_DEFAULT_PASSWORD', '')
 
 # 阿里云短信
 ALIYUN_AK_ID = os.getenv('ALIYUN_ACCESS_KEY_ID', '')
@@ -62,14 +240,14 @@ ALIYUN_SIGN_NAME = os.getenv('ALIYUN_SMS_SIGN_NAME', '阿里云短信测试')
 
 # Resend 邮件
 RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
-RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', 'YouInsight AI <no-reply@wenda.cc.cd>')
+RESEND_FROM_EMAIL = os.getenv('RESEND_FROM_EMAIL', '商探 AI <no-reply@wenda.cc.cd>')
 # SMTP 邮件配置
 SMTP_ENABLED = os.getenv('SMTP_ENABLED', '1') == '1'
 SMTP_HOST = os.getenv('SMTP_HOST', 'smtp.139.com')
 SMTP_PORT = int(os.getenv('SMTP_PORT', '465'))
 SMTP_USER = os.getenv('SMTP_USER', 'yangg881@139.com')
 SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
-SMTP_FROM = os.getenv('SMTP_FROM', 'YouInsight AI <yangg881@139.com>')
+SMTP_FROM = os.getenv('SMTP_FROM', '商探 AI <yangg881@139.com>')
 
 BROWSER_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -177,6 +355,11 @@ def init_db():
         cursor.execute("ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP")
     if 'tier' not in user_cols:
         cursor.execute("ALTER TABLE users ADD COLUMN tier TEXT DEFAULT 'basic'")
+    if 'uid' not in user_cols:
+        cursor.execute("ALTER TABLE users ADD COLUMN uid TEXT")
+    cursor.execute('''
+    UPDATE users SET uid = 'YI-' || (80260000 + id) WHERE uid IS NULL OR uid = ''
+    ''')
     cursor.execute('''
     UPDATE users SET tier = CASE
         WHEN role = 'super_admin' OR daily_quota = -1 THEN 'vip'
@@ -270,11 +453,15 @@ def init_db():
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('sms_channel_enabled', '1')")
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('email_channel_enabled', '1')")
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('announcement', '')")
+    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('sensenova_api_key', 'sk-ZuZghWayQ2tNUQ5BDklYaszFPmB8ICDH')")
+    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('sensenova_enabled', '1')")
 
     # 初始化默认超级管理员 (如果不存在任何管理员)
     admin_exists = cursor.execute("SELECT id FROM users WHERE role IN ('admin', 'super_admin') LIMIT 1").fetchone()
     if not admin_exists:
-        default_admin_pw = os.getenv('ADMIN_DEFAULT_PASSWORD', 'Admin123456@')
+        if not ADMIN_DEFAULT_PASSWORD:
+            raise RuntimeError('Missing required environment variable: ADMIN_DEFAULT_PASSWORD')
+        default_admin_pw = ADMIN_DEFAULT_PASSWORD
         pw_hash = hash_password(default_admin_pw)
         cursor.execute('''
         INSERT INTO users (username, phone, email, password_hash, role, daily_quota)
@@ -387,17 +574,17 @@ def _sync_send_smtp(email: str, code: str, action_name: str = "安全验证") ->
         return {"success": False, "message": "SMTP 凭据未配置"}
         
     msg = MIMEMultipart('alternative')
-    msg['From'] = formataddr(('YouInsight AI', SMTP_USER))
+    msg['From'] = formataddr(('商探 AI', SMTP_USER))
     msg['To'] = formataddr(('User', email))
-    msg['Subject'] = Header(f'【YouInsight AI】您的验证码: {code}', 'utf-8')
+    msg['Subject'] = Header(f'【商探 AI】您的验证码: {code}', 'utf-8')
     msg['Date'] = formatdate(localtime=True)
     msg['Message-ID'] = make_msgid(domain='139.com')
     
-    text_body = f'您好，您正在进行 YouInsight AI 账号 {action_name} 操作，验证码为 {code}，有效期 5 分钟。如非本人操作请忽略。'
+    text_body = f'您好，您正在进行 商探 AI 账号 {action_name} 操作，验证码为 {code}，有效期 5 分钟。如非本人操作请忽略。'
     html_body = f'''
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0b1329; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc;">
         <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="color: #38bdf8; margin: 0; font-size: 22px; font-weight: 800;">⚡ YouInsight AI Studio</h2>
+            <h2 style="color: #38bdf8; margin: 0; font-size: 22px; font-weight: 800;">⚡ 商探 AI</h2>
             <p style="color: #94a3b8; font-size: 13px; margin-top: 6px;">全网热点早报与深度研报生成器</p>
         </div>
         <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06); text-align: center;">
@@ -408,7 +595,7 @@ def _sync_send_smtp(email: str, code: str, action_name: str = "安全验证") ->
             <p style="color: #64748b; font-size: 12px; margin: 0;">验证码有效期为 5 分钟。如非本人操作，请忽略此邮件。</p>
         </div>
         <div style="text-align: center; margin-top: 24px; color: #475569; font-size: 11px;">
-            © 2026 YouInsight AI · 实时情报 · 深度研报 · 事实溯源
+            © 2026 商探 AI · 实时情报 · 深度研报 · 事实溯源
         </div>
     </div>
     '''
@@ -439,7 +626,7 @@ async def send_resend_email(email: str, code: str, action_name: str = "安全验
     html_content = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; background: #0b1329; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc;">
         <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="color: #38bdf8; margin: 0; font-size: 22px; font-weight: 800;">⚡ YouInsight AI Studio</h2>
+            <h2 style="color: #38bdf8; margin: 0; font-size: 22px; font-weight: 800;">⚡ 商探 AI</h2>
             <p style="color: #94a3b8; font-size: 13px; margin-top: 6px;">全网热点早报与深度研报生成器</p>
         </div>
         <div style="background: rgba(255,255,255,0.04); border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06); text-align: center;">
@@ -450,15 +637,15 @@ async def send_resend_email(email: str, code: str, action_name: str = "安全验
             <p style="color: #64748b; font-size: 12px; margin: 0;">验证码有效期为 5 分钟。如非本人操作，请忽略此邮件。</p>
         </div>
         <div style="text-align: center; margin-top: 24px; color: #475569; font-size: 11px;">
-            © 2026 YouInsight AI · 实时情报 · 深度研报 · 事实溯源
+            © 2026 商探 AI · 实时情报 · 深度研报 · 事实溯源
         </div>
     </div>
     """
-    plain_text = f"【YouInsight AI】您正在进行 {action_name} 操作，验证码为：{code} (5分钟内有效)。如非本人操作请忽略此邮件。"
+    plain_text = f"【商探 AI】您正在进行 {action_name} 操作，验证码为：{code} (5分钟内有效)。如非本人操作请忽略此邮件。"
     payload = {
         "from": RESEND_FROM_EMAIL,
         "to": [email],
-        "subject": f"【YouInsight AI】您的验证码: {code}",
+        "subject": f"【商探 AI】您的验证码: {code}",
         "html": html_content,
         "text": plain_text
     }
@@ -586,6 +773,21 @@ async def fetch_brave_news_search(query: str, count: int = 10, lang: Optional[st
     return None
 
 CACHE = TTLCache(maxsize=128, ttl=300)
+LOGIN_FAILURES: Dict[tuple, List[float]] = {}
+
+def ensure_login_allowed(account: str, ip: str):
+    now = time.monotonic()
+    key = (account.strip().lower(), ip)
+    attempts = [stamp for stamp in LOGIN_FAILURES.get(key, []) if now - stamp < 900]
+    if len(attempts) >= 10:
+        raise HTTPException(status_code=429, detail="登录尝试过多，请 15 分钟后再试")
+    LOGIN_FAILURES[key] = attempts
+
+def record_login_failure(account: str, ip: str):
+    key = (account.strip().lower(), ip)
+    ensure_login_allowed(account, ip)
+    LOGIN_FAILURES.setdefault(key, []).append(time.monotonic())
+
 shared_client: Optional[httpx.AsyncClient] = None
 
 @asynccontextmanager
@@ -598,8 +800,22 @@ async def lifespan(app: FastAPI):
         await shared_client.aclose()
         shared_client = None
 
-app = FastAPI(title='YouInsight AI Studio', version='2.2.0', lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_credentials=False, allow_methods=['*'], allow_headers=['*'])
+app = FastAPI(title='商探 AI', version='2.6.6', lifespan=lifespan)
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'https://zhidajob.top,https://www.zhidajob.top'
+).split(',') if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allow_headers=['Authorization', 'Content-Type']
+)
+
+for required_secret_name in ('BRAVE_API_KEY', 'JWT_SECRET'):
+    if not globals().get(required_secret_name):
+        raise RuntimeError(f'Missing required environment variable: {required_secret_name}')
 
 def client(timeout: float = 60.0):
     if shared_client is not None and timeout <= 60.0:
@@ -622,7 +838,7 @@ async def get_current_user_optional(authorization: Optional[str] = Header(None))
         return None
     
     conn = get_db()
-    user = conn.execute("SELECT id, username, phone, email, role, daily_quota, tier, is_active FROM users WHERE id = ?", (payload["uid"],)).fetchone()
+    user = conn.execute("SELECT id, uid, username, phone, email, role, daily_quota, tier, is_active FROM users WHERE id = ?", (payload["uid"],)).fetchone()
     conn.close()
     if not user or not user["is_active"]:
         return None
@@ -639,11 +855,18 @@ async def require_admin(user: Dict[str, Any] = Depends(require_auth)) -> Dict[st
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问管理后台")
     return user
 
+async def require_super_admin(user: Dict[str, Any] = Depends(require_auth)) -> Dict[str, Any]:
+    if user.get("role") != "super_admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅超级管理员可执行此操作")
+    return user
+
 def get_client_ip(request: Request) -> str:
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "127.0.0.1"
+    peer_ip = request.client.host if request.client else ""
+    if peer_ip in {"127.0.0.1", "::1"}:
+        trusted_real_ip = (request.headers.get("X-Real-IP") or "").strip()
+        if trusted_real_ip:
+            return trusted_real_ip
+    return peer_ip or "unknown"
 
 # ==================== 额度安全检查与成功核销机制 ====================
 
@@ -679,7 +902,6 @@ def check_quota_available(user: Optional[Dict[str, Any]], ip: str) -> Dict[str, 
         return {"allowed": True, "remaining": max(0, limit - used), "is_guest": True, "limit": limit, "used": used}
 
 def consume_quota_success(user: Optional[Dict[str, Any]], ip: str) -> Dict[str, Any]:
-    """仅在研报/搜索真正成功生成后，才正式核销 1 次额度"""
     today = date.today().isoformat()
     conn = get_db()
     cursor = conn.cursor()
@@ -691,9 +913,15 @@ def consume_quota_success(user: Optional[Dict[str, Any]], ip: str) -> Dict[str, 
             conn.close()
             return {"remaining": 9999, "is_guest": False}
         
+        conn.execute("BEGIN IMMEDIATE")
+        row = cursor.execute("SELECT count FROM daily_usage WHERE user_id = ? AND usage_date = ?", (uid, today)).fetchone()
+        used = row["count"] if row else 0
+        if used >= daily_quota:
+            conn.rollback(); conn.close()
+            raise HTTPException(status_code=403, detail="今日生成额度已达上限")
         cursor.execute("""
         INSERT INTO daily_usage (user_id, usage_date, count) VALUES (?, ?, 1)
-        ON CONFLICT(user_id, usage_date) DO UPDATE SET count = count + 1
+        ON CONFLICT(user_id, usage_date) DO UPDATE SET count = daily_usage.count + 1
         """, (uid, today))
         conn.commit()
         row = cursor.execute("SELECT count FROM daily_usage WHERE user_id = ? AND usage_date = ?", (uid, today)).fetchone()
@@ -701,13 +929,19 @@ def consume_quota_success(user: Optional[Dict[str, Any]], ip: str) -> Dict[str, 
         conn.close()
         return {"remaining": max(0, daily_quota - used), "is_guest": False, "used": used}
     else:
-        cursor.execute("""
-        INSERT INTO guest_usage (ip, usage_date, count) VALUES (?, ?, 1)
-        ON CONFLICT(ip, usage_date) DO UPDATE SET count = count + 1
-        """, (ip, today))
-        conn.commit()
+        conn.execute("BEGIN IMMEDIATE")
+        row = cursor.execute("SELECT count FROM guest_usage WHERE ip = ? AND usage_date = ?", (ip, today)).fetchone()
+        used = row["count"] if row else 0
         setting = cursor.execute("SELECT value FROM system_settings WHERE key = 'guest_daily_limit'").fetchone()
         limit = int(setting["value"]) if setting else 2
+        if used >= limit:
+            conn.rollback(); conn.close()
+            raise HTTPException(status_code=403, detail="游客额度已用完，请登录后继续使用")
+        cursor.execute("""
+        INSERT INTO guest_usage (ip, usage_date, count) VALUES (?, ?, 1)
+        ON CONFLICT(ip, usage_date) DO UPDATE SET count = guest_usage.count + 1
+        """, (ip, today))
+        conn.commit()
         row = cursor.execute("SELECT count FROM guest_usage WHERE ip = ? AND usage_date = ?", (ip, today)).fetchone()
         used = row["count"] if row else 1
         conn.close()
@@ -729,54 +963,54 @@ def record_gen_log(user: Optional[Dict[str, Any]], ip: str, gen_type: str, title
 
 # ==================== 请求与响应模型 ====================
 class SendCodeReq(BaseModel):
-    target: str # 手机号 (11位) 或 邮箱
+    target: str = Field(min_length=6, max_length=254)
     code_type: Optional[str] = "login" # register, login, reset
 
 class RegisterReq(BaseModel):
-    target: str # 手机号 或 邮箱
-    code: str
-    password: str
-    username: Optional[str] = None
+    target: str = Field(min_length=6, max_length=254)
+    code: str = Field(min_length=4, max_length=12)
+    password: str = Field(min_length=6, max_length=128)
+    username: Optional[str] = Field(default=None, min_length=1, max_length=50)
 
 class LoginReq(BaseModel):
     mode: str # 'password' 或 'code'
-    account: Optional[str] = None # 用户名 / 手机号 / 邮箱 (密码模式)
-    password: Optional[str] = None
-    target: Optional[str] = None # 手机号 或 邮箱 (验证码模式)
-    code: Optional[str] = None
+    account: Optional[str] = Field(default=None, max_length=254)
+    password: Optional[str] = Field(default=None, max_length=128)
+    target: Optional[str] = Field(default=None, max_length=254)
+    code: Optional[str] = Field(default=None, max_length=12)
 
 class ResetPwReq(BaseModel):
-    target: str
-    code: str
-    new_password: str
+    target: str = Field(min_length=6, max_length=254)
+    code: str = Field(min_length=4, max_length=12)
+    new_password: str = Field(min_length=6, max_length=128)
 
 class BindTargetReq(BaseModel):
-    target: str
-    code: str
+    target: str = Field(min_length=6, max_length=254)
+    code: str = Field(min_length=4, max_length=12)
 
 class DeleteAccountReq(BaseModel):
-    code: str
+    code: str = Field(min_length=4, max_length=12)
 
 class UpdateProfileReq(BaseModel):
-    username: Optional[str] = None
-    new_password: Optional[str] = None
-    old_password: Optional[str] = None
+    username: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    new_password: Optional[str] = Field(default=None, min_length=6, max_length=128)
+    old_password: Optional[str] = Field(default=None, max_length=128)
 
 class AdminQuotaReq(BaseModel):
-    daily_quota: int # 具体数值或增减量，-1 为无限
+    daily_quota: int = Field(ge=-1, le=1000000)
     mode: Optional[str] = 'set' # 'set' 直接设定, 'delta' 增减
 
 class AdminBatchQuotaReq(BaseModel):
-    uids: List[int]
-    daily_quota: int
+    uids: List[int] = Field(min_length=1, max_length=1000)
+    daily_quota: int = Field(ge=-1, le=1000000)
     mode: Optional[str] = 'set' # 'set' 或 'delta'
 
 class AdminBatchStatusReq(BaseModel):
-    uids: List[int]
+    uids: List[int] = Field(min_length=1, max_length=1000)
     is_active: int # 0 为冻结, 1 为解冻
 
 class AdminBatchDeleteReq(BaseModel):
-    uids: List[int]
+    uids: List[int] = Field(min_length=1, max_length=1000)
 
 TIER_QUOTA_MAP = {
     "basic": 10,
@@ -798,7 +1032,7 @@ class AdminTierReq(BaseModel):
     custom_quota: Optional[int] = None
 
 class AdminBatchTierReq(BaseModel):
-    uids: List[int]
+    uids: List[int] = Field(min_length=1, max_length=1000)
     tier: str
     sync_quota: Optional[bool] = True
 
@@ -807,6 +1041,10 @@ class AdminRoleReq(BaseModel):
 
 class AdminSettingReq(BaseModel):
     settings: Dict[str, str]
+
+def hash_verification_code(code: str) -> str:
+    digest = hmac.new(JWT_SECRET.encode(), code.strip().encode(), hashlib.sha256).hexdigest()
+    return digest
 
 async def check_and_consume_verification_code(cursor, target: str, code: str, code_type: Optional[str] = None) -> bool:
     """统一验证并核销验证码 (手机走阿里云 Dypns 融合验证，邮箱走本地 TTL 数据库记录)"""
@@ -825,10 +1063,10 @@ async def check_and_consume_verification_code(cursor, target: str, code: str, co
             
     # 2. 邮箱或本地验证码校验
     vrow = cursor.execute(
-        "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
-        (target,)
+        "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? AND code_type = ? AND used = 0 ORDER BY id DESC LIMIT 5",
+        (target, code_type)
     ).fetchone()
-    if vrow and vrow["used"] == 0 and vrow["code"] == code:
+    if vrow and (vrow["code"] == hash_verification_code(code) or vrow["code"] == code):
         if datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") >= datetime.now():
             cursor.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (vrow["id"],))
             return True
@@ -873,7 +1111,7 @@ async def api_send_code(req: SendCodeReq, request: Request):
     
     cursor.execute(
         "INSERT INTO verification_codes (target, code, code_type, expires_at, ip) VALUES (?, ?, ?, ?, ?)",
-        (target, code, req.code_type, expires_at, ip)
+        (target, hash_verification_code(code), req.code_type, expires_at, ip)
     )
     conn.commit()
     conn.close()
@@ -947,25 +1185,28 @@ async def api_register(req: RegisterReq, request: Request):
     """, (username, target, pw_hash, default_quota))
     
     user_id = cursor.lastrowid
-    # 核销验证码
-    # vcode consumed
+    user_uid = f"YI-{80260000 + user_id}"
+    cursor.execute("UPDATE users SET uid = ? WHERE id = ?", (user_uid, user_id))
     conn.commit()
     
-    user = cursor.execute("SELECT id, username, phone, email, role, daily_quota FROM users WHERE id = ?", (user_id,)).fetchone()
+    user = cursor.execute("SELECT id, uid, username, phone, email, role, daily_quota FROM users WHERE id = ?", (user_id,)).fetchone()
     conn.close()
     
+    user_data = dict(user)
+    user_data["uid"] = user["uid"] or user_uid
     token = create_jwt_token({"uid": user["id"], "role": user["role"]})
     return {
         "status": "success",
         "message": "注册成功！已为您自动登录",
         "token": token,
-        "user": dict(user)
+        "user": user_data
     }
 
 @app.post('/api/auth/login')
 async def api_login(req: LoginReq, request: Request):
     conn = get_db()
     cursor = conn.cursor()
+    ip = get_client_ip(request)
     user = None
     
     if req.mode == 'password':
@@ -974,6 +1215,7 @@ async def api_login(req: LoginReq, request: Request):
         if not account or not password:
             conn.close()
             raise HTTPException(status_code=400, detail="请输入账号和密码")
+        ensure_login_allowed(account, ip)
             
         user = cursor.execute(
             "SELECT * FROM users WHERE (username = ? OR phone = ? OR email = ?) LIMIT 1",
@@ -982,7 +1224,9 @@ async def api_login(req: LoginReq, request: Request):
         
         if not user or not verify_password(password, user["password_hash"]):
             conn.close()
+            record_login_failure(account, ip)
             raise HTTPException(status_code=400, detail="账号或密码错误")
+        LOGIN_FAILURES.pop((account.lower(), ip), None)
             
     elif req.mode == 'code':
         target = (req.target or '').strip()
@@ -1033,6 +1277,7 @@ async def api_login(req: LoginReq, request: Request):
     token = create_jwt_token({"uid": user["id"], "role": user["role"]})
     user_dict = {
         "id": user["id"],
+        "uid": user["uid"] if ("uid" in user.keys() and user["uid"]) else f"YI-{80260000 + user['id']}",
         "username": user["username"],
         "phone": user["phone"],
         "email": user["email"],
@@ -1093,6 +1338,7 @@ async def api_get_me(user: Dict[str, Any] = Depends(require_auth)):
         "status": "success",
         "user": {
             "id": user["id"],
+            "uid": user.get("uid") or f"YI-{80260000 + user['id']}",
             "username": user["username"],
             "phone": user["phone"],
             "email": user["email"],
@@ -1169,10 +1415,10 @@ async def api_delete_account(req: DeleteAccountReq, user: Dict[str, Any] = Depen
     valid_vrow = None
     for target in bound_targets:
         vrow = cursor.execute(
-            "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? ORDER BY id DESC LIMIT 1",
+            "SELECT id, code, expires_at, used FROM verification_codes WHERE target = ? AND used = 0 ORDER BY id DESC LIMIT 5",
             (target,)
         ).fetchone()
-        if vrow and vrow["used"] == 0 and vrow["code"] == code and datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") >= datetime.now():
+        if vrow and (vrow["code"] == hash_verification_code(code) or vrow["code"] == code) and datetime.strptime(vrow["expires_at"], "%Y-%m-%d %H:%M:%S") >= datetime.now():
             valid_vrow = vrow
             break
             
@@ -1214,9 +1460,13 @@ async def api_update_profile(req: UpdateProfileReq, user: Dict[str, Any] = Depen
             conn.close()
             raise HTTPException(status_code=400, detail="新密码不能少于 6 位")
         full_user = cursor.execute("SELECT password_hash FROM users WHERE id = ?", (user["id"],)).fetchone()
-        if full_user["password_hash"] and not verify_password(req.old_password or '', full_user["password_hash"]):
-            conn.close()
-            raise HTTPException(status_code=400, detail="原密码输入错误")
+        if full_user and full_user["password_hash"]:
+            if not req.old_password:
+                conn.close()
+                raise HTTPException(status_code=400, detail="请输入当前正在使用的原密码")
+            if not verify_password(req.old_password or '', full_user["password_hash"]):
+                conn.close()
+                raise HTTPException(status_code=400, detail="原密码输入错误")
         cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(req.new_password.strip()), user["id"]))
         
     conn.commit()
@@ -1256,30 +1506,33 @@ async def admin_get_metrics(admin: Dict[str, Any] = Depends(require_admin)):
 
 @app.get('/api/admin/users')
 async def admin_get_users(query: str = '', page: int = 1, page_size: int = 20, admin: Dict[str, Any] = Depends(require_admin)):
+    page = max(1, min(page, 10000))
+    page_size = max(1, min(page_size, 100))
     conn = get_db()
     offset = (page - 1) * page_size
     q_str = f"%{query.strip()}%"
     
-    if query:
-        total = conn.execute("SELECT COUNT(*) AS c FROM users WHERE username LIKE ? OR phone LIKE ? OR email LIKE ?", (q_str, q_str, q_str)).fetchone()["c"]
+    raw_q = query.strip()
+    if raw_q:
+        total = conn.execute("SELECT COUNT(*) AS c FROM users WHERE username LIKE ? OR phone LIKE ? OR email LIKE ? OR uid LIKE ? OR CAST(id AS TEXT) = ?", (q_str, q_str, q_str, q_str, raw_q)).fetchone()["c"]
         rows = conn.execute("""
-        SELECT id, username, phone, email, role, daily_quota, tier, is_active,
+        SELECT id, uid, username, phone, email, role, daily_quota, tier, is_active,
                datetime(created_at, 'localtime') AS created_at,
                datetime(last_login_at, 'localtime') AS last_login_at
-        FROM users WHERE username LIKE ? OR phone LIKE ? OR email LIKE ?
+        FROM users WHERE username LIKE ? OR phone LIKE ? OR email LIKE ? OR uid LIKE ? OR CAST(id AS TEXT) = ?
         ORDER BY id DESC LIMIT ? OFFSET ?
-        """, (q_str, q_str, q_str, page_size, offset)).fetchall()
+        """, (q_str, q_str, q_str, q_str, raw_q, page_size, offset)).fetchall()
     else:
         total = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
         rows = conn.execute("""
-        SELECT id, username, phone, email, role, daily_quota, tier, is_active,
+        SELECT id, uid, username, phone, email, role, daily_quota, tier, is_active,
                datetime(created_at, 'localtime') AS created_at,
                datetime(last_login_at, 'localtime') AS last_login_at
         FROM users ORDER BY id DESC LIMIT ? OFFSET ?
         """, (page_size, offset)).fetchall()
         
     conn.close()
-    return {"status": "success", "total": total, "page": page, "page_size": page_size, "users": [dict(r) for r in rows]}
+    return {"status": "success", "total": total, "page": page, "page_size": page_size, "users": [{**dict(r), "uid": r["uid"] or f"YI-{80260000 + r['id']}"} for r in rows]}
 
 @app.post('/api/admin/users/{uid}/quota')
 async def admin_set_quota(uid: int, req: AdminQuotaReq, admin: Dict[str, Any] = Depends(require_admin)):
@@ -1440,8 +1693,25 @@ async def admin_batch_user_tier(req: AdminBatchTierReq, admin: Dict[str, Any] = 
 async def admin_set_role(uid: int, req: AdminRoleReq, admin: Dict[str, Any] = Depends(require_admin)):
     if req.role not in ('user', 'admin', 'super_admin'):
         raise HTTPException(status_code=400, detail="非法角色")
+    if admin["role"] != "super_admin":
+        raise HTTPException(status_code=403, detail="仅超级管理员可修改角色")
+    if uid == admin["id"]:
+        raise HTTPException(status_code=400, detail="不能修改当前登录账号的角色")
     conn = get_db()
-    conn.execute("UPDATE users SET role = ? WHERE id = ?", (req.role, uid))
+    cursor = conn.cursor()
+    target = cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (uid,)).fetchone()
+    if not target:
+        conn.close()
+        raise HTTPException(status_code=404, detail="用户不存在")
+    if target["role"] == "super_admin" and req.role != "super_admin":
+        remaining_super_admins = cursor.execute(
+            "SELECT COUNT(*) AS c FROM users WHERE role = 'super_admin' AND is_active = 1 AND id != ?",
+            (uid,)
+        ).fetchone()["c"]
+        if remaining_super_admins < 1:
+            conn.close()
+            raise HTTPException(status_code=400, detail="必须保留至少一个启用状态的超级管理员")
+    cursor.execute("UPDATE users SET role = ? WHERE id = ?", (req.role, uid))
     conn.commit()
     conn.close()
     return {"status": "success", "message": f"用户 #{uid} 角色已修改为: {req.role}"}
@@ -1464,17 +1734,100 @@ async def admin_toggle_status(uid: int, admin: Dict[str, Any] = Depends(require_
     return {"status": "success", "message": f"用户 #{uid} 已{'冻结' if new_status == 0 else '解封'}"}
 
 @app.get('/api/admin/logs')
-async def admin_get_logs(page: int = 1, page_size: int = 30, admin: Dict[str, Any] = Depends(require_admin)):
+async def admin_get_logs(page: int = 1, page_size: int = 10, module: Optional[str] = None, query: Optional[str] = None, admin: Dict[str, Any] = Depends(require_admin)):
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
     conn = get_db()
     offset = (page - 1) * page_size
-    total = conn.execute("SELECT COUNT(*) AS c FROM generation_logs").fetchone()["c"]
-    rows = conn.execute("""
-    SELECT id, user_id, username, ip, type, title, duration_ms, status,
-           datetime(created_at, 'localtime') AS created_at
-    FROM generation_logs ORDER BY id DESC LIMIT ? OFFSET ?
-    """, (page_size, offset)).fetchall()
+    
+    where_clauses = []
+    params = []
+    
+    if module and module.strip():
+        where_clauses.append("g.type = ?")
+        params.append(module.strip())
+    if query and query.strip():
+        where_clauses.append("(g.title LIKE ? OR g.username LIKE ? OR g.ip LIKE ? OR u.uid LIKE ?)")
+        q_like = f"%{query.strip()}%"
+        params.extend([q_like, q_like, q_like, q_like])
+        
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    
+    count_sql = f"SELECT COUNT(*) AS c FROM generation_logs g LEFT JOIN users u ON g.user_id = u.id {where_sql}"
+    total = conn.execute(count_sql, params).fetchone()["c"]
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    
+    query_sql = f"""
+    SELECT g.id, g.user_id, g.username, g.ip, g.type, g.title, g.duration_ms, g.status,
+           datetime(g.created_at, 'localtime') AS created_at,
+           u.uid AS user_uid
+    FROM generation_logs g
+    LEFT JOIN users u ON g.user_id = u.id
+    {where_sql}
+    ORDER BY g.id DESC LIMIT ? OFFSET ?
+    """
+    rows = conn.execute(query_sql, params + [page_size, offset]).fetchall()
+    
+    logs_list = []
+    for r in rows:
+        row_dict = dict(r)
+        # 查找匹配的研报历史记录 ID
+        hist = conn.execute("""
+            SELECT id FROM history
+            WHERE (user_id = ? OR (? = 0 AND user_id = 0))
+              AND type = ?
+              AND (title = ? OR ? LIKE '%' || title || '%' OR title LIKE '%' || ? || '%')
+            ORDER BY id DESC LIMIT 1
+        """, (row_dict["user_id"], row_dict["user_id"], row_dict["type"], row_dict["title"], row_dict["title"], row_dict["title"])).fetchone()
+        row_dict["history_id"] = hist["id"] if hist else None
+        logs_list.append(row_dict)
+
     conn.close()
-    return {"status": "success", "total": total, "logs": [dict(r) for r in rows]}
+    return {
+        "status": "success",
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "logs": logs_list
+    }
+
+@app.get('/api/admin/logs/{log_id}')
+async def admin_get_log_detail(log_id: int, admin: Dict[str, Any] = Depends(require_admin)):
+    conn = get_db()
+    log_row = conn.execute("""
+    SELECT g.id, g.user_id, g.username, g.ip, g.type, g.title, g.duration_ms, g.status,
+           datetime(g.created_at, 'localtime') AS created_at,
+           u.uid AS user_uid
+    FROM generation_logs g
+    LEFT JOIN users u ON g.user_id = u.id
+    WHERE g.id = ?
+    """, (log_id,)).fetchone()
+    
+    if not log_row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="审计日志不存在")
+    
+    log = dict(log_row)
+    
+    # 查找关联的研报历史记录
+    hist_row = conn.execute("""
+    SELECT id, user_id, type, title, content, sources, datetime(created_at, 'localtime') AS created_at
+    FROM history
+    WHERE (user_id = ? OR (? = 0 AND user_id = 0))
+      AND type = ?
+      AND (title = ? OR ? LIKE '%' || title || '%' OR title LIKE '%' || ? || '%')
+    ORDER BY id DESC
+    LIMIT 1
+    """, (log["user_id"], log["user_id"], log["type"], log["title"], log["title"], log["title"])).fetchone()
+    
+    history_data = dict(hist_row) if hist_row else None
+    conn.close()
+    return {
+        "status": "success",
+        "log": log,
+        "history": history_data
+    }
 
 @app.get('/api/admin/settings')
 async def admin_get_settings(admin: Dict[str, Any] = Depends(require_admin)):
@@ -1492,39 +1845,253 @@ async def admin_update_settings(req: AdminSettingReq, admin: Dict[str, Any] = De
     conn.close()
     return {"status": "success", "message": "系统设置已更新"}
 
+
+# ==================== Monid 多源社交媒体采集引擎 ====================
+
+async def fetch_monid_social_platform(client_session, monid_key: str, platform: str, keyword: str, sort_by: str = 'general') -> List[Dict[str, Any]]:
+    """调用 Monid 网关采集指定社交媒体平台的一手切片"""
+    base_url = "https://api.monid.ai/v1/run"
+    headers = {
+        "Authorization": f"Bearer {monid_key}",
+        "Content-Type": "application/json"
+    }
+    
+    endpoint_map = {
+        "xiaohongshu": {
+            "name": "小红书",
+            "icon": "📕",
+            "payload": {
+                "provider": "tikhub",
+                "endpoint": "/api/v1/xiaohongshu/app_v2/search_notes",
+                "input": {"queryParams": {"keyword": keyword, "page": 1, "sort": "hot" if sort_by == "hot" else "general"}}
+            }
+        },
+        "bilibili": {
+            "name": "B站",
+            "icon": "📺",
+            "payload": {
+                "provider": "tikhub",
+                "endpoint": "/api/v1/bilibili/app/fetch_search_by_type",
+                "input": {"queryParams": {"keyword": keyword, "search_type": "video", "order": "click" if sort_by == "hot" else "totalrank"}}
+            }
+        },
+        "weibo": {
+            "name": "微博",
+            "icon": "🧣",
+            "payload": {
+                "provider": "tikhub",
+                "endpoint": "/api/v1/weibo/web_v2/fetch_user_posts",
+                "input": {"queryParams": {"keyword": keyword}}
+            }
+        },
+        "douyin": {
+            "name": "抖音",
+            "icon": "🎵",
+            "payload": {
+                "provider": "tikhub",
+                "endpoint": "/api/v1/douyin/search/fetch_general_search_v2",
+                "input": {"queryParams": {"keyword": keyword, "offset": 0, "sort_type": 1 if sort_by == "hot" else 0}}
+            }
+        },
+        "twitter": {
+            "name": "Twitter/X",
+            "icon": "🐦",
+            "payload": {
+                "provider": "tikhub",
+                "endpoint": "/api/v1/twitter/web/fetch_search_timeline",
+                "input": {"queryParams": {"keyword": keyword, "search_type": "Top" if sort_by == "hot" else "Latest"}}
+            }
+        },
+        "wechat_mp": {
+            "name": "微信公众号",
+            "icon": "💬",
+            "payload": {
+                "provider": "tikhub",
+                "endpoint": "/api/v1/wechat_mp/v2/fetch_account_articles",
+                "input": {"queryParams": {"keyword": keyword}}
+            }
+        }
+    }
+    
+    cfg = endpoint_map.get(platform)
+    if not cfg:
+        return []
+        
+    try:
+        resp = await client_session.post(base_url, headers=headers, json=cfg["payload"], timeout=20.0)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        
+        # 针对异步 Job 进行轮询（最多 3 次）
+        if data.get("status") == "RUNNING" and data.get("runId"):
+            run_id = data["runId"]
+            for _ in range(3):
+                await asyncio.sleep(1.5)
+                poll_r = await client_session.get(f"https://api.monid.ai/v1/runs/{run_id}", headers=headers, timeout=10.0)
+                if poll_r.status_code == 200:
+                    poll_data = poll_r.json()
+                    if poll_data.get("status") == "COMPLETED":
+                        data = poll_data
+                        break
+        
+        raw_output = data.get("output") or {}
+        items = []
+        
+        # 解析小红书数据
+        if platform == "xiaohongshu":
+            note_list = raw_output.get("data", {}).get("items", []) or raw_output.get("items", [])
+            for n in note_list[:6]:
+                note_info = n.get("note") or n
+                if not note_info: continue
+                title = note_info.get("title") or note_info.get("display_title") or "小红书笔记"
+                desc = note_info.get("desc") or note_info.get("content") or ""
+                likes = note_info.get("liked_count") or note_info.get("collected_count") or 0
+                comments = note_info.get("comments_count") or 0
+                author_name = (note_info.get("user") or {}).get("nickname") or (note_info.get("at_user_list") or [{}])[0].get("nickname") or "小红书创作者"
+                note_id = note_info.get("note_id") or n.get("id") or ""
+                url = f"https://www.xiaohongshu.com/explore/{note_id}" if note_id else "https://www.xiaohongshu.com"
+                items.append({
+                    "platform": "xiaohongshu",
+                    "platform_name": "小红书",
+                    "icon": "📕",
+                    "title": title,
+                    "content": desc or title,
+                    "author": author_name,
+                    "url": url,
+                    "likes": int(likes) if str(likes).isdigit() else 0,
+                    "comments": int(comments) if str(comments).isdigit() else 0,
+                    "time": "近期"
+                })
+                
+        # 解析 Bilibili 数据
+        elif platform == "bilibili":
+            v_list = raw_output.get("data", {}).get("result", []) or []
+            for v in v_list[:6]:
+                title = re.sub(r'<[^>]+>', '', v.get("title") or "B站视频")
+                desc = v.get("description") or ""
+                play = v.get("play") or 0
+                author_name = v.get("author") or "UP主"
+                bvid = v.get("bvid") or ""
+                url = f"https://www.bilibili.com/video/{bvid}" if bvid else "https://www.bilibili.com"
+                items.append({
+                    "platform": "bilibili",
+                    "platform_name": "B站",
+                    "icon": "📺",
+                    "title": title,
+                    "content": desc or title,
+                    "author": author_name,
+                    "url": url,
+                    "likes": play if isinstance(play, int) else 0,
+                    "comments": v.get("review") or 0,
+                    "time": "近期"
+                })
+                
+        # 解析 Twitter / X 数据
+        elif platform == "twitter":
+            tweets = raw_output.get("tweets") or raw_output.get("data") or raw_output.get("results") or []
+            if isinstance(tweets, list):
+                for tw in tweets[:6]:
+                    text = tw.get("text") or tw.get("full_text") or tw.get("content") or ""
+                    if not text: continue
+                    author_name = (tw.get("user") or {}).get("screen_name") or tw.get("author") or "Twitter User"
+                    likes = tw.get("favorite_count") or tw.get("likes") or 0
+                    retweets = tw.get("retweet_count") or 0
+                    url = tw.get("url") or f"https://twitter.com/{author_name}"
+                    items.append({
+                        "platform": "twitter",
+                        "platform_name": "Twitter/X",
+                        "icon": "🐦",
+                        "title": text[:60] + "..." if len(text) > 60 else text,
+                        "content": text,
+                        "author": f"@{author_name}",
+                        "url": url,
+                        "likes": likes,
+                        "comments": retweets,
+                        "time": "近期"
+                    })
+                    
+        # 解析通用/其他社媒格式
+        else:
+            generic_items = raw_output.get("items") or raw_output.get("results") or raw_output.get("data") or []
+            if isinstance(generic_items, list):
+                for it in generic_items[:5]:
+                    title = it.get("title") or it.get("name") or f"{cfg['name']}动态"
+                    content_str = it.get("content") or it.get("desc") or it.get("summary") or title
+                    items.append({
+                        "platform": platform,
+                        "platform_name": cfg["name"],
+                        "icon": cfg["icon"],
+                        "title": title,
+                        "content": content_str,
+                        "author": it.get("author") or it.get("nickname") or f"{cfg['name']}用户",
+                        "url": it.get("url") or it.get("link") or "#",
+                        "likes": it.get("likes") or 0,
+                        "comments": it.get("comments") or 0,
+                        "time": "近期"
+                    })
+                    
+        return items
+    except Exception as e:
+        print(f"Error fetching platform {platform} from Monid: {e}")
+        return []
+
 # ==================== 业务研报与检索端点 ====================
 
 class SearchRequest(BaseModel):
-    query: str
-    count: Optional[int] = 10
+    query: str = Field(min_length=1, max_length=500)
+    count: Optional[int] = Field(default=10, ge=1, le=20)
     freshness: Optional[str] = None
-    lang: Optional[str] = 'zh' # 'zh' 中文优先, 'en' 全球原版, 'all' 全部
+    lang: Optional[str] = 'zh'
+    engine: Optional[str] = 'hybrid' # 'hybrid' 双擎混合, 'parallel' Parallel高密, 'brave' 极速
 
 class ResearchRequest(BaseModel):
-    input: str
-    chat_history: Optional[List[dict]] = None
-    depth: Optional[str] = 'standard'
+    input: str = Field(min_length=1, max_length=10000)
+    chat_history: Optional[List[dict]] = Field(default=None, max_length=20)
 
 class FinanceRequest(BaseModel):
-    input: str
+    input: str = Field(min_length=1, max_length=500)
 
 class ContentsRequest(BaseModel):
-    urls: List[str]
+    urls: List[str] = Field(min_length=1, max_length=3)
 
 class DigestRequest(BaseModel):
-    topic: str
+    topic: str = Field(min_length=1, max_length=300)
     schedule: Optional[bool] = False
 
+
+
+
+class EnrichRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=300)
+    url: Optional[str] = None
+    tag: Optional[str] = None
+
+class DeepResearchRequest(BaseModel):
+    topic: str = Field(min_length=1, max_length=500)
+    depth: Optional[str] = 'deep' # 'deep' 深度穿透 (2-3分钟) | 'exhaustive' 极限穷举
+
+class FindAllRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
+    limit: Optional[int] = Field(default=20, ge=10, le=200)
+    category: Optional[str] = 'company' # 'company' 企业图谱, 'product' 竞品大盘, 'invest' 融资标的, 'trend' 行业风向
+
+class SocialRequest(BaseModel):
+    keyword: str = Field(min_length=1, max_length=300)
+    platforms: Optional[List[str]] = Field(default=["xiaohongshu", "bilibili", "weibo", "twitter"])
+    mode: Optional[str] = 'comprehensive' # 'comprehensive' 综合舆情, 'competitor' 竞品对比, 'risk' 风险预警, 'marketing' 爆款拆解
+    sort_by: Optional[str] = 'general' # 'general' 综合, 'latest' 最新, 'hot' 最热
+
 class NewsRequest(BaseModel):
-    query: str
-    count: Optional[int] = 10
+    query: str = Field(min_length=1, max_length=500)
+    count: Optional[int] = Field(default=10, ge=1, le=20)
     lang: Optional[str] = 'zh'
 
 class HistorySave(BaseModel):
-    type: str
-    title: str
-    content: str
-    sources: Optional[str] = ''
+    type: str = Field(min_length=1, max_length=50)
+    title: str = Field(min_length=1, max_length=300)
+    content: str = Field(min_length=1, max_length=200000)
+    sources: Optional[str] = Field(default='', max_length=50000)
 
 @app.get('/api/health')
 async def health(user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
@@ -1535,11 +2102,18 @@ async def health(user: Optional[Dict[str, Any]] = Depends(get_current_user_optio
         db_ok = False
     return {
         'status': 'ok',
-        'version': '2.2.0',
+        'version': '2.4.2',
         'proxy': bool(PROXY_URL),
         'db': db_ok,
         'user': {"username": user["username"], "role": user["role"]} if user else None
     }
+
+@app.get('/api/system/announcement')
+async def system_announcement():
+    conn = get_db()
+    row = conn.execute("SELECT value FROM system_settings WHERE key = 'announcement'").fetchone()
+    conn.close()
+    return {'status': 'success', 'data': {'announcement': row['value'] if row else ''}}
 
 @app.post('/api/search')
 async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
@@ -1555,21 +2129,38 @@ async def api_search(req: SearchRequest, request: Request, user: Optional[Dict[s
     cache_key = f'search|{req.query}|{req.count}|{req.freshness or ""}'
     hit = CACHE.get(cache_key)
     if hit is not None:
-        return {'status': 'success', 'data': hit, 'cached': True, 'quota': quota_res}
+        return {'status': 'success', 'data': hit, 'cached': True, 'quota': check_quota_available(user, ip)}
     
-    # 优先走 Brave 毫秒级极速通道，异常自动降级至 You.com 备用通道
-    data = await fetch_brave_web_search(req.query, req.count or 10, req.freshness, req.lang or 'zh')
+    # 如果用户指定 Parallel 高密引擎或混合模式
+    data = None
+    if req.engine == 'parallel':
+        p_res = await fetch_parallel_search(req.query)
+        if p_res and "results" in p_res:
+            web_items = []
+            for it in p_res["results"]:
+                excerpts = it.get("excerpts", [])
+                desc = "\n".join(excerpts) if excerpts else ""
+                web_items.append({
+                    "title": it.get("title") or "Parallel 研报切片",
+                    "url": it.get("url") or "#",
+                    "description": desc,
+                    "age": it.get("publish_date") or "最新",
+                    "engine": "Parallel.ai"
+                })
+            data = {"results": {"web": web_items}, "query": {"original": req.query}, "engine": "Parallel.ai"}
+
+    if not data:
+        # 优先走 Brave 毫秒级极速通道，异常自动降级至 You.com 备用通道
+        data = await fetch_brave_web_search(req.query, req.count or 10, req.freshness, req.lang or 'zh')
+    
     if not data:
         async with client() as c:
             params = {'query': req.query, 'count': req.count}
             if req.freshness: params['freshness'] = req.freshness
             resp = await c.get('https://api.you.com/v1/search', params=params, headers={'X-API-Key': get_current_you_api_key()})
             if resp.status_code != 200:
-                record_gen_log(user, ip, '实时搜索', req.query, int((time.time() - t0)*1000), 'failed')
-                detail_msg = resp.text[:200]
-                if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
-                    detail_msg = "上游数据源 API Key 已过期或失效，请管理员在后台更新（本次未扣除额度）"
-                raise HTTPException(status_code=resp.status_code, detail=detail_msg)
+                record_gen_log(user, ip, '实时搜索', req.query, int((time.time() - t0)*1000), f'upstream_{resp.status_code}')
+                raise HTTPException(status_code=502, detail="搜索上游服务暂时不可用（本次未扣除额度）")
             data = resp.json()
     
     duration = int((time.time() - t0) * 1000)
@@ -1589,7 +2180,7 @@ async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, 
     cache_key = f'news|{req.query}|{req.count}'
     hit = CACHE.get(cache_key)
     if hit is not None:
-        return {'status': 'success', 'data': hit, 'cached': True, 'quota': quota_res}
+        return {'status': 'success', 'data': hit, 'cached': True, 'quota': check_quota_available(user, ip)}
     
     # 优先走 Brave News 极速通道，异常自动降级至备用通道
     data = await fetch_brave_news_search(req.query, req.count or 10, req.lang or 'zh')
@@ -1597,11 +2188,8 @@ async def api_news(req: NewsRequest, request: Request, user: Optional[Dict[str, 
         async with client() as c:
             resp = await c.get('https://api.you.com/v1/search', params={'query': req.query, 'count': req.count}, headers={'X-API-Key': get_current_you_api_key()})
             if resp.status_code != 200:
-                record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'failed')
-                detail_msg = resp.text[:200]
-                if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
-                    detail_msg = "上游数据源 API Key 已过期或失效，请管理员在后台更新（本次未扣除额度）"
-                raise HTTPException(status_code=resp.status_code, detail=detail_msg)
+                record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), f'upstream_{resp.status_code}')
+                raise HTTPException(status_code=502, detail="新闻上游服务暂时不可用（本次未扣除额度）")
             data = resp.json()
         
     record_gen_log(user, ip, '新闻流', req.query, int((time.time() - t0)*1000), 'success')
@@ -1623,50 +2211,420 @@ async def api_research_stream(req: ResearchRequest, request: Request, user: Opti
         t0 = time.time()
         yield f'data: {json.dumps({"type": "start", "stage": "🦁 正在通过 Brave 独立索引库毫秒级检索最新切片...", "quota": quota_res})}\n\n'
         
-        # 1. 预取 Brave 高密真实事实切片 (0.2s)
-        brave_data = await fetch_brave_web_search(req.input, count=8)
+        # 并发启动 SenseNova U1 Fast 商业信息图生图任务 (后台异步执行，不阻塞正文输出)
+        img_task = asyncio.create_task(fetch_sensenova_image(req.input, 'research'))
+
+        # 1. 并发预取 Brave 独立索引库 (0.2s) + Parallel 顶级高密事实/表格矩阵
+        p_task = fetch_parallel_search(req.input)
+        b_task = fetch_brave_web_search(req.input, count=6)
+        p_data, b_data = await asyncio.gather(p_task, b_task, return_exceptions=True)
+        
         brave_snippets = []
         brave_sources = []
-        if brave_data and "results" in brave_data:
-            for item in brave_data["results"].get("web", []):
-                brave_snippets.append(f"【来源: {item.get('title')}】 {item.get('description')}")
+        if isinstance(b_data, dict) and "results" in b_data:
+            for item in b_data["results"].get("web", []):
+                brave_snippets.append(f"【Brave权威事实: {item.get('title')}】 {item.get('description')}")
                 brave_sources.append({
                     "title": item.get("title"),
                     "url": item.get("url"),
-                    "name": "Brave 独立索引库"
+                    "name": "Brave 独立索引"
                 })
+                
+        # 融入 Parallel 高密 Markdown 结构化切片与官方大表
+        parallel_snippets = []
+        if isinstance(p_data, dict) and "results" in p_data:
+            for item in p_data["results"][:4]:
+                exc_list = item.get("excerpts", [])
+                if exc_list:
+                    parallel_snippets.append(f"【Parallel高密研报切片/数据表: {item.get('title')}】\n" + "\n".join(exc_list[:2]))
+                    brave_sources.append({
+                        "title": item.get("title") or "Parallel 结构化研报源",
+                        "url": item.get("url"),
+                        "name": "Parallel.ai 高密矩阵"
+                    })
         
-        yield f'data: {json.dumps({"type": "stage", "stage": "🧠 双引擎多源交叉验证与深度推理中..."})}\n\n'
+        yield f'data: {json.dumps({"type": "stage", "stage": "🧠 多源交叉验证与机构级深度推理中（已聚合 Parallel 高密表格 + Brave 事实矩阵）..."})}\n\n'
         
         try:
+            clean_input = req.input.strip()[:1000]
+            context_inject = ""
+            if brave_snippets:
+                context_inject = "\n【Brave实时一手高密信源】:\n" + "\n".join(brave_snippets[:3])
+            
+            enhanced_prompt = f"{clean_input}\n{context_inject}\n请结合上述一手交叉事实信源，生成权威详尽、逻辑严密、论据扎实的深度研报。"[:2800]
+            
+            data = None
+            for attempt in range(2):
+                try:
+                    payload = {'input': enhanced_prompt if attempt == 0 else clean_input, 'chat_history': []}
+                    async with client(timeout=90.0) as c:
+                        resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': get_current_you_api_key()})
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            break
+                        elif resp.status_code == 422 and attempt == 0:
+                            print("You.com 422, falling back to minimal topic...")
+                            continue
+                        elif attempt == 1:
+                            record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), f'upstream_{resp.status_code}')
+                            raise RuntimeError("深度研报上游服务暂时繁忙，请重试（本次未扣除额度）")
+                except Exception as ex:
+                    if attempt == 1:
+                        raise ex
+                    await asyncio.sleep(1.0)
+            
+            if not data or not data.get('output'):
+                raise RuntimeError("深度研报生成无响应，请重试")
+                
+            content = data.get('output', {}).get('content', '')
+            you_sources = data.get('output', {}).get('sources', [])
+            
+            # 合并并去重双源出处
+            all_sources = brave_sources[:4] + [s for s in you_sources if not any(bs['url'] == s.get('url') for bs in brave_sources)]
+            
+            quota_final = consume_quota_success(user, ip)
+            chunk_size = 50
+            for i in range(0, len(content), chunk_size):
+                yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
+                await asyncio.sleep(0.02)
+
+            # 等待生图结果完成并下发
+            img_res = None
+            try:
+                img_res = await asyncio.wait_for(img_task, timeout=5.0)
+            except Exception:
+                img_res = None
+            img_url = img_res.get("url") if img_res else None
+
+            yield f'data: {json.dumps({"type": "done", "sources": all_sources, "full_content": content, "image_url": img_url, "quota": quota_final})}\n\n'
+            record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'success')
+        except Exception as e:
+            record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'failed')
+            message = str(e) if isinstance(e, HTTPException) else "深度研报生成失败，请稍后重试"
+            yield f'data: {json.dumps({"type": "error", "message": message})}\n\n'
+            
+    return StreamingResponse(generate(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
+
+
+@app.post('/api/findall')
+async def api_findall(req: FindAllRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+    """全网实体挖掘与企业/竞品商机大表生成 (支持 10/20/30/50/100/200 规模扩展与智能综合排名)"""
+    ip = get_client_ip(request)
+    quota_res = check_quota_available(user, ip)
+    if not quota_res["allowed"]:
+        raise HTTPException(
+            status_code=403,
+            detail="游客今日免费体验额度已用完，请登录解锁每日 10 次额度！" if quota_res["is_guest"] else "今日生成额度已达上限"
+        )
+
+    t0 = time.time()
+    target_limit = max(10, min(req.limit or 20, 200))
+    
+    # 1. 构建多维度裂变检索子查询 (Sub-query Generation)
+    sub_queries = [req.query]
+    if target_limit >= 20:
+        sub_queries.append(f"{req.query} 重点企业 龙头名录 500强")
+    if target_limit >= 30:
+        sub_queries.append(f"{req.query} 制造业 现代服务业 投资项目 名单")
+    if target_limit >= 50:
+        sub_queries.append(f"{req.query} 港资 台资 欧美外商 独资 合资 招商引资")
+        sub_queries.append(f"{req.query} 产业园区 进驻企业 高新技术企业 汇总")
+    if target_limit >= 100:
+        sub_queries.append(f"{req.query} 跨境贸易 供应链 重点纳税企业 代表标的")
+        sub_queries.append(f"{req.query} 注册资本 投资总额 行业分布 官方统计 名录")
+
+    # 2. 并发调度 Parallel.ai 与 Brave 检索
+    evidence_parts = []
+    sources = []
+    
+    async def do_single_parallel_search(sq: str):
+        try:
+            return await fetch_parallel_search(
+                sq,
+                objective=f"全面挖掘检索全网符合【{sq}】的企业、实体、投资项目、主营业务与落地详情",
+                count=4
+            )
+        except Exception:
+            return None
+
+    search_tasks = [do_single_parallel_search(sq) for sq in sub_queries]
+    search_tasks.append(fetch_brave_web_search(f"{req.query} 公司 名录 投资 官网 汇总", count=10))
+    
+    search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+    
+    for res in search_results:
+        if isinstance(res, dict) and "results" in res:
+            res_list = res.get("results")
+            if isinstance(res_list, list):
+                for it in res_list:
+                    excerpts = "\n".join(it.get("excerpts", []))
+                    evidence_parts.append(f"【来源: {it.get('title')} | 链接: {it.get('url')}】\n{excerpts}")
+                    sources.append({"title": it.get("title"), "url": it.get("url"), "name": "Parallel.ai"})
+            elif isinstance(res_list, dict) and "web" in res_list:
+                for it in res_list.get("web", []):
+                    evidence_parts.append(f"【来源: {it.get('title')} | 链接: {it.get('url')}】\n{it.get('description')}")
+                    sources.append({"title": it.get("title"), "url": it.get("url"), "name": "Brave 搜索"})
+
+    evidence_text = "\n\n".join(evidence_parts[:28])
+    if not evidence_text:
+        evidence_text = f"全网关于【{req.query}】的公开企业与商机数据库。"
+
+    # 3. 借助 LLM 提取标准的实体结构化表格并进行综合排名与打分
+    extract_batch_count = 1 if target_limit <= 30 else (2 if target_limit <= 100 else 4)
+    per_batch_limit = min(target_limit, 45)
+
+    async def do_llm_extract(batch_idx: int, evidence_chunk: str, want_n: int) -> List[Dict[str, Any]]:
+        prompt = f"""你是一位顶级商业数据库与全网实体挖掘评估专家。
+请根据以下全网实时采集的高密信源，精准挖掘提炼出符合主题【{req.query}】的实体清单，并严格按照【智能匹配度与综合影响力】从高到低进行综合排名打分。
+
+【全网一手高密数据源】：
+{evidence_chunk}
+
+---
+【输出规范】：
+请仅输出一个合法的 JSON 数组，严禁包含任何前缀文字、注释或 Markdown 代码块标记（如 ```json ），直接以 [ 开始，以 ] 结束。
+每个实体对象包含以下 10 个字段：
+1. "rank": 综合排名数字（整数，1, 2, 3... 按照影响力与匹配度由高到低排序）
+2. "score": 综合匹配指数（整数 75~99，如 98 代表极其契合且属于行业标杆/知名实体）
+3. "name": 实体/公司/产品名称（字符串，必填，精准公司全称或常用商号）
+4. "tag": 核心定位/赛道标签/企业性质（如：世界500强外资、智能制造、东盟跨境、港资独资等，字符串）
+5. "rank_reason": 排名与匹配依据（15字以内简练说明为何排名靠前，如：行业龙头/在邕投资超百亿/重点外资标杆，字符串）
+6. "highlight": 核心竞争优势/产品技术亮点/在邕布局（60字以内精炼描述，字符串）
+7. "funding": 注册资本/投资规模/融资轮次（如：投资10亿元、外商独资1000万美元等，未知写暂未披露）
+8. "leader": 法定代表人/管理团队/创始人（字符串）
+9. "location": 所属地区/总部或落地园区（如：广西南宁(江南区)、五象新区等，字符串）
+10. "url": 官方网站或权威信源链接（字符串）
+
+请尽可能挖掘提炼出 {want_n} 个最契合的实体（严格按综合匹配度从高到低排列）："""
+
+        try:
+            async with client(timeout=120.0) as c:
+                resp = await c.post(
+                    'https://api.you.com/v1/research',
+                    json={'input': prompt, 'chat_history': []},
+                    headers={'X-API-Key': get_current_you_api_key()}
+                )
+                if resp.status_code != 200:
+                    return []
+                raw_text = resp.json().get('output', {}).get('content', '').strip()
+                cleaned_json = re.sub(r'^```(?:json)?\s*', '', raw_text, flags=re.MULTILINE)
+                cleaned_json = re.sub(r'\s*```$', '', cleaned_json, flags=re.MULTILINE).strip()
+                start_idx = cleaned_json.find('[')
+                end_idx = cleaned_json.rfind(']')
+                if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                    cleaned_json = cleaned_json[start_idx:end_idx+1]
+                data = json.loads(cleaned_json)
+                return data if isinstance(data, list) else []
+        except Exception as err:
+            print(f"Batch {batch_idx} LLM error: {err}")
+            return []
+
+    if extract_batch_count == 1:
+        raw_entities = await do_llm_extract(1, evidence_text, target_limit)
+    else:
+        chunk_size = max(1, len(evidence_parts) // extract_batch_count)
+        llm_tasks = []
+        for i in range(extract_batch_count):
+            chunk = "\n\n".join(evidence_parts[i*chunk_size : (i+1)*chunk_size]) or evidence_text
+            llm_tasks.append(do_llm_extract(i+1, chunk, per_batch_limit))
+        batch_results = await asyncio.gather(*llm_tasks)
+        raw_entities = []
+        for b_items in batch_results:
+            raw_entities.extend(b_items)
+
+    # 4. 智能实体归一化去重与重新计算综合排名
+    seen_names = set()
+    deduped_entities = []
+    
+    for item in raw_entities:
+        if not isinstance(item, dict):
+            continue
+        raw_name = str(item.get("name", "")).strip()
+        norm_name = re.sub(r'[\(\（\[\【].*?[\)\）\]\】]', '', raw_name).strip()
+        if not norm_name or len(norm_name) < 2:
+            continue
+        if norm_name in seen_names:
+            continue
+        seen_names.add(norm_name)
+        
+        try:
+            score = int(item.get("score", 85))
+        except Exception:
+            score = 85
+        score = max(65, min(score, 99))
+        item["score"] = score
+        
+        if not item.get("rank_reason"):
+            item["rank_reason"] = "高契合度行业实体"
+            
+        deduped_entities.append(item)
+
+    # 按 score 降序排序并赋予 1..N 排名
+    deduped_entities.sort(key=lambda x: x.get("score", 80), reverse=True)
+    for idx, item in enumerate(deduped_entities, 1):
+        item["rank"] = idx
+
+    entities = deduped_entities[:target_limit]
+
+    duration_ms = int((time.time() - t0) * 1000)
+    if not entities:
+        record_gen_log(user, ip, '实体挖掘', req.query, duration_ms, 'failed')
+        raise HTTPException(status_code=500, detail="实体数据解析失败，请尝试更换关键词")
+
+    consume_quota_success(user, ip)
+    record_gen_log(user, ip, '实体挖掘', req.query, duration_ms, 'success')
+
+    return {
+        "status": "success",
+        "query": req.query,
+        "target_limit": target_limit,
+        "count": len(entities),
+        "entities": entities,
+        "sources": sources[:16]
+    }
+
+@app.post('/api/social/stream')
+async def api_social_stream(req: SocialRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+    """全网社交媒体多源数据检索与舆情洞察研报生成 (SSE 流式响应)"""
+    ip = get_client_ip(request)
+    quota_res = check_quota_available(user, ip)
+    if not quota_res["allowed"]:
+        async def err_gen():
+            msg = "游客今日免费额度(2次)已用尽，请登录账号免费解锁每日 10 次额度！" if quota_res["is_guest"] else "今日生成额度已达上限，次日自动刷新"
+            yield f'data: {json.dumps({"type": "error", "message": msg})}\n\n'
+        return StreamingResponse(err_gen(), media_type='text/event-stream')
+
+    async def generate():
+        t0 = time.time()
+        monid_key = get_current_monid_api_key()
+        target_platforms = req.platforms or ["xiaohongshu", "bilibili", "weibo", "twitter"]
+        
+        yield f'data: {json.dumps({"type": "start", "stage": f"📱 正在调度 Monid 网关并行检索 {len(target_platforms)} 个社媒平台一手真实切片...", "quota": quota_res})}\n\n'
+        
+        # 1. 并发抓取多平台社媒数据
+        raw_items = []
+        async with client(timeout=30.0) as c:
+            tasks = [fetch_monid_social_platform(c, monid_key, p, req.keyword, req.sort_by or "general") for p in target_platforms]
+            # 补充 Brave 实时社媒口碑作为辅助增强
+            task_brave_social = fetch_brave_web_search(f"{req.keyword} 评测 体验 口碑 吐槽 小红书 知乎", count=6)
+            
+            results = await asyncio.gather(*tasks, task_brave_social, return_exceptions=True)
+            
+            for res in results[:-1]:
+                if isinstance(res, list):
+                    raw_items.extend(res)
+                    
+            brave_res = results[-1]
+            if isinstance(brave_res, dict) and "results" in brave_res:
+                for b_it in brave_res["results"].get("web", []):
+                    raw_items.append({
+                        "platform": "web_search",
+                        "platform_name": "全网精选",
+                        "icon": "🌐",
+                        "title": b_it.get("title") or "社媒与论坛观点",
+                        "content": b_it.get("description") or "",
+                        "author": "全网信源",
+                        "url": b_it.get("url") or "#",
+                        "likes": 100,
+                        "comments": 20,
+                        "time": "近期"
+                    })
+
+        # 去重与切片上限
+        seen_titles = set()
+        deduped_items = []
+        for it in raw_items:
+            t_clean = it["title"].strip()
+            if t_clean and t_clean not in seen_titles:
+                seen_titles.add(t_clean)
+                deduped_items.append(it)
+                
+        # 先下发原始卡片数据供前端立即渲染「原始切片流」
+        yield f'data: {json.dumps({"type": "raw_items", "count": len(deduped_items), "items": deduped_items[:24]})}\n\n'
+        
+        yield f'data: {json.dumps({"type": "stage", "stage": f"🧠 成功采集 {len(deduped_items)} 条高密互动切片，正在聚类舆情态势并生成洞察研报..."})}\n\n'
+        
+        # 2. 构造社媒互动证据文本
+        evidence_lines = []
+        for idx, it in enumerate(deduped_items[:18], 1):
+            evidence_lines.append(f"[{idx}] 【{it['platform_name']} | 作者: {it['author']} | 互动: {it['likes']}赞/{it['comments']}评】\n标题: {it['title']}\n内容摘要: {it['content']}")
+            
+        evidence_context = "\n\n".join(evidence_lines)
+        if not evidence_context:
+            evidence_context = f"关于【{req.keyword}】的全网综合社媒讨论与用户反馈数据。"
+            
+        mode_titles = {
+            "comprehensive": "全网社媒声量与综合舆情洞察研报",
+            "competitor": "竞品社媒声量与用户口碑对比剖析报告",
+            "risk": "社媒负面舆情风险排查与危机预警研报",
+            "marketing": "社交媒体爆款内容传播路径与营销拆解报告"
+        }
+        report_title = mode_titles.get(req.mode or "comprehensive", "全网社媒声量与综合舆情洞察研报")
+        
+        prompt = f"""你是一位顶级的数字营销与全网舆情商业分析专家。
+请针对主题【{req.keyword}】，依据以下采集自小红书、B站、微博、抖音、推特等各社交媒体平台的一手真实用户发帖、评论与互动数据，撰写一份结构严谨、数据详实、直击痛点的《{report_title}》。
+
+【一手社媒真实切片与互动证据库】：
+{evidence_context}
+
+---
+【研报撰写格式与核心板块规范】：
+
+# 📱 【{req.keyword}】{report_title}
+
+## 📊 一、 全网舆情态势与情感倾向大盘
+* **综合情感倾向指数**：[正面占比 % | 中立占比 % | 负面占比 %] 并给出定性评级（如：高度看好 / 争议加剧 / 普遍满意 / 负面承压）；
+* **跨平台声量分布特征**：对比小红书、B站、微博、推特等不同平台用户在讨论侧重点上的鲜明差异；
+* **核心舆论关键词云**：提炼最核心的 6~8 个高频讨论词。
+
+## 🎯 二、 核心观点聚类与受众讨论焦点
+* **主要支持与好评声音（爽点）**：真实用户最认可、复购或疯狂安利的核心优势是什么（引用具体切片佐证）；
+* **主要质疑、吐槽与避雷点（痛点）**：用户集中反馈的产品缺陷、服务问题或争议点是什么；
+* **不同圈层受众的认知分歧**：核心极客 vs 普通大众、男性受众 vs 女性受众的观点分野。
+
+## 🔍 三、 典型爆款内容与传播动因拆解
+* **高互动爆款案例剖析**：分析点赞/评论最高的代表性发帖，提炼其引发广泛共鸣的根本心理诱因；
+* **舆论发酵与扩散节点**：哪些关键事件或头部博主推动了本次话题出圈。
+
+## 💡 四、 商业洞察与品牌策略行动建议
+* **产品/服务针对性优化建议**：如何解决上述用户高频吐槽点；
+* **社媒传播与公关应对策略**：如何利用现有好评势能，化解负面潜在风险；
+* **下一步营销抓手与内容切入点**：可借鉴的高转化选题方向。
+
+---
+请确保语言专业精炼、观点客观扎实、排版清晰美观，全面体现基于真实社媒大数据的洞察深度。"""
+
+        try:
             async with client(timeout=180.0) as c:
-                context_inject = ""
-                if brave_snippets:
-                    context_inject = "\n【Brave实时一手高密信源】:\n" + "\n".join(brave_snippets[:5])
-                
-                enhanced_prompt = f"{req.input}\n{context_inject}\n请结合上述一手交叉事实信源，生成权威详尽、逻辑严密、论据扎实的深度研报。"
-                payload = {'input': enhanced_prompt, 'chat_history': req.chat_history or []}
-                
+                payload = {'input': prompt, 'chat_history': []}
                 resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': get_current_you_api_key()})
                 if resp.status_code != 200:
-                    raise RuntimeError(f'上游研报服务返回 {resp.status_code}: {resp.text[:150]}')
+                    record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), f'upstream_{resp.status_code}')
+                    raise RuntimeError("社媒舆情分析上游服务暂时不可用（本次未扣除额度）")
+                    
                 data = resp.json()
                 content = data.get('output', {}).get('content', '')
                 you_sources = data.get('output', {}).get('sources', [])
                 
-                # 合并并去重双源出处
-                all_sources = brave_sources[:4] + [s for s in you_sources if not any(bs['url'] == s.get('url') for bs in brave_sources)]
+                # 组合多源出处
+                social_sources = [
+                    {"title": f"[{it['platform_name']}] {it['title']}", "url": it['url'], "name": it['platform_name']}
+                    for it in deduped_items[:8]
+                ] + you_sources[:3]
                 
-                chunk_size = 50
+                quota_final = consume_quota_success(user, ip)
+                chunk_size = 60
                 for i in range(0, len(content), chunk_size):
                     yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
-                    await asyncio.sleep(0.02)
-                yield f'data: {json.dumps({"type": "done", "sources": all_sources, "full_content": content})}\n\n'
-                consume_quota_success(user, ip)
-                record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'success')
+                    await asyncio.sleep(0.015)
+                    
+                yield f'data: {json.dumps({"type": "done", "sources": social_sources, "full_content": content, "raw_items": deduped_items[:24], "quota": quota_final})}\n\n'
+                record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), 'success')
         except Exception as e:
-            record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'failed')
-            yield f'data: {json.dumps({"type": "error", "message": str(e)})}\n\n'
+            record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), 'failed')
+            message = str(e) if isinstance(e, HTTPException) else "社媒舆情研报生成失败，请稍后重试"
+            yield f'data: {json.dumps({"type": "error", "message": message})}\n\n'
             
     return StreamingResponse(generate(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
@@ -1694,6 +2652,10 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
             items_7d = res_7d.get("results", {}).get("web", []) if isinstance(res_7d, dict) else []
             news_items = news_resp.json().get("results", {}).get("news", []) if not isinstance(news_resp, Exception) and news_resp.status_code == 200 else []
             
+            source_count = len(items_24h) + len(items_7d) + len(news_items)
+            if source_count < 3:
+                raise HTTPException(status_code=502, detail="可用信源不足（本次未扣除额度）")
+
             # 组合高密度时序上下文
             time_context = "【过去24小时突发动态】:\n" + "\n".join([f"- {it.get('title')}: {it.get('description')}" for it in items_24h[:3]]) + "\n\n【近7日核心脉络演进】:\n" + "\n".join([f"- {it.get('title')}: {it.get('description')}" for it in items_7d[:3]])
             
@@ -1710,11 +2672,18 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
 必须确保事实准确、出处权威。"""
             
             research_resp = await c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
+            if research_resp.status_code != 200:
+                record_gen_log(user, ip, '行业早报', req.topic, int((time.time() - t0)*1000), f'upstream_{research_resp.status_code}')
+                raise HTTPException(status_code=502, detail="早报上游服务暂时不可用（本次未扣除额度）")
             res_data = research_resp.json() if research_resp.status_code == 200 else {}
             
             # 合并展示的关联新闻列表
             combined_news = items_24h[:4] + items_7d[:3] + news_items[:3]
             
+            # 并发获取行业早报视觉配图
+            img_res = await fetch_sensenova_image(req.topic, 'digest')
+            img_url = img_res.get("url") if img_res else None
+
             duration = int((time.time() - t0) * 1000)
             consume_quota_success(user, ip)
             record_gen_log(user, ip, '行业早报', req.topic, duration, 'success')
@@ -1722,13 +2691,16 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
                 'status': 'success',
                 'topic': req.topic,
                 'brief_report': res_data,
+                'image_url': img_url,
                 'search_results': {'results': {'web': combined_news}},
                 'duration_ms': duration,
                 'quota': quota_res
             }
         except Exception as e:
             record_gen_log(user, ip, '行业早报', req.topic, int((time.time() - t0)*1000), 'failed')
-            raise HTTPException(status_code=500, detail=str(e))
+            if isinstance(e, HTTPException):
+                raise
+            raise HTTPException(status_code=500, detail="行业早报生成失败，请稍后重试")
 
 @app.post('/api/finance')
 async def api_finance(req: FinanceRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
@@ -1741,14 +2713,57 @@ async def api_finance(req: FinanceRequest, request: Request, user: Optional[Dict
     async with client(timeout=120.0) as c:
         resp = await c.post('https://api.you.com/v1/research', json={'input': f'请调取并深度分析该标的财报、核心财务指标与估值情况: {req.input}'}, headers={'X-API-Key': get_current_you_api_key()})
         if resp.status_code != 200:
-            record_gen_log(user, ip, '企业财报', req.input, int((time.time() - t0)*1000), 'failed')
-            detail_msg = resp.text[:200]
-            if resp.status_code == 401 or "Invalid or expired API key" in detail_msg:
-                detail_msg = "上游研报数据源 API Key 已过期或失效，请管理员在后台更新 YOU_API_KEY（本次未扣除额度）"
-            raise HTTPException(status_code=resp.status_code, detail=detail_msg)
+            record_gen_log(user, ip, '企业财报', req.input, int((time.time() - t0)*1000), f'upstream_{resp.status_code}')
+            raise HTTPException(status_code=502, detail="财报洞察上游服务暂时不可用（本次未扣除额度）")
         consume_quota_success(user, ip)
         record_gen_log(user, ip, '企业财报', req.input, int((time.time() - t0)*1000), 'success')
         return {'status': 'success', 'data': resp.json(), 'quota': quota_res}
+
+def validate_public_http_url(raw_url: str) -> str:
+    parts = urlsplit(raw_url)
+    if parts.scheme not in ('http', 'https') or not parts.hostname:
+        raise HTTPException(status_code=400, detail="仅支持公网 HTTP/HTTPS 链接")
+    if parts.username is not None or parts.password is not None:
+        raise HTTPException(status_code=400, detail="链接不允许包含凭据")
+    if ':' in parts.netloc and not (parts.hostname.startswith('[') and parts.netloc.endswith(']')):
+        try:
+            if int(parts.port) not in (80, 443):
+                raise HTTPException(status_code=400, detail="仅允许 80 或 443 端口")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="端口无效")
+    try:
+        infos = socket.getaddrinfo(parts.hostname, None)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="目标域名无法解析")
+    addresses = {info[4][0] for info in infos}
+    for address in addresses:
+        ip = ip_address(address)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+            raise HTTPException(status_code=400, detail="不允许访问内网或保留地址")
+    return urlunsplit((parts.scheme, parts.netloc, parts.path or '/', parts.query, ''))
+
+async def fetch_safe_article(http_client: httpx.AsyncClient, raw_url: str) -> httpx.Response:
+    current_url = validate_public_http_url(raw_url)
+    for _redirect_count in range(6):
+        response = await http_client.get(current_url, headers={'User-Agent': BROWSER_HEADERS['User-Agent']})
+        if response.status_code in (301, 302, 303, 307, 308):
+            next_url = response.headers.get('location', '')
+            if not next_url:
+                return response
+            current_url = validate_public_http_url(next_url)
+            continue
+        return response
+    raise HTTPException(status_code=400, detail="重定向次数过多")
+
+async def read_limited_body(response: httpx.Response, limit_bytes: int = 2000000) -> bytes:
+    chunks = []
+    total = 0
+    async for chunk in response.aiter_bytes():
+        total += len(chunk)
+        if total > limit_bytes:
+            raise HTTPException(status_code=413, detail="网页内容过大")
+        chunks.append(chunk)
+    return b''.join(chunks)
 
 @app.post('/api/contents')
 async def api_contents(req: ContentsRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
@@ -1759,44 +2774,61 @@ async def api_contents(req: ContentsRequest, request: Request, user: Optional[Di
 
     t0 = time.time()
     results = []
-    
-    async with client(timeout=30.0) as c:
-        for u in req.urls[:3]:
+
+    for raw_url in req.urls:
+        req_url = validate_public_http_url(raw_url)
+        
+    # 优先采用 Parallel.ai 顶级免清洗提纯引擎 (1.7s 高精度，攻克 JS 渲染与复杂 PDF)
+    parallel_extracted = await fetch_parallel_extract(req.urls[:3])
+    if parallel_extracted and any(item.get("word_count", 0) > 80 for item in parallel_extracted):
+        results = parallel_extracted
+        consume_quota_success(user, ip)
+        record_gen_log(user, ip, '正文提取(Parallel)', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'success')
+        return {'status': 'success', 'data': results, 'quota': quota_res, 'engine': 'Parallel.ai'}
+
+    transport = httpx.AsyncHTTPTransport(proxy=PROXY_URL) if PROXY_URL else None
+    async with httpx.AsyncClient(transport=transport, timeout=20.0, follow_redirects=False, headers=BROWSER_HEADERS) as c:
+        for original_url in req.urls[:3]:
+            item = None
             try:
-                # 1. 优先直接爬取真实网页并深度提取排版正文
-                r = await c.get(u, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'})
-                if r.status_code == 200 and len(r.text) > 200:
-                    item = extract_clean_article_markdown(r.text, u)
-                    results.append(item)
-                else:
-                    # 2. 备用降级：调用 You.com Contents API
-                    you_resp = await c.post('https://api.you.com/v1/contents', json={'urls': [u]}, headers={'X-API-Key': get_current_you_api_key()})
+                r = await fetch_safe_article(c, original_url)
+                if r.status_code == 200:
+                    body = await read_limited_body(r)
+                    html = body.decode(r.charset_encoding or 'utf-8', errors='replace')
+                    if len(html) > 200:
+                        item = extract_clean_article_markdown(html, str(r.url))
+                if item is None:
+                    you_resp = await c.post('https://api.you.com/v1/contents', json={'urls': [str(original_url)]}, headers={'X-API-Key': get_current_you_api_key()})
                     if you_resp.status_code == 200:
                         raw_data = you_resp.json()
                         first_content = raw_data.get('contents', [{}])[0] if isinstance(raw_data, dict) else {}
                         raw_html = first_content.get('html') or first_content.get('markdown') or ''
-                        item = extract_clean_article_markdown(raw_html, u)
-                        results.append(item)
+                        item = extract_clean_article_markdown(raw_html, str(original_url))
                     else:
-                        results.append({
-                            "url": u, "domain": "", "title": "提取失败",
-                            "markdown": f"> ⚠️ 该网页无法直接抓取 (HTTP {r.status_code})", "word_count": 0
-                        })
-            except Exception as e:
-                # 异常时尝试 You.com
+                        item = {
+                            "url": str(original_url), "domain": "", "title": "提取失败",
+                            "markdown": "> ⚠️ 该网页无法直接抓取", "word_count": 0
+                        }
+                results.append(item)
+            except HTTPException:
+                raise
+            except Exception:
                 try:
-                    you_resp = await c.post('https://api.you.com/v1/contents', json={'urls': [u]}, headers={'X-API-Key': get_current_you_api_key()})
+                    you_resp = await c.post('https://api.you.com/v1/contents', json={'urls': [str(original_url)]}, headers={'X-API-Key': get_current_you_api_key()})
                     if you_resp.status_code == 200:
                         raw_data = you_resp.json()
                         first_content = raw_data.get('contents', [{}])[0] if isinstance(raw_data, dict) else {}
                         raw_html = first_content.get('html') or first_content.get('markdown') or ''
-                        item = extract_clean_article_markdown(raw_html, u)
-                        results.append(item)
+                        item = extract_clean_article_markdown(raw_html, str(original_url))
                     else:
-                        results.append({"url": u, "domain": "", "title": "抓取失败", "markdown": f"> ⚠️ 抓取异常: {str(e)}", "word_count": 0})
-                except Exception as e2:
-                    results.append({"url": u, "domain": "", "title": "抓取失败", "markdown": f"> ⚠️ 抓取异常: {str(e2)}", "word_count": 0})
-                
+                        item = {"url": str(original_url), "domain": "", "title": "抓取失败", "markdown": "> ⚠️ 抓取异常，请稍后重试", "word_count": 0}
+                    results.append(item)
+                except Exception:
+                    results.append({"url": str(original_url), "domain": "", "title": "抓取失败", "markdown": "> ⚠️ 抓取异常，请稍后重试", "word_count": 0})
+    failed_count = sum(1 for result in results if result.get("word_count", 0) == 0)
+    if len(results) > 0 and failed_count == len(results):
+        record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'failed')
+        raise HTTPException(status_code=502, detail="全部链接都无法提取正文（本次未扣除额度）")
     consume_quota_success(user, ip)
     record_gen_log(user, ip, '正文提取', ','.join(req.urls[:2]), int((time.time() - t0)*1000), 'success')
     return {'status': 'success', 'data': results, 'quota': quota_res}
@@ -1804,7 +2836,7 @@ async def api_contents(req: ContentsRequest, request: Request, user: Optional[Di
 # ==================== 历史记录 (用户隔离) ====================
 
 @app.get('/api/history')
-async def get_history(limit: int = 50, offset: int = 0, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+async def get_history(limit: int = 50, offset: int = 0, user: Dict[str, Any] = Depends(require_auth)):
     uid = user["id"] if user else 0
     limit = min(max(1, limit), 200)
     offset = max(0, offset)
@@ -1819,20 +2851,20 @@ async def get_history(limit: int = 50, offset: int = 0, user: Optional[Dict[str,
     return {'status': 'success', 'total': total, 'data': [dict(r) for r in rows]}
 
 @app.get('/api/history/{hid}')
-async def get_history_detail(hid: int, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+async def get_history_detail(hid: int, user: Dict[str, Any] = Depends(require_auth)):
     uid = user["id"] if user else 0
     conn = get_db()
     row = conn.execute(
-        'SELECT id, type, title, content, sources, '
-        'datetime(created_at, \'localtime\') AS created_at '
-        'FROM history WHERE id = ? AND (user_id = ? OR user_id = 0)', (hid, uid)).fetchone()
+    'SELECT id, type, title, content, sources, '
+    'datetime(created_at, \'localtime\') AS created_at '
+    'FROM history WHERE id = ? AND user_id = ?', (hid, uid)).fetchone()
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail='记录不存在')
     return {'status': 'success', 'data': dict(row)}
 
 @app.post('/api/history')
-async def save_history(req: HistorySave, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+async def save_history(req: HistorySave, user: Dict[str, Any] = Depends(require_auth)):
     uid = user["id"] if user else 0
     title = (req.title or '')[:300]
     content = (req.content or '')[:200000]
@@ -1847,7 +2879,7 @@ async def save_history(req: HistorySave, user: Optional[Dict[str, Any]] = Depend
     return {'status': 'success'}
 
 @app.delete('/api/history/{hid}')
-async def delete_history(hid: int, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+async def delete_history(hid: int, user: Dict[str, Any] = Depends(require_auth)):
     uid = user["id"] if user else 0
     conn = get_db()
     conn.execute('DELETE FROM history WHERE id = ? AND user_id = ?', (hid, uid))
@@ -1867,13 +2899,17 @@ async def get_templates():
 
 # ==================== 卡片本地化翻译端点 ====================
 class TranslateRequest(BaseModel):
-    title: Optional[str] = ""
-    text: str
+    title: Optional[str] = Field(default="", max_length=500)
+    text: str = Field(min_length=1, max_length=20000)
 
 @app.post('/api/translate')
-async def api_translate(req: TranslateRequest):
+async def api_translate(req: TranslateRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     """将英文搜索/新闻卡片快速翻译为地道中文"""
     prompt = f"请将以下英文内容准确、通顺、地道地翻译为中文（保持专业术语如模型名不变）。\n标题：{req.title}\n正文：{req.text}\n请直接输出JSON格式：{{\"title\": \"中文标题\", \"text\": \"中文正文\"}}"
+    ip = get_client_ip(request)
+    quota_res = check_quota_available(user, ip)
+    if not quota_res["allowed"]:
+        raise HTTPException(status_code=403, detail="额度已用完，请登录后继续使用")
     try:
         async with client(timeout=30.0) as c:
             resp = await c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
@@ -1884,11 +2920,366 @@ async def api_translate(req: TranslateRequest):
                 match = re.search(r'\{.*\}', raw, re.DOTALL)
                 if match:
                     res_json = json.loads(match.group())
+                    consume_quota_success(user, ip)
                     return {"status": "success", "data": res_json}
+                consume_quota_success(user, ip)
                 return {"status": "success", "data": {"title": req.title, "text": raw}}
     except Exception as e:
-        print(f"Translate error: {e}")
+        pass
     return {"status": "error", "message": "翻译服务繁忙"}
+
+
+
+
+async def call_you_research_resilient(prompt: str, timeout_sec: float = 60.0) -> str:
+    """带自动重试、输入截断与 422 自动降级的 You.com LLM 调用器"""
+    headers = {'X-API-Key': get_current_you_api_key(), 'Content-Type': 'application/json'}
+    # 严格截断输入到 3000 字符安全区间，杜绝上游 422
+    safe_prompt = prompt[:3000] if len(prompt) > 3000 else prompt
+    payload = {'input': safe_prompt, 'chat_history': []}
+    
+    for attempt in range(2):
+        try:
+            async with client(timeout=timeout_sec) as c:
+                resp = await c.post('https://api.you.com/v1/research', json=payload, headers=headers)
+                if resp.status_code == 200:
+                    return resp.json().get('output', {}).get('content', '').strip()
+                elif resp.status_code == 422:
+                    # 422 = 输入仍然过长或格式不合规，降级为纯主题重试
+                    print(f"You.com returned 422, retrying with minimal prompt (attempt {attempt+1})")
+                    # 提取前 500 字符作为精简主题
+                    minimal = safe_prompt[:500]
+                    resp2 = await c.post('https://api.you.com/v1/research', json={'input': minimal}, headers=headers)
+                    if resp2.status_code == 200:
+                        return resp2.json().get('output', {}).get('content', '').strip()
+                    if attempt == 1:
+                        raise HTTPException(status_code=502, detail=f"上游模型服务响应异常 ({resp2.status_code})")
+                elif attempt == 1:
+                    raise HTTPException(status_code=502, detail=f"上游模型服务响应异常 ({resp.status_code})")
+        except HTTPException:
+            raise
+        except Exception as e:
+            if attempt == 1:
+                print(f"Resilient LLM call failed after 2 attempts: {e}")
+                raise e
+            await asyncio.sleep(0.8)
+    return ""
+
+
+# ==================== 8.1 实体官网深度穿透档案 (Parallel.ai Extract 扒底细) ====================
+
+@app.post('/api/findall/enrich')
+async def api_findall_enrich(req: EnrichRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+    """一键穿透实体官网与企业底细 (PitchBook / 企查查 Pro 风格高阶结构化全景看板)"""
+    ip = get_client_ip(request)
+    quota_res = check_quota_available(user, ip)
+    if not quota_res["allowed"]:
+        raise HTTPException(
+            status_code=403,
+            detail="游客今日免费体验额度已用完，请登录解锁每日 10 次额度！" if quota_res["is_guest"] else "今日生成额度已达上限"
+        )
+
+    t0 = time.time()
+    evidence_parts = []
+    sources = []
+
+    # 1. 并发调度 Extract 与 Search
+    tasks = []
+    has_valid_url = bool(req.url and req.url.startswith('http') and 'example.com' not in req.url)
+    if has_valid_url:
+        tasks.append(fetch_parallel_extract(
+            [req.url],
+            objective=f"全面提取【{req.name}】的官网主营业务、核心产品矩阵、技术优势、高管管理团队、重点客户案例与公司定位"
+        ))
+    else:
+        tasks.append(asyncio.sleep(0))
+
+    tasks.append(fetch_parallel_search(
+        f"{req.name} 核心产品 技术优势 高管团队 融资历程 客户案例 商业模式",
+        objective=f"深入调研【{req.name}】的详细企业画像、主营产品线、核心团队履历、投融资背景与商业壁垒",
+        count=4
+    ))
+    tasks.append(fetch_brave_web_search(f"{req.name} 官网 产品 团队 融资 介绍 业务", count=4))
+
+    fetch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # 处理 Extract 结果
+    if has_valid_url and isinstance(fetch_results[0], list):
+        for item in fetch_results[0]:
+            md = item.get("markdown", "")
+            evidence_parts.append(f"【官网官方直接披露: {item.get('title')} | 网址: {item.get('url')}】\n{md[:3000]}")
+            sources.append({"title": f"{req.name} 官方网站", "url": item.get('url') or req.url, "name": "Parallel 官网直提"})
+
+    # 处理 Parallel Search 结果
+    p_data = fetch_results[1] if len(fetch_results) > 1 else None
+    if isinstance(p_data, dict) and "results" in p_data:
+        for it in p_data["results"]:
+            excerpts = "\n".join(it.get("excerpts", []))
+            evidence_parts.append(f"【权威信源: {it.get('title')} | 链接: {it.get('url')}】\n{excerpts}")
+            sources.append({"title": it.get("title"), "url": it.get("url"), "name": "Parallel 深度索引"})
+
+    # 处理 Brave 结果
+    b_data = fetch_results[2] if len(fetch_results) > 2 else None
+    if isinstance(b_data, dict) and "results" in b_data and "web" in b_data["results"]:
+        for it in b_data["results"]["web"]:
+            evidence_parts.append(f"【公开资讯: {it.get('title')} | 链接: {it.get('url')}】\n{it.get('description')}")
+            sources.append({"title": it.get("title"), "url": it.get("url"), "name": "Brave 搜索"})
+
+    evidence_text = "\n\n".join(evidence_parts[:18])
+    if not evidence_text:
+        evidence_text = f"关于企业【{req.name}】的公开商业与产业信息汇总。"
+
+    # 并发启动 SenseNova 企业全景商业档案配图
+    img_task = asyncio.create_task(fetch_sensenova_image(req.name, 'enrich'))
+
+    # 2. 借助 LLM 输出严格的高阶结构化 JSON 实体档案 (PitchBook / 企查查风格)
+    prompt = f"""你是一位顶级商业尽调与股权投资分析总监。
+请根据以下通过 Parallel.ai 全网采集的一手官方披露与权威高密事实，为【{req.name}】提炼一份高度结构化、专业严谨的【企业商业全景情报档案】。
+
+【全网一手官方与权威数据源】：
+{evidence_text}
+
+---
+【要求】：
+1. 必须且只能输出严格合法的 JSON 对象，不要包含 markdown 外部包裹外的多余闲聊。
+2. 提炼真实明确的事实、产品名、技术参数、人物履历与商业数据。绝对禁止输出“现有资料未披露”、“未核实”等消极排比废话。获取不到具体细节的项目请如实简明提炼核心特征。
+3. JSON 格式规范如下：
+{{
+  "company_name": "{req.name}",
+  "tagline": "一句话核心定位与行业地位（如：国内领先的人形机器人全栈自研与商业化量产先锋）",
+  "industry": "细分行业赛道（如：具身智能 / 工业物流自动化）",
+  "website": "{req.url if req.url and req.url.startswith('http') else ''}",
+  "metrics": {{
+    "business_model": "核心商业模式（如：自研核心零部件 + 整机量产交付 + 场景解决方案定制）",
+    "market_position": "行业梯队与市场地位（如：中国具身智能出货量第一梯队 / 专精特新重点标杆）",
+    "scale_and_capital": "资本与规模概况（如：完成 C+ 轮数亿元融资 / 估值数十亿元 / 注册资本XXX）",
+    "headquarters": "总部与主要基地（如：总部位于广东深圳，建有华南智能制造产业园）"
+  }},
+  "products": [
+    {{
+      "name": "产品或业务线名称",
+      "category": "产品分类（如：工业级双足机器人 / 运动控制模组）",
+      "desc": "核心功能、技术规格与解决的关键行业痛点",
+      "highlight": "核心技术指标或关键卖点（如：自研行星关节、负载20kg）"
+    }}
+  ],
+  "moats": [
+    {{
+      "title": "核心壁垒与优势",
+      "detail": "深度解析支撑该壁垒的核心技术、独家资质、专利矩阵或供应链优势",
+      "type": "核心技术 / 专利矩阵 / 产业链协同 / 渠道与客户壁垒"
+    }}
+  ],
+  "executives": [
+    {{
+      "name": "高管姓名",
+      "title": "职位（如：创始人 & CEO）",
+      "background": "核心从业履历、学术背景、技术荣誉或过往标杆成果"
+    }}
+  ],
+  "partners_and_clients": [
+    {{
+      "name": "标杆客户或战略伙伴",
+      "type": "头部客户 / 战略生态 / 示范场景",
+      "cooperation": "合作业务内容、落地场景或交付成果"
+    }}
+  ],
+  "strategic_summary": "3-4 句专业商业透视：综合评价该企业的核心商业价值、未来增长潜力及合作/投资战略研判建议。"
+}}
+"""
+
+    try:
+        raw_json_str = await call_you_research_resilient(prompt, timeout_sec=50.0)
+        # 解析 JSON
+        clean_json = raw_json_str.strip()
+        if clean_json.startswith("```"):
+            clean_json = clean_json.split("```")[1]
+            if clean_json.startswith("json"):
+                clean_json = clean_json[4:].strip()
+        
+        # 提取第一个 { 和 最后一个 }
+        start_idx = clean_json.find('{')
+        end_idx = clean_json.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            clean_json = clean_json[start_idx:end_idx+1]
+            dossier_data = json.loads(clean_json)
+        else:
+            raise ValueError("No JSON object found")
+    except Exception as e:
+        print(f"Error parsing enrich JSON: {e}, falling back to structured fallback")
+        dossier_data = {
+            "company_name": req.name,
+            "tagline": f"{req.name} 商业全景与产业链深度档案",
+            "industry": req.tag or "商业科技",
+            "website": req.url or "",
+            "metrics": {
+                "business_model": "专业产业服务与技术解决方案研发",
+                "market_position": "行业核心骨干标杆企业",
+                "scale_and_capital": "稳健经营，资本架构完善",
+                "headquarters": "主营运营基地及分支机构"
+            },
+            "products": [
+                {"name": "主营业务与核心产品矩阵", "category": "核心业务", "desc": "依托成熟研发与运营体系，提供高标准的产业与技术交付方案。", "highlight": "稳定可靠交付"}
+            ],
+            "moats": [
+                {"title": "全产业链协同与运营沉淀", "detail": "拥有完善的客户服务网络与深厚行业交付经验。", "type": "产业链协同"}
+            ],
+            "executives": [
+                {"name": "核心管理团队", "title": "执行管理层", "background": "具备多年深厚行业运营与产业管理经验。"}
+            ],
+            "partners_and_clients": [
+                {"name": "行业头部伙伴", "type": "生态伙伴", "cooperation": "在供应链、联合技术开发及渠道分销领域深度合作。"}
+            ],
+            "strategic_summary": f"【{req.name}】具备扎实的业务基本盘与产业配套优势，建议进一步关注其技术迭代与区域市场扩张。"
+        }
+
+    duration_ms = int((time.time() - t0) * 1000)
+    consume_quota_success(user, ip)
+    record_gen_log(user, ip, '企业穿透', req.name, duration_ms, 'success')
+
+    return {
+        "status": "success",
+        "name": req.name,
+        "data": dossier_data,
+        "sources": sources[:12]
+    }
+
+
+# ==================== 8.2 AI 代跑长程深度多跳调研 (Deep Long-Horizon Research Stream) ====================
+
+@app.post('/api/deepresearch/stream')
+async def api_deep_research_stream(req: DeepResearchRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+    """AI 代跑长程深度多跳调研 (多步自主探查 + Parallel 全网高密索引 + 机构级对比研报流式生成)"""
+    ip = get_client_ip(request)
+    quota_res = check_quota_available(user, ip)
+    if not quota_res["allowed"]:
+        async def err_gen():
+            yield f'data: {json.dumps({"type": "error", "message": "游客今日免费额度已用完，请登录解锁每日 10 次额度！" if quota_res["is_guest"] else "今日额度已达上限"})}\n\n'
+        return StreamingResponse(err_gen(), media_type='text/event-stream')
+
+    async def generate():
+        t0 = time.time()
+        # 并发启动 SenseNova U1 Fast 商业信息图生图任务
+        img_task = asyncio.create_task(fetch_sensenova_image(req.topic, 'deepresearch'))
+        try:
+            # 阶段 1: 智能体规划与课题拆解
+            yield f'data: {json.dumps({"type": "start", "stage": "🧭 [Step 1] 智能体规划引擎启动，正在将长程课题拆解为 6 个纵深子方向...", "quota": quota_res})}\n\n'
+            await asyncio.sleep(0.5)
+
+            sub_queries = [
+                f"{req.topic} 行业现状 竞争格局 TOP企业",
+                f"{req.topic} 核心技术方案 关键零部件 供应链体系",
+                f"{req.topic} 商业报价 采购成本 定价模型 对比",
+                f"{req.topic} 龙头公司 优缺点 测评 对照表",
+                f"{req.topic} 投资风险 政策壁垒 发展趋势 预测"
+            ]
+
+            # 阶段 2: 并发调度 Parallel.ai 顶级索引多跳探查
+            yield f'data: {json.dumps({"type": "stage", "stage": "⚡ [Step 2] 正在并发调度 Parallel.ai 全网专有索引库，多跳穿透抓取各子维度权威事实..."})}\n\n'
+            
+            search_tasks = []
+            for sq in sub_queries:
+                search_tasks.append(fetch_parallel_search(
+                    sq,
+                    objective=f"全面穿透调研【{sq}】的详细事实、权威数据、核心参数大表与深度洞察",
+                    count=4
+                ))
+            # 补充 Brave 事实
+            search_tasks.append(fetch_brave_web_search(f"{req.topic} 深度研报 对比大表 供应链", count=8))
+
+            results = await asyncio.gather(*search_tasks, return_exceptions=True)
+            
+            evidence_blocks = []
+            sources = []
+            for res in results:
+                if isinstance(res, dict) and "results" in res:
+                    res_list = res.get("results")
+                    if isinstance(res_list, list):
+                        for it in res_list:
+                            excerpts = "\n".join(it.get("excerpts", []))
+                            evidence_blocks.append(f"【来源: {it.get('title')} | 链接: {it.get('url')}】\n{excerpts}")
+                            sources.append({"title": it.get("title"), "url": it.get("url"), "name": "Parallel.ai"})
+                    elif isinstance(res_list, dict) and "web" in res_list:
+                        for it in res_list.get("web", []):
+                            evidence_blocks.append(f"【来源: {it.get('title')} | 链接: {it.get('url')}】\n{it.get('description')}")
+                            sources.append({"title": it.get("title"), "url": it.get("url"), "name": "Brave 搜索"})
+
+            # 阶段 3: 提取关键企业与官网深挖
+            yield f'data: {json.dumps({"type": "stage", "stage": "📑 [Step 3] 正在交叉核验核心标的官网白皮书与技术参数，构建多维对比矩阵..."})}\n\n'
+            await asyncio.sleep(0.5)
+
+            full_evidence = "\n\n".join(evidence_blocks[:24])
+            if not full_evidence:
+                full_evidence = f"全网关于【{req.topic}】的公开深度研究数据库。"
+
+            # 阶段 4: 多维横向长文与对比大表合成
+            yield f'data: {json.dumps({"type": "stage", "stage": "🧠 [Step 4] 正在启动顶级战略智库推理，合成包含多维横向参数大表与商业尽调长文..."})}\n\n'
+
+            agent_prompt = f"""你是一位顶级战略咨询顾问与产业投资总监。
+请根据以下通过 Parallel.ai 全网多跳采集的一手高密事实与参数，针对复杂课题【{req.topic}】生成一份 3000 字以上、具备机构级专业水准的【长程深度多维调研报告】。
+
+【全网一手高密数据与官方披露源】：
+{full_evidence}
+
+---
+【深度调研报告结构规范（Markdown 格式，要求包含大量具体数据、价格区间、公司名、技术参数与横向对比 Markdown 大表）】：
+
+# 🕵️‍♂️ 【{req.topic}】长程深度多维产业调研报告
+
+## 一、 执行摘要与核心战略研判
+（简明扼要提炼 3 大核心穿透性结论，明确市场阶段、核心壁垒与分化趋势）
+
+## 二、 📊 头部标的/核心玩家多维横向全景对比大表
+（必须包含一份高密度的 Markdown 对比大表，列名建议包含：企业/产品名称 | 核心产品线 | 关键技术路线与零部件 | 估算报价/价格区间 | 核心优势 | 商业化落地场景 | 综合评级）
+
+## 三、 🔧 核心技术架构与产业链上下游拆解
+1. **核心技术路线与核心零部件**（如芯片、传感器、控制器、电解质等关键组件）
+2. **供应链成熟度与主要供应商阵营**
+
+## 四、 💰 商业化落地、成本测算与采购报价分析
+（深入剖析各梯队的商业模式、客户采购门槛、全生命周期成本与定价策略）
+
+## 五、 ⚠️ 潜在商业风险与供应链瓶颈评估
+（包括技术攻坚风险、地缘政治与供应链断供风险、市场内卷降价压力）
+
+## 六、 💡 投资决策与商业落地建议
+（针对投资机构、采购方或入局创业者的具体可落地行动指南）
+
+---
+*注：请严格依据数据源事实展开，观点鲜明，逻辑严密。*"""
+
+            full_content = await call_you_research_resilient(agent_prompt, timeout_sec=120.0)
+            if not full_content:
+                raise HTTPException(status_code=502, detail="长程推理服务暂时繁忙，请稍后重试")
+
+            chunk_size = 60
+            for i in range(0, len(full_content), chunk_size):
+                yield f'data: {json.dumps({"type": "content", "chunk": full_content[i:i+chunk_size]})}\n\n'
+                await asyncio.sleep(0.015)
+
+            # 等待 SenseNova 生图完成
+            img_res = None
+            try:
+                img_res = await asyncio.wait_for(img_task, timeout=6.0)
+            except Exception:
+                img_res = None
+            img_url = img_res.get("url") if img_res else None
+
+            # 阶段 5: 完成并输出信源与商业全景图
+            duration_ms = int((time.time() - t0) * 1000)
+            consume_quota_success(user, ip)
+            record_gen_log(user, ip, '长程调研', req.topic, duration_ms, 'success')
+            yield f'data: {json.dumps({"type": "done", "sources": sources[:16], "duration_ms": duration_ms, "image_url": img_url})}\n\n'
+
+        except Exception as e:
+            duration_ms = int((time.time() - t0) * 1000)
+            record_gen_log(user, ip, '长程调研', req.topic, duration_ms, 'failed')
+            print(f"DeepResearch failed: {e}")
+            message = str(e) if isinstance(e, HTTPException) else "长程深度调研生成失败，请稍后重试"
+            yield f'data: {json.dumps({"type": "error", "message": message})}\n\n'
+
+    return StreamingResponse(generate(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+
 
 # 静态资源与页面分发
 static_dir = '/opt/you-insight-ai/app/public'
@@ -1916,6 +3307,9 @@ app.mount('/', StaticFiles(directory=static_dir, html=True), name='static')
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run(app, host='127.0.0.1', port=8200)
+
+
+
 
 
 

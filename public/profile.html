@@ -3,24 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="YouInsight AI - 个人中心与资产大盘">
-  <title>YouInsight AI - 个人中心与资产大盘</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace']
-          }
-        }
-      }
-    }
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="style.css?v=2.4.1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="description" content="商探 AI - 个人中心">
+  <title>商探 AI - 个人中心</title>
+  <script src="vendor/marked.min.js?v=2.4.2"></script>
+  <script src="vendor/purify.min.js?v=2.4.2"></script>
+  <script src="theme.js?v=2.4.2"></script>
+  <link rel="stylesheet" href="tailwind.css?v=2.4.2">
+  <link rel="stylesheet" href="style.css?v=2.8.2">
   <style>
     .prof-nav-item {
       display: flex;
@@ -47,18 +39,6 @@
       box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
     }
   </style>
-<script>
-    (function() {
-      const savedTheme = localStorage.getItem('youinsight_theme') || 'dark';
-      if (savedTheme === 'light') {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.setAttribute('data-theme', 'light');
-      } else {
-        document.documentElement.classList.add('dark');
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
@@ -72,8 +52,8 @@
             <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           </div>
           <div>
-            <h1 class="font-display text-white text-sm sm:text-base font-bold">YouInsight AI</h1>
-            <p class="text-[10px] text-[var(--text-muted)] hidden sm:block">用户个人中心与资产大盘</p>
+            <h1 class="font-display text-white text-sm sm:text-base font-bold">商探 AI</h1>
+            <p class="text-[10px] text-[var(--text-muted)] hidden sm:block">用户个人中心</p>
           </div>
         </a>
       </div>
@@ -106,7 +86,11 @@
             </div>
           </div>
           <div class="text-[11px] text-[var(--text-muted)] md:border-t md:border-white/5 md:pt-2">
-            UID: <span id="card-uid" class="font-mono text-slate-300">#—</span>
+            <div class="flex items-center justify-start md:justify-center gap-1.5">
+              <span class="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">UID:</span>
+              <span id="card-uid" class="font-mono text-indigo-300 font-bold tracking-wide">YI-80260000</span>
+              <button onclick="copyProfileUid()" class="text-xs text-slate-400 hover:text-white transition-colors p-0.5" title="一键复制 UID">📋</button>
+            </div>
           </div>
         </div>
       </div>
@@ -181,7 +165,7 @@
           <div class="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
             <div>
               <h3 class="font-bold text-white text-sm flex items-center gap-2">
-                <span>👑</span><span>YouInsight 会员等级与特权方案</span>
+                <span>👑</span><span>商探 AI 会员等级与特权方案</span>
               </h3>
               <p class="text-xs text-[var(--text-muted)] mt-1">分级算力保障与全天候高频深度研报支持</p>
             </div>
@@ -398,14 +382,34 @@
           </h3>
           <div class="space-y-3">
             <div>
-              <label class="block text-xs text-[var(--text-muted)] mb-1">新登录密码 (≥6位)</label>
-              <input type="password" id="input-new-pw" class="input-field text-xs w-full" placeholder="输入新密码">
+              <label class="block text-xs text-[var(--text-muted)] mb-1">原登录密码</label>
+              <div class="relative">
+                <input type="password" id="input-old-pw" class="input-field text-xs w-full pr-10" placeholder="输入当前正在使用的原密码">
+                <button type="button" onclick="toggleProfilePasswordVisibility('input-old-pw')" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-white" title="切换显示密码">👁️</button>
+              </div>
+            </div>
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs text-[var(--text-muted)]">新登录密码 (≥6位)</label>
+                <span id="prof-pwd-strength-text" class="text-[11px]"></span>
+              </div>
+              <div class="relative">
+                <input type="password" id="input-new-pw" class="input-field text-xs w-full pr-10" placeholder="输入新登录密码" oninput="onProfilePasswordInput()">
+                <button type="button" onclick="toggleProfilePasswordVisibility('input-new-pw')" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-white" title="切换显示密码">👁️</button>
+              </div>
+              <div id="prof-pwd-strength" class="h-1 rounded-full bg-white/10 overflow-hidden mt-1.5 hidden">
+                <div id="prof-pwd-strength-bar" class="h-full w-0 transition-all duration-300"></div>
+              </div>
             </div>
             <div>
               <label class="block text-xs text-[var(--text-muted)] mb-1">确认新密码</label>
-              <input type="password" id="input-confirm-pw" class="input-field text-xs w-full" placeholder="再次输入新密码">
+              <div class="relative">
+                <input type="password" id="input-confirm-pw" class="input-field text-xs w-full pr-10" placeholder="再次输入新密码确认" oninput="onProfilePasswordConfirmInput()">
+                <button type="button" onclick="toggleProfilePasswordVisibility('input-confirm-pw')" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] hover:text-white" title="切换显示密码">👁️</button>
+              </div>
+              <p id="prof-pwd-match-hint" class="text-[11px] mt-1 hidden"></p>
             </div>
-            <button onclick="updatePassword()" class="btn-secondary text-xs px-4 py-2 text-indigo-300 hover:text-white">
+            <button onclick="updatePassword()" id="btn-update-pw" class="btn-primary text-xs px-5 py-2 mt-1">
               确认修改密码
             </button>
           </div>
@@ -510,19 +514,30 @@
       }
     }
 
+        function copyProfileUid() {
+      const uid = document.getElementById('card-uid')?.textContent?.trim();
+      if (!uid) return;
+      navigator.clipboard.writeText(uid).then(() => {
+        showToast(`已复制用户 UID: ${uid}`, 'success');
+      }).catch(() => {
+        showToast(`用户 UID: ${uid}`, 'info');
+      });
+    }
+
     function renderUserData() {
       if (!currentUser) return;
       document.getElementById('user-avatar-initial').textContent = (currentUser.username || 'U')[0].toUpperCase();
       document.getElementById('card-username').textContent = currentUser.username;
-      document.getElementById('card-uid').textContent = `#${currentUser.id}`;
+      const formattedUid = currentUser.uid || ('YI-' + (80260000 + currentUser.id));
+      document.getElementById('card-uid').textContent = formattedUid;
 
       const userTier = currentUser.tier || (currentUser.daily_quota >= 400 ? 'pro' : (currentUser.daily_quota >= 100 ? 'standard' : 'basic'));
       const tierBadge = {
-        basic: { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30', planName: '🌱 基础版会员', quotaDesc: '10 次 / 每天' },
-        standard: { name: '⚡ 标准版会员', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-bold', planName: '⚡ 标准版会员', quotaDesc: '100 次 / 每天' },
-        pro: { name: '👑 专业版会员', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold', planName: '👑 专业版会员', quotaDesc: '400 次 / 每天' },
+        basic: { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30', planName: '🌱 基础版会员', quotaDesc: currentUser.daily_quota === -1 ? '无限次 / 终身畅享' : `${currentUser.daily_quota} 次 / 每天` },
+        standard: { name: '⚡ 标准版会员', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-bold', planName: '⚡ 标准版会员', quotaDesc: currentUser.daily_quota === -1 ? '无限次 / 终身畅享' : `${currentUser.daily_quota} 次 / 每天` },
+        pro: { name: '👑 专业版会员', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold', planName: '👑 专业版会员', quotaDesc: currentUser.daily_quota === -1 ? '无限次 / 终身畅享' : `${currentUser.daily_quota} 次 / 每天` },
         vip: { name: '💎 无限特权会员', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30 font-bold', planName: '💎 无限特权会员', quotaDesc: '无限次 / 终身畅享' }
-      }[userTier] || { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300', planName: '基础版会员', quotaDesc: '10 次 / 每天' };
+      }[userTier] || { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300', planName: '基础版会员', quotaDesc: `${currentUser.daily_quota || 10} 次 / 每天` };
 
       if (currentUser.role === 'super_admin') {
         tierBadge.name = '👑 超级管理员';
@@ -773,7 +788,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || '注销失败');
 
-        alert('您的账号及所有研报资产已成功注销并彻底清除。感谢您使用 YouInsight AI！');
+        alert('您的账号及所有研报资产已成功注销并彻底清除。感谢您使用 商探 AI！');
         localStorage.removeItem('youinsight_jwt_token');
         window.location.href = 'index.html';
       } catch (err) {
@@ -797,6 +812,9 @@
       } catch (e) {}
     }
 
+
+    let currentViewingAsset = null;
+
     function renderReportsList(items) {
       const container = document.getElementById('reports-list-container');
       if (!container) return;
@@ -804,22 +822,46 @@
         container.innerHTML = '<div class="card p-12 text-center text-xs text-[var(--text-muted)]">暂无历史研报记录，快去工作台探索吧！</div>';
         return;
       }
-      container.innerHTML = items.map(r => `
-        <div class="card p-4 hover:border-indigo-500/30 transition-all">
+      container.innerHTML = items.map(r => {
+        let cleanExcerpt = r.excerpt || '';
+        if (r.type === '企业穿透') {
+          try {
+            const parsed = JSON.parse(r.content || r.excerpt);
+            cleanExcerpt = `${parsed.tagline || ''} | 商业模式: ${parsed.metrics?.business_model || ''} | 市场地位: ${parsed.metrics?.market_position || ''}`;
+          } catch(e) {
+            cleanExcerpt = (r.excerpt || '').replace(/[\[\]{}"]/g, ' ').slice(0, 150);
+          }
+        } else if (r.type === '实体挖掘') {
+          try {
+            const parsed = JSON.parse(r.content || r.excerpt);
+            const entities = parsed.entities || [];
+            cleanExcerpt = `已挖掘出 ${entities.length} 家核心商业标的：` + entities.slice(0, 4).map(e => e.name).join('、 ') + (entities.length > 4 ? ' 等' : '');
+          } catch(e) {
+            cleanExcerpt = (r.excerpt || '').replace(/[\[\]{}"]/g, ' ').slice(0, 150);
+          }
+        }
+
+        return `
+        <a href="index.html#restore=${r.id}" class="card block p-4 hover:border-indigo-500/50 hover:bg-white/[0.02] transition-all cursor-pointer group no-underline text-inherit" title="点击直接进入该条信息的搜索与研报结果页面">
           <div class="flex items-center justify-between mb-2">
-            <span class="px-2 py-0.5 rounded text-[11px] bg-indigo-500/20 text-indigo-300 font-medium">${escapeHtml(r.type)}</span>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[11px] bg-indigo-500/20 text-indigo-300 font-medium">${escapeHtml(r.type)}</span>
+              <span class="text-xs sm:text-sm font-bold text-white group-hover:text-indigo-300 transition-colors">${escapeHtml(r.title)}</span>
+            </div>
             <span class="text-[11px] text-[var(--text-muted)] font-mono">${r.created_at}</span>
           </div>
-          <h4 class="font-bold text-white text-sm mb-2">${escapeHtml(r.title)}</h4>
-          <p class="text-xs text-[var(--text-secondary)] line-clamp-2 mb-3">${escapeHtml(r.excerpt || '')}</p>
+          <p class="text-xs text-[var(--text-secondary)] line-clamp-2 mb-3 leading-relaxed">${escapeHtml(cleanExcerpt)}</p>
           <div class="flex items-center justify-between pt-2 border-t border-white/5">
-            <span class="text-[11px] text-[var(--text-muted)]">出处: 已交叉验证</span>
-            <div class="flex gap-2">
+            <span class="text-[11px] text-cyan-400 font-medium flex items-center gap-1">
+              <span>🚀</span><span>点击直接进入搜索结果与档案 ↗</span>
+            </span>
+            <div class="flex gap-2" onclick="event.preventDefault(); event.stopPropagation();">
               <button onclick="downloadReportDoc(${r.id})" class="btn-secondary text-[11px] py-1 px-2.5">📄 导出 Word</button>
             </div>
           </div>
-        </div>
-      `).join('');
+        </a>
+        `;
+      }).join('');
     }
 
     function filterReports() {
@@ -836,11 +878,16 @@
         const data = await res.json();
         const rep = data.data;
         if (!rep) return;
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${rep.title}</title>const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + (rep.title || '研报') + '</title></head><body><h1>' + (rep.title || '') + '</h1><div>' + marked.parse(rep.content || '') + '</div></body></html>'`;
-        const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+        const safeTitle = (rep.title || '研报').replace(/[\\/:*?"<>|]/g, '_').slice(0, 120);
+        const bodyHtml = window.DOMPurify
+          ? DOMPurify.sanitize(marked.parse(rep.content || ''), { ALLOWED_ATTR: ['href', 'src', 'alt', 'target', 'rel'] })
+          : escapeHtml(rep.content || '');
+        const docHtml = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+          `<title>${escapeHtml(safeTitle)}</title></head><body><h1>${escapeHtml(safeTitle)}</h1><div>${bodyHtml}</div></body></html>`;
+        const blob = new Blob(['\\ufeff' + docHtml], { type: 'application/msword' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `${rep.title}_${rep.created_at.slice(0, 10)}.doc`;
+        a.download = `${safeTitle}_${(rep.created_at || '').slice(0, 10)}.doc`;
         a.click();
         URL.revokeObjectURL(a.href);
         showToast('已导出 Word 文档！', 'success');
@@ -866,29 +913,127 @@
       } catch (err) { showToast(err.message, 'error'); }
     }
 
+    function toggleProfilePasswordVisibility(id) {
+      const el = document.getElementById(id);
+      if (el) el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function checkPasswordStrength(password) {
+      if (!password) return { score: 0, text: '', color: '', textColor: '', width: '0%' };
+      let score = 0;
+      if (password.length >= 6) score += 1;
+      if (password.length >= 10) score += 1;
+      if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score += 1;
+      if (/\d/.test(password)) score += 1;
+      if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+      if (score <= 1) {
+        return { score: 1, text: '弱', color: 'bg-rose-500', textColor: 'text-rose-400', width: '25%' };
+      } else if (score <= 3) {
+        return { score: 2, text: '中等', color: 'bg-amber-500', textColor: 'text-amber-400', width: '60%' };
+      } else {
+        return { score: 3, text: '强', color: 'bg-emerald-500', textColor: 'text-emerald-400', width: '100%' };
+      }
+    }
+
+    function onProfilePasswordInput() {
+      const pwd = document.getElementById('input-new-pw')?.value || '';
+      const bar = document.getElementById('prof-pwd-strength-bar');
+      const container = document.getElementById('prof-pwd-strength');
+      const text = document.getElementById('prof-pwd-strength-text');
+      
+      if (!pwd) {
+        if (container) container.classList.add('hidden');
+        if (text) text.textContent = '';
+      } else {
+        const res = checkPasswordStrength(pwd);
+        if (container) container.classList.remove('hidden');
+        if (bar) {
+          bar.className = `h-full transition-all duration-300 ${res.color}`;
+          bar.style.width = res.width;
+        }
+        if (text) {
+          text.className = `text-[11px] font-medium ${res.textColor}`;
+          text.textContent = `强度: ${res.text}`;
+        }
+      }
+      onProfilePasswordConfirmInput();
+    }
+
+    function onProfilePasswordConfirmInput() {
+      const pwd = document.getElementById('input-new-pw')?.value || '';
+      const confirm = document.getElementById('input-confirm-pw')?.value || '';
+      const hint = document.getElementById('prof-pwd-match-hint');
+      const confirmInput = document.getElementById('input-confirm-pw');
+      
+      if (!hint || !confirm) {
+        if (hint) hint.classList.add('hidden');
+        if (confirmInput) confirmInput.classList.remove('border-rose-500', 'border-emerald-500');
+        return;
+      }
+      
+      hint.classList.remove('hidden');
+      if (pwd === confirm) {
+        hint.className = 'text-[11px] mt-1 text-emerald-400 flex items-center gap-1';
+        hint.innerHTML = '<span>✓</span><span>两次输入的密码一致</span>';
+        if (confirmInput) {
+          confirmInput.classList.remove('border-rose-500');
+          confirmInput.classList.add('border-emerald-500/60');
+        }
+      } else {
+        hint.className = 'text-[11px] mt-1 text-rose-400 flex items-center gap-1';
+        hint.innerHTML = '<span>✕</span><span>两次输入的密码不一致</span>';
+        if (confirmInput) {
+          confirmInput.classList.remove('border-emerald-500');
+          confirmInput.classList.add('border-rose-500/60');
+        }
+      }
+    }
+
     async function updatePassword() {
-      const new_password = document.getElementById('input-new-pw')?.value;
-      const confirm_password = document.getElementById('input-confirm-pw')?.value;
+      const old_password = document.getElementById('input-old-pw')?.value || '';
+      const new_password = document.getElementById('input-new-pw')?.value || '';
+      const confirm_password = document.getElementById('input-confirm-pw')?.value || '';
+      const btn = document.getElementById('btn-update-pw');
+
       if (!new_password || new_password.length < 6) {
         showToast('新密码长度至少 6 位', 'info');
+        document.getElementById('input-new-pw')?.focus();
         return;
       }
       if (new_password !== confirm_password) {
-        showToast('两次输入的新密码不一致', 'error');
+        showToast('两次输入的新密码不一致，请核对', 'error');
+        document.getElementById('input-confirm-pw')?.focus();
         return;
       }
+      
+      if (btn) { btn.disabled = true; btn.textContent = '正在修改...'; }
+
       try {
         const res = await fetch(`${API_BASE}/api/auth/update-profile`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ new_password })
+          body: JSON.stringify({ old_password: old_password || null, new_password })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || '密码修改失败');
+        
+        document.getElementById('input-old-pw').value = '';
         document.getElementById('input-new-pw').value = '';
         document.getElementById('input-confirm-pw').value = '';
+        const hint = document.getElementById('prof-pwd-match-hint');
+        if (hint) hint.classList.add('hidden');
+        const strContainer = document.getElementById('prof-pwd-strength');
+        if (strContainer) strContainer.classList.add('hidden');
+        const strText = document.getElementById('prof-pwd-strength-text');
+        if (strText) strText.textContent = '';
+        
         showToast('登录密码已成功修改！', 'success');
-      } catch (err) { showToast(err.message, 'error'); }
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '确认修改密码'; }
+      }
     }
 
     // ==================== 屏幕正中央弹窗提示 (Centered Toast Modal) ====================
@@ -950,23 +1095,56 @@
       window.location.href = 'index.html';
     }
 
-    function showToast(message, type = 'success') {
-      const container = document.getElementById('toast-container');
-      if (!container) return;
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span><span>${escapeHtml(message)}</span>`;
-      container.appendChild(toast);
-      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3200);
-    }
+
 
     function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text || '';
-      return div.innerHTML;
+      return String(text || '').replace(/[&<>'"]/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      })[char]);
     }
 
     document.addEventListener('DOMContentLoaded', initProfile);
   </script>
+
+  <!-- ================= 资产库详情查看弹窗 (支持企业穿透/实体挖掘/长程调研/研报全类型) ================= -->
+  <div id="modal-asset-detail" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md hidden overflow-y-auto">
+    <div class="relative w-full max-w-5xl bg-[var(--surface-secondary)] border border-[var(--border-default)] rounded-2xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+      
+      <!-- Top Sticky Header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--border-subtle)] bg-[var(--surface-secondary)]/95 backdrop-blur z-20 flex-shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <span id="asset-modal-type-badge" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex-shrink-0">
+            研报资产
+          </span>
+          <div class="min-w-0">
+            <h3 id="asset-modal-title" class="font-bold text-white text-sm sm:text-base truncate">资产详情</h3>
+            <p id="asset-modal-time" class="text-[11px] text-[var(--text-muted)] font-mono truncate"></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button id="btn-asset-modal-export" onclick="exportCurrentAssetWord()" class="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+            <span>📄</span><span class="hidden sm:inline">导出 Word</span>
+          </button>
+          <button onclick="copyCurrentAssetContent()" class="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+            <span>📋</span><span class="hidden sm:inline">复制内容</span>
+          </button>
+          <a id="link-goto-workbench" href="index.html" class="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
+            <span>🚀</span><span class="hidden sm:inline">在工作台继续分析</span>
+          </a>
+          <button onclick="closeAssetDetailModal()" class="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-white transition-colors text-base ml-1" title="关闭">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div id="asset-modal-body" class="p-5 sm:p-7 overflow-y-auto space-y-6 flex-1 text-slate-200">
+        <!-- Rendered dynamically -->
+      </div>
+
+    </div>
+  </div>
+
 </body>
 </html>

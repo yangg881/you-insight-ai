@@ -1,7 +1,12 @@
-.env
-__pycache__/
+.vercel
+__pycache__
 *.pyc
+.env
+.DS_Store
 *.db
+*.db-wal
+*.db-shm
 *.log
-node_modules/
-.vercel/
+*.bak*
+.build-tools/
+static.disabled/

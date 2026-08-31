@@ -1,7 +1,7 @@
-/* ===================================================
-   YouInsight AI - Professional Design System
-   Dual Theme Tokens: Dark Mode & High-Contrast Light Mode
-   =================================================== */
+/**
+ * 商探 AI - Professional Design System
+ * Modern High-Density Financial / Business Intelligence Workspace
+ */
 
 :root, [data-theme="dark"] {
   --surface-primary: #040711;
@@ -56,6 +56,7 @@
 }
 
 * { box-sizing: border-box; }
+html, body { overflow-x: hidden !important; max-width: 100vw !important; }
 html { scroll-behavior: smooth; }
 body {
   background: var(--surface-primary);
@@ -452,18 +453,61 @@ body {
   right: 0;
   top: 100%;
   margin-top: 0.5rem;
-  background: var(--surface-card);
+  background: var(--surface-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0,0,0,0.5), 0 0 20px rgba(99,102,241,0.12);
   padding: 0.5rem;
-  z-index: 50;
-  min-width: 160px;
+  z-index: 100;
+  min-width: 190px;
+  width: max-content;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: dropdownFadeIn 0.15s ease-out;
+}
+.user-dropdown.hidden {
+  display: none !important;
+}
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 [data-theme="light"] .user-dropdown {
   background: #ffffff !important;
   border-color: #e2e8f0 !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 14px 35px rgba(0,0,0,0.1) !important;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+[data-theme="light"] .dropdown-item:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
 /* ==================== Tier-1 High-End Sidebar Nav Items ==================== */
@@ -673,4 +717,330 @@ body {
     border-color: rgba(245, 158, 11, 0.6) !important;
     box-shadow: 0 2px 10px rgba(245, 158, 11, 0.2) !important;
   }
+}
+
+
+/* ==================== Social Media Module Styling ==================== */
+.badge-xiaohongshu { background: rgba(255, 36, 66, 0.15); color: #ff2442; border: 1px solid rgba(255, 36, 66, 0.3); }
+.badge-bilibili { background: rgba(0, 174, 236, 0.15); color: #00aeec; border: 1px solid rgba(0, 174, 236, 0.3); }
+.badge-weibo { background: rgba(230, 22, 45, 0.15); color: #e6162d; border: 1px solid rgba(230, 22, 45, 0.3); }
+.badge-wechat { background: rgba(7, 193, 96, 0.15); color: #07c160; border: 1px solid rgba(7, 193, 96, 0.3); }
+.badge-douyin { background: rgba(254, 44, 85, 0.15); color: #fe2c55; border: 1px solid rgba(254, 44, 85, 0.3); }
+.badge-twitter { background: rgba(29, 155, 240, 0.15); color: #1d9bf0; border: 1px solid rgba(29, 155, 240, 0.3); }
+.badge-reddit { background: rgba(255, 69, 0, 0.15); color: #ff4500; border: 1px solid rgba(255, 69, 0, 0.3); }
+.badge-youtube { background: rgba(255, 0, 0, 0.15); color: #ff0000; border: 1px solid rgba(255, 0, 0, 0.3); }
+.badge-web_search { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+
+.social-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-tertiary);
+  color: var(--text-secondary);
+  user-select: none;
+}
+.social-chip:hover {
+  border-color: var(--accent-indigo);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+.social-chip.active {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(168, 85, 247, 0.15));
+  border-color: rgba(236, 72, 153, 0.5);
+  color: #f472b6;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(236, 72, 153, 0.2);
+}
+
+.social-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.social-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(236, 72, 153, 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3), 0 0 15px rgba(236, 72, 153, 0.15);
+}
+
+
+/* ==================== Parallel.ai & FindAll Module Styling ==================== */
+.parallel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+[data-theme="light"] .parallel-badge {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.25);
+}
+
+.table-row-highlight:hover {
+  background: rgba(99, 102, 241, 0.08) !important;
+}
+
+
+/* ==================== Select & Option Dark Theme Styling ==================== */
+select {
+  color-scheme: dark;
+  background-color: var(--surface-tertiary) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+[data-theme="light"] select {
+  color-scheme: light;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+select option {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  padding: 8px 12px;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+
+
+/* ==================== Company Enrich Modal & Markdown Body Enhancement ==================== */
+#modal-company-enrich .overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) rgba(15, 23, 42, 0.3);
+}
+
+#modal-company-enrich .overflow-y-auto::-webkit-scrollbar {
+  width: 7px;
+}
+
+#modal-company-enrich .overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 8px;
+}
+
+#modal-company-enrich .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 8px;
+}
+
+#modal-company-enrich .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+.markdown-body {
+  font-size: 0.9375rem;
+  line-height: 1.85;
+  color: #e2e8f0;
+  word-wrap: break-word;
+}
+
+.markdown-body h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--border-subtle);
+  letter-spacing: -0.02em;
+}
+
+.markdown-body h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-top: 1.75rem;
+  margin-bottom: 0.875rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.markdown-body h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-top: 1.25rem;
+  margin-bottom: 0.625rem;
+}
+
+.markdown-body p {
+  margin-bottom: 0.875rem;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.375rem;
+  line-height: 1.75;
+}
+
+.markdown-body blockquote {
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-left: 4px solid var(--accent-indigo);
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 0 8px 8px 0;
+  color: #cbd5e1;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.25rem 0;
+  font-size: 0.875rem;
+}
+
+.markdown-body th, .markdown-body td {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.markdown-body th {
+  background: var(--surface-tertiary);
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.markdown-body tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+
+/* ==================== 移动端高级适配与抽屉导航规范 ==================== */
+
+@media (max-width: 768px) {
+  header {
+    height: 52px !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+  }
+  
+  .card {
+    padding: 0.875rem !important;
+    border-radius: 0.875rem !important;
+  }
+
+  .quick-chip {
+    padding: 0.25rem 0.6rem !important;
+    font-size: 0.7rem !important;
+  }
+
+  .input-field {
+    padding: 0.55rem 0.75rem !important;
+    font-size: 0.825rem !important;
+  }
+
+  .markdown-body {
+    font-size: 0.85rem !important;
+    line-height: 1.65 !important;
+  }
+
+  .markdown-body h1 {
+    font-size: 1.25rem !important;
+  }
+
+  .markdown-body h2 {
+    font-size: 1.1rem !important;
+  }
+
+  .markdown-body h3 {
+    font-size: 0.95rem !important;
+  }
+
+  #btn-floating-nav {
+    box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.5), 0 8px 10px -6px rgba(168, 85, 247, 0.4);
+    animation: floatNavPulse 3s ease-in-out infinite;
+  }
+}
+
+@keyframes floatNavPulse {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ==================== 移动端侧边抽屉导航核心规范 (100% 硬件加速纯 CSS) ==================== */
+#mobile-nav-drawer {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  width: 288px !important;
+  max-width: 82vw !important;
+  background: var(--surface-secondary) !important;
+  border-right: 1px solid var(--border-subtle) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8) !important;
+  z-index: 99999 !important;
+  transform: translateX(-100%) !important;
+  -webkit-transform: translateX(-100%) !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  -webkit-transition: -webkit-transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 1rem !important;
+  will-change: transform;
+}
+
+#mobile-nav-drawer.open {
+  transform: translateX(0) !important;
+  -webkit-transform: translateX(0) !important;
+}
+
+#mobile-nav-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  z-index: 99998 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease !important;
+}
+
+#mobile-nav-overlay.open {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
 }
