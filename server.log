@@ -1,0 +1,184 @@
+INFO:     Started server process [3292099]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8200 (Press CTRL+C to quit)
+INFO:     117.181.50.91:0 - "GET /admin HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/metrics HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/users?query= HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/logs HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/settings HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/metrics HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/users?query= HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/settings HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/logs HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/logs HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/logs HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /admin HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.181.50.91:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/metrics HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/admin/logs HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET / HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.181.50.91:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /profile.html HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /profile.html HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /index.html HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/research/stream HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /index.html HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/news HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/history HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/research/stream HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/auth/send-code HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /profile.html HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=100 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/search HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/history HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/search HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/history HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/news HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/history HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/digest HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/history HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/digest HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "POST /api/history HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /index.html HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 304 Not Modified
+INFO:     117.182.40.227:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.182.40.227:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET / HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET / HTTP/1.1" 304 Not Modified
+INFO:     117.181.50.91:0 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49958 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49970 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49982 - "GET /healthz HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49990 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49992 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50004 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "HEAD / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40976 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40982 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56490 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET / HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET / HTTP/1.1" 200 OK
+INFO:     117.181.50.91:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57560 - "GET /admin HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57566 - "GET /profile HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57570 - "GET /api/admin/metrics HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57576 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57580 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57586 - "GET /api/history?limit=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57590 - "POST /api/search HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:57606 - "POST /api/contents HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:57612 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57622 - "OPTIONS /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49064 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /app.js?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /style.css?v=2.4.1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/templates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:0 - "GET /api/history?limit=50&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49200 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:0 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3292099]

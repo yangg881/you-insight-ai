@@ -141,86 +141,6 @@ def get_current_monid_api_key() -> str:
     return os.getenv('MONID_API_KEY', 'monid_live_2JLwCcHPiaNJhofxypvrKj4x')
 
 
-# ==================== 商汤 SenseNova U1 Fast 商业生图引擎 ====================
-SENSENOVA_API_KEY = os.getenv('SENSENOVA_API_KEY', 'sk-ZuZghWayQ2tNUQ5BDklYaszFPmB8ICDH')
-
-def get_current_sensenova_api_key() -> str:
-    try:
-        conn = get_db()
-        row = conn.execute("SELECT value FROM system_settings WHERE key = 'sensenova_api_key'").fetchone()
-        conn.close()
-        if row and row["value"]:
-            return row["value"].strip()
-    except Exception:
-        pass
-    return SENSENOVA_API_KEY
-
-def is_sensenova_enabled() -> bool:
-    try:
-        conn = get_db()
-        row = conn.execute("SELECT value FROM system_settings WHERE key = 'sensenova_enabled'").fetchone()
-        conn.close()
-        if row and row["value"] is not None:
-            return str(row["value"]).strip() in ('1', 'true', 'True')
-    except Exception:
-        pass
-    return True
-
-async def fetch_sensenova_image(topic: str, context_type: str = 'research') -> Optional[Dict[str, Any]]:
-    """调用商汤 SenseNova U1 Fast 极速大模型生成专业 2496x1664 (3:2横版) 商业全景信息图"""
-    if not is_sensenova_enabled():
-        return None
-    api_key = get_current_sensenova_api_key()
-    if not api_key:
-        return None
-        
-    topic_clean = re.sub(r'[\r\n\t]+', ' ', (topic or '')).strip()[:100]
-    if not topic_clean:
-        return None
-        
-    if context_type in ('company', 'enrich'):
-        prompt = f"企业全景商业档案与生态矩阵配图，主题：【{topic_clean}】，现代商业科技咨询图表风格，包含核心业务、产品矩阵、全球布局与竞争壁垒，深蓝科技质感，4K超清"
-    elif context_type == 'digest':
-        prompt = f"行业商业每日早报视觉海报封面，主题：【{topic_clean}】，现代科技资讯信息图风格，今日核心热点快报，商务深蓝渐变色调，4K高清"
-    elif context_type == 'finance':
-        prompt = f"企业核心财务洞察与商业估值全景配图，主题：【{topic_clean}】，现代金融商务图表风格，深蓝金渐变质感，4K超清"
-    elif context_type == 'social':
-        prompt = f"全网社媒声量与舆情口碑分析全景图，主题：【{topic_clean}】，现代数据可视化信息图风格，多源互动声量与情感洞察，深蓝紫科技感，4K超清"
-    else:
-        prompt = f"商业深度研究报告配图，主题：【{topic_clean}】，现代科技与商业咨询信息图风格，包含全景矩阵、产业链上下游与发展趋势，深蓝高科技色调，商务现代极简风，4K超清"
-        
-    url = "https://token.sensenova.cn/v1/images/generations"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "sensenova-u1-fast",
-        "prompt": prompt,
-        "n": 1,
-        "size": "2496x1664"
-    }
-    
-    try:
-        async with httpx.AsyncClient(timeout=30.0, trust_env=False) as c:
-            r = await c.post(url, headers=headers, json=payload)
-            if r.status_code == 200:
-                data = r.json()
-                img_data = data.get("data", [{}])[0]
-                img_url = img_data.get("url")
-                if img_url:
-                    return {
-                        "url": img_url,
-                        "prompt": prompt,
-                        "model": "sensenova-u1-fast",
-                        "resolution": "2496x1664"
-                    }
-            else:
-                print(f"SenseNova Image Error: {r.status_code} - {r.text[:200]}")
-    except Exception as e:
-        print(f"SenseNova Image Exception: {e}")
-    return None
-
 PROXY_URL = os.getenv('PROXY_URL', 'http://127.0.0.1:10888')
 # ==================== 全局代理覆盖 (Global Proxy Coverage) ====================
 if PROXY_URL:
@@ -453,9 +373,7 @@ def init_db():
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('sms_channel_enabled', '1')")
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('email_channel_enabled', '1')")
     cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('announcement', '')")
-    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('sensenova_api_key', 'sk-ZuZghWayQ2tNUQ5BDklYaszFPmB8ICDH')")
-    cursor.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('sensenova_enabled', '1')")
-
+        
     # 初始化默认超级管理员 (如果不存在任何管理员)
     admin_exists = cursor.execute("SELECT id FROM users WHERE role IN ('admin', 'super_admin') LIMIT 1").fetchone()
     if not admin_exists:
@@ -2212,8 +2130,7 @@ async def api_research_stream(req: ResearchRequest, request: Request, user: Opti
         yield f'data: {json.dumps({"type": "start", "stage": "🦁 正在通过 Brave 独立索引库毫秒级检索最新切片...", "quota": quota_res})}\n\n'
         
         # 并发启动 SenseNova U1 Fast 商业信息图生图任务 (后台异步执行，不阻塞正文输出)
-        img_task = asyncio.create_task(fetch_sensenova_image(req.input, 'research'))
-
+        
         # 1. 并发预取 Brave 独立索引库 (0.2s) + Parallel 顶级高密事实/表格矩阵
         p_task = fetch_parallel_search(req.input)
         b_task = fetch_brave_web_search(req.input, count=6)
@@ -2288,15 +2205,7 @@ async def api_research_stream(req: ResearchRequest, request: Request, user: Opti
                 yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
                 await asyncio.sleep(0.02)
 
-            # 等待生图结果完成并下发
-            img_res = None
-            try:
-                img_res = await asyncio.wait_for(img_task, timeout=5.0)
-            except Exception:
-                img_res = None
-            img_url = img_res.get("url") if img_res else None
-
-            yield f'data: {json.dumps({"type": "done", "sources": all_sources, "full_content": content, "image_url": img_url, "quota": quota_final})}\n\n'
+            yield f'data: {json.dumps({"type": "done", "sources": all_sources, "full_content": content, "quota": quota_final})}\n\n'
             record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'success')
         except Exception as e:
             record_gen_log(user, ip, '深度研报', req.input, int((time.time() - t0)*1000), 'failed')
@@ -2681,9 +2590,7 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
             combined_news = items_24h[:4] + items_7d[:3] + news_items[:3]
             
             # 并发获取行业早报视觉配图
-            img_res = await fetch_sensenova_image(req.topic, 'digest')
-            img_url = img_res.get("url") if img_res else None
-
+                        
             duration = int((time.time() - t0) * 1000)
             consume_quota_success(user, ip)
             record_gen_log(user, ip, '行业早报', req.topic, duration, 'success')
@@ -3030,8 +2937,7 @@ async def api_findall_enrich(req: EnrichRequest, request: Request, user: Optiona
         evidence_text = f"关于企业【{req.name}】的公开商业与产业信息汇总。"
 
     # 并发启动 SenseNova 企业全景商业档案配图
-    img_task = asyncio.create_task(fetch_sensenova_image(req.name, 'enrich'))
-
+    
     # 2. 借助 LLM 输出严格的高阶结构化 JSON 实体档案 (PitchBook / 企查查风格)
     prompt = f"""你是一位顶级商业尽调与股权投资分析总监。
 请根据以下通过 Parallel.ai 全网采集的一手官方披露与权威高密事实，为【{req.name}】提炼一份高度结构化、专业严谨的【企业商业全景情报档案】。
@@ -3159,8 +3065,6 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
 
     async def generate():
         t0 = time.time()
-        # 并发启动 SenseNova U1 Fast 商业信息图生图任务
-        img_task = asyncio.create_task(fetch_sensenova_image(req.topic, 'deepresearch'))
         try:
             # 阶段 1: 智能体规划与课题拆解
             yield f'data: {json.dumps({"type": "start", "stage": "🧭 [Step 1] 智能体规划引擎启动，正在将长程课题拆解为 6 个纵深子方向...", "quota": quota_res})}\n\n'
@@ -3257,19 +3161,11 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
                 yield f'data: {json.dumps({"type": "content", "chunk": full_content[i:i+chunk_size]})}\n\n'
                 await asyncio.sleep(0.015)
 
-            # 等待 SenseNova 生图完成
-            img_res = None
-            try:
-                img_res = await asyncio.wait_for(img_task, timeout=6.0)
-            except Exception:
-                img_res = None
-            img_url = img_res.get("url") if img_res else None
-
-            # 阶段 5: 完成并输出信源与商业全景图
+            # 阶段 5: 完成并输出信源
             duration_ms = int((time.time() - t0) * 1000)
             consume_quota_success(user, ip)
             record_gen_log(user, ip, '长程调研', req.topic, duration_ms, 'success')
-            yield f'data: {json.dumps({"type": "done", "sources": sources[:16], "duration_ms": duration_ms, "image_url": img_url})}\n\n'
+            yield f'data: {json.dumps({"type": "done", "sources": sources[:16], "duration_ms": duration_ms})}\n\n'
 
         except Exception as e:
             duration_ms = int((time.time() - t0) * 1000)

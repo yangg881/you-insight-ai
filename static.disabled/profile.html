@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="YouInsight AI - 个人中心与资产大盘">
+  <title>YouInsight AI - 个人中心与资产大盘</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="style.css?v=2.4.1">
+  <style>
+    .prof-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+      transition: all 0.2s;
+      width: 100%;
+      text-align: left;
+      border: 1px solid transparent;
+    }
+    .prof-nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
+    }
+    .prof-nav-item.active {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.15));
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.2);
+    }
+  </style>
+<script>
+    (function() {
+      const savedTheme = localStorage.getItem('youinsight_theme') || 'dark';
+      if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
+  <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
+
+  <!-- Top Navigation Header (Mobile Optimized) -->
+  <header class="sticky top-0 z-40 bg-[var(--surface-secondary)]/90 backdrop-blur-xl border-b border-[var(--border-subtle)] px-3.5 sm:px-6 py-2.5 sm:py-3">
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <a href="index.html" class="flex items-center gap-2.5">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md flex-shrink-0">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div>
+            <h1 class="font-display text-white text-sm sm:text-base font-bold">YouInsight AI</h1>
+            <p class="text-[10px] text-[var(--text-muted)] hidden sm:block">用户个人中心与资产大盘</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="index.html" class="btn-secondary text-xs py-1.5 px-2.5 sm:px-3.5 flex items-center gap-1 text-indigo-300 hover:text-white">
+          <span>←</span><span class="hidden sm:inline">返回</span><span>工作台</span>
+        </a>
+        <button onclick="handleLogout()" class="text-xs text-rose-400 hover:text-rose-300 py-1.5 px-2 rounded hover:bg-rose-500/10 transition-colors">
+          退出
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full p-3 sm:p-6 gap-4 sm:gap-6 min-w-0">
+    <!-- Left Sidebar: Profile Card & Navigation (Mobile Responsive) -->
+    <aside class="w-full md:w-64 flex-shrink-0 flex flex-col gap-3 sm:gap-4">
+      <!-- User Profile Card -->
+      <div class="card p-4 sm:p-5 relative overflow-hidden flex flex-row md:flex-col items-center gap-3.5 sm:gap-4 md:text-center">
+        <div class="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-xl sm:text-2xl font-bold text-white shadow-xl shadow-indigo-500/25 flex-shrink-0">
+          <span id="user-avatar-initial">U</span>
+        </div>
+        <div class="flex-1 min-w-0 md:w-full">
+          <div class="flex items-center gap-2 flex-wrap md:justify-center mb-1">
+            <h2 id="card-username" class="font-bold text-white text-base truncate">加载中...</h2>
+            <div id="card-role-badge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-500/20 text-indigo-300">
+              正式会员
+            </div>
+          </div>
+          <div class="text-[11px] text-[var(--text-muted)] md:border-t md:border-white/5 md:pt-2">
+            UID: <span id="card-uid" class="font-mono text-slate-300">#—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs (Horizontal Pill Bar on Mobile, Vertical on Desktop) -->
+      <nav class="flex md:flex-col overflow-x-auto gap-2 pb-1.5 md:pb-0 no-scrollbar w-full select-none flex-nowrap">
+        <button onclick="switchTab('overview')" id="nav-overview" class="prof-nav-item active flex-shrink-0">
+          <div class="sidebar-icon-box bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">账户概览与配额</span>
+        </button>
+        <button onclick="switchTab('reports')" id="nav-reports" class="prof-nav-item flex-shrink-0">
+          <div class="sidebar-icon-box bg-purple-500/15 text-purple-400 border border-purple-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">我的研报资产库</span>
+        </button>
+        <button onclick="switchTab('security')" id="nav-security" class="prof-nav-item flex-shrink-0">
+          <div class="sidebar-icon-box bg-sky-500/15 text-sky-400 border border-sky-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">账号资料与安全</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- Right Content Area -->
+    <section class="flex-1 min-w-0">
+      
+      <!-- ================= TAB 1: 账户概览与配额 ================= -->
+      <div id="tab-overview" class="space-y-6">
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div class="card p-4 sm:p-5 bg-gradient-to-br from-indigo-950/40 to-slate-900 border-indigo-500/30">
+            <p class="text-[11px] sm:text-xs text-indigo-300 font-medium mb-1 flex items-center gap-1"><span>⚡</span><span>今日剩余额度</span></p>
+            <h3 id="stat-remaining" class="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">0 次</h3>
+            <p class="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-1.5">每日 00:00 刷新</p>
+          </div>
+          <div class="card p-4 sm:p-5 bg-gradient-to-br from-purple-950/40 to-slate-900 border-purple-500/30">
+            <p class="text-[11px] sm:text-xs text-purple-300 font-medium mb-1 flex items-center gap-1"><span>📑</span><span>累计生成研报</span></p>
+            <h3 id="stat-total-created" class="text-2xl sm:text-3xl font-black text-white font-mono">0 篇</h3>
+            <p class="text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-1.5">多端云端漫游</p>
+          </div>
+          <div class="card p-4 sm:p-5 bg-gradient-to-br from-pink-950/40 to-slate-900 border-pink-500/30 col-span-2 sm:col-span-1">
+            <p class="text-[11px] sm:text-xs text-pink-300 font-medium mb-1 flex items-center gap-1"><span>👑</span><span>当前方案等级</span></p>
+            <h3 id="stat-plan-name" class="text-lg sm:text-xl font-bold text-white mt-1">标准版会员</h3>
+            <p id="stat-plan-quota" class="text-[10px] sm:text-[11px] text-pink-300 mt-1 font-mono">100 次 / 每天</p>
+          </div>
+        </div>
+
+        <!-- Quota Usage Detail Card -->
+        <div class="card p-6">
+          <h3 class="font-bold text-white text-sm mb-4 flex items-center gap-2">
+            <span>📊</span><span>今日配额消耗进度</span>
+          </h3>
+          <div class="space-y-3">
+            <div class="flex justify-between text-xs">
+              <span class="text-[var(--text-muted)]">今日消耗进度: <span id="text-used-detail" class="text-white font-mono">0 / 10</span></span>
+              <span id="text-percent" class="text-indigo-400 font-mono font-bold">0%</span>
+            </div>
+            <div class="w-full h-3 rounded-full bg-[var(--surface-tertiary)] overflow-hidden border border-white/5">
+              <div id="quota-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500" style="width: 0%;"></div>
+            </div>
+            <p class="text-[11px] text-[var(--text-muted)]">
+              💡 提示：所有正式注册用户每日均享有 10 次免费深度研报与早报额度。生成失败或接口异常绝不扣减任何额度。
+            </p>
+          </div>
+        </div>
+      
+        <!-- 3-Tier Membership Status & Benefit Matrix (三档会员权益矩阵) -->
+        <div class="card p-6 space-y-4">
+          <div class="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
+            <div>
+              <h3 class="font-bold text-white text-sm flex items-center gap-2">
+                <span>👑</span><span>YouInsight 会员等级与特权方案</span>
+              </h3>
+              <p class="text-xs text-[var(--text-muted)] mt-1">分级算力保障与全天候高频深度研报支持</p>
+            </div>
+            <span class="text-[11px] px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-300 font-medium">每日 00:00 自动刷新额度</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+            <!-- Tier 1: 基础版 -->
+            <div id="tier-card-basic" class="p-4 rounded-2xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] space-y-3 relative flex flex-col justify-between transition-all hover:border-indigo-500/30">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <span>🌱</span><span>基础版</span>
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-300 font-mono">免费体验</span>
+                </div>
+                <div class="pt-1">
+                  <span class="text-2xl font-black text-white font-mono">10</span>
+                  <span class="text-xs text-[var(--text-muted)]">次 / 每天</span>
+                </div>
+                <ul class="space-y-1.5 text-[11px] text-[var(--text-secondary)] pt-2 border-t border-[var(--border-subtle)]">
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-300">行业情报早报生成</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-300">实时搜索与新闻流</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-300">历史资产云端漫游</span></li>
+                  <li class="flex items-center gap-1.5 text-[var(--text-muted)]"><span>•</span><span>基础计算队列通道</span></li>
+                </ul>
+              </div>
+              <div class="pt-3">
+                <div id="btn-tier-basic-status" class="text-center py-1.5 px-3 rounded-xl text-xs font-medium bg-slate-800 text-slate-400">
+                  当前方案
+                </div>
+              </div>
+            </div>
+
+            <!-- Tier 2: 标准版 (Popular) -->
+            <div id="tier-card-standard" class="p-4 rounded-2xl bg-gradient-to-b from-cyan-950/30 to-[var(--surface-tertiary)] border border-cyan-500/30 space-y-3 relative flex flex-col justify-between transition-all hover:border-cyan-500/60 shadow-lg shadow-cyan-950/20">
+              <div class="absolute -top-2.5 right-4 px-2 py-0.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold text-[10px] shadow-sm">
+                🔥 热门推荐
+              </div>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                    <span>⚡</span><span>标准版</span>
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">独立分析师</span>
+                </div>
+                <div class="pt-1">
+                  <span class="text-2xl font-black text-cyan-400 font-mono">100</span>
+                  <span class="text-xs text-[var(--text-muted)]">次 / 每天</span>
+                </div>
+                <ul class="space-y-1.5 text-[11px] text-[var(--text-secondary)] pt-2 border-t border-[var(--border-subtle)]">
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-200">包含基础版全部能力</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-cyan-300 font-semibold">每日 100 次高频研报生成</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-200">0.2s 极速双引擎交叉检索</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-200">企业财报深度洞察与结构化导出</span></li>
+                </ul>
+              </div>
+              <div class="pt-3">
+                <div id="btn-tier-standard-status" class="text-center py-1.5 px-3 rounded-xl text-xs font-medium bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  可联系管理员开通
+                </div>
+              </div>
+            </div>
+
+            <!-- Tier 3: 专业版 (Enterprise) -->
+            <div id="tier-card-pro" class="p-4 rounded-2xl bg-gradient-to-b from-amber-950/30 to-[var(--surface-tertiary)] border border-amber-500/30 space-y-3 relative flex flex-col justify-between transition-all hover:border-amber-500/60 shadow-lg shadow-amber-950/20">
+              <div class="absolute -top-2.5 right-4 px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-[10px] shadow-sm">
+                👑 机构旗舰
+              </div>
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <span>👑</span><span>专业版</span>
+                  </span>
+                  <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">投研机构/团队</span>
+                </div>
+                <div class="pt-1">
+                  <span class="text-2xl font-black text-amber-400 font-mono">400</span>
+                  <span class="text-xs text-[var(--text-muted)]">次 / 每天</span>
+                </div>
+                <ul class="space-y-1.5 text-[11px] text-[var(--text-secondary)] pt-2 border-t border-[var(--border-subtle)]">
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-200">包含标准版全部高级特权</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-amber-300 font-semibold">每日 400 次海量研报生成</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-200">顶级算力高速通道优先调度</span></li>
+                  <li class="flex items-center gap-1.5 text-emerald-400"><span>✓</span><span class="text-slate-200">全量研报永久归档与专属服务</span></li>
+                </ul>
+              </div>
+              <div class="pt-3">
+                <div id="btn-tier-pro-status" class="text-center py-1.5 px-3 rounded-xl text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  可联系管理员开通
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= TAB 2: 我的研报资产库 ================= -->
+      <div id="tab-reports" class="space-y-4 hidden">
+        <div class="flex items-center justify-between gap-3">
+          <input type="text" id="report-search" class="input-field text-xs flex-1" placeholder="🔍 搜索我的研报标题与课题..." oninput="filterReports()">
+          <button onclick="loadUserReports()" class="btn-secondary text-xs py-2 px-4 whitespace-nowrap">🔄 刷新</button>
+        </div>
+
+        <div id="reports-list-container" class="space-y-3">
+          <p class="text-xs text-[var(--text-muted)] text-center py-8">正在加载研报资产...</p>
+        </div>
+      </div>
+
+      <!-- ================= TAB 3: 账号资料与安全中心 ================= -->
+      <div id="tab-security" class="space-y-6 hidden">
+        
+        <!-- 1. 修改用户名 -->
+        <div class="card p-6 max-w-2xl space-y-4">
+          <h3 class="font-bold text-white text-sm pb-2 border-b border-white/5 flex items-center gap-2">
+            <span>👤</span><span>个性化资料设置</span>
+          </h3>
+          <div class="space-y-1.5">
+            <label class="block text-xs text-[var(--text-muted)]">个性昵称 / 用户名</label>
+            <div class="flex gap-2">
+              <input type="text" id="input-edit-username" class="input-field text-xs flex-1" placeholder="新用户名">
+              <button onclick="updateUsername()" class="btn-primary text-xs px-4 py-2">保存修改</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. 账号绑定与安全通信通道 (手机 & 邮箱绑定/换绑) -->
+        <div class="card p-6 max-w-2xl space-y-5">
+          <h3 class="font-bold text-white text-sm pb-2 border-b border-white/5 flex items-center gap-2">
+            <span>📱</span><span>账号绑定与多通道认证</span>
+          </h3>
+
+          <!-- A. 手机号绑定卡片 -->
+          <div class="p-4 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-white">手机号安全绑定</span>
+                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">用于短信验证码快捷免密登录与账号安全验证</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="label-bound-phone" class="text-xs font-mono text-indigo-300">未绑定</span>
+                <button onclick="toggleBindBox('phone')" id="btn-toggle-bind-phone" class="btn-secondary text-xs py-1 px-2.5">
+                  立即绑定
+                </button>
+              </div>
+            </div>
+
+            <!-- Phone Bind Box (Collapsible) -->
+            <div id="box-bind-phone" class="pt-3 border-t border-white/5 space-y-2.5 hidden">
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">输入新 11 位手机号</label>
+                <input type="text" id="input-bind-phone" class="input-field text-xs w-full" placeholder="输入手机号">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">短信验证码</label>
+                <div class="flex gap-2">
+                  <input type="text" id="input-code-phone" class="input-field flex-1 text-xs font-mono tracking-widest" placeholder="4位验证码">
+                  <button type="button" id="btn-send-phone-code" onclick="sendBindCode('phone')" class="btn-secondary text-xs px-3 whitespace-nowrap">
+                    获取验证码
+                  </button>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 pt-1">
+                <button type="button" onclick="toggleBindBox('phone')" class="btn-secondary text-xs py-1 px-3">取消</button>
+                <button type="button" onclick="submitBindTarget('phone')" class="btn-primary text-xs py-1 px-4">确认绑定/换绑</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- B. 邮箱绑定卡片 -->
+          <div class="p-4 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-white">安全邮箱绑定</span>
+                <p class="text-[11px] text-[var(--text-muted)] mt-0.5">用于邮件验证码登录、安全通知与找回密码</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="label-bound-email" class="text-xs font-mono text-indigo-300">未绑定</span>
+                <button onclick="toggleBindBox('email')" id="btn-toggle-bind-email" class="btn-secondary text-xs py-1 px-2.5">
+                  立即绑定
+                </button>
+              </div>
+            </div>
+
+            <!-- Email Bind Box (Collapsible) -->
+            <div id="box-bind-email" class="pt-3 border-t border-white/5 space-y-2.5 hidden">
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">输入新常用邮箱</label>
+                <input type="text" id="input-bind-email" class="input-field text-xs w-full" placeholder="如：name@example.com">
+              </div>
+              <div>
+                <label class="block text-[11px] text-[var(--text-muted)] mb-1">邮件验证码</label>
+                <div class="flex gap-2">
+                  <input type="text" id="input-code-email" class="input-field flex-1 text-xs font-mono tracking-widest" placeholder="6位验证码">
+                  <button type="button" id="btn-send-email-code" onclick="sendBindCode('email')" class="btn-secondary text-xs px-3 whitespace-nowrap">
+                    获取验证码
+                  </button>
+                </div>
+              </div>
+              <div class="flex justify-end gap-2 pt-1">
+                <button type="button" onclick="toggleBindBox('email')" class="btn-secondary text-xs py-1 px-3">取消</button>
+                <button type="button" onclick="submitBindTarget('email')" class="btn-primary text-xs py-1 px-4">确认绑定/换绑</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. 修改密码 -->
+        <div class="card p-6 max-w-2xl space-y-4">
+          <h3 class="font-bold text-white text-sm pb-2 border-b border-white/5 flex items-center gap-2">
+            <span>🔒</span><span>修改登录密码</span>
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">新登录密码 (≥6位)</label>
+              <input type="password" id="input-new-pw" class="input-field text-xs w-full" placeholder="输入新密码">
+            </div>
+            <div>
+              <label class="block text-xs text-[var(--text-muted)] mb-1">确认新密码</label>
+              <input type="password" id="input-confirm-pw" class="input-field text-xs w-full" placeholder="再次输入新密码">
+            </div>
+            <button onclick="updatePassword()" class="btn-secondary text-xs px-4 py-2 text-indigo-300 hover:text-white">
+              确认修改密码
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. 注销账户 (低调内敛，兼顾风险警示) -->
+        <div class="pt-4 mt-6 border-t border-white/5 max-w-2xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-white/[0.02] border border-white/5 hover:border-rose-500/20 transition-all">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-slate-300">注销账户</span>
+                <span class="text-[10px] text-rose-400/90 px-1.5 py-0.5 bg-rose-500/10 rounded border border-rose-500/20 font-mono">不可逆</span>
+              </div>
+              <p class="text-[11px] text-slate-500">
+                永久抹除账号凭证、历史研报资产及剩余配额，注销后不可找回
+              </p>
+            </div>
+            <button onclick="openDeleteAccountModal()" class="self-start sm:self-auto text-xs text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/15 px-3 py-1.5 rounded-lg border border-rose-500/20 transition-colors whitespace-nowrap">
+              注销账号
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ================= DANGER ZONE: 注销账户高风险确认弹窗 ================= -->
+  <div id="delete-account-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md hidden">
+    <div class="relative w-full max-w-md bg-[var(--surface-secondary)] border border-rose-500/40 rounded-2xl p-6 sm:p-7 shadow-2xl shadow-rose-950/80">
+      
+      <!-- Close Button -->
+      <button onclick="closeDeleteAccountModal()" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white text-lg p-1">✕</button>
+
+      <div class="text-center mb-5">
+        <div class="inline-flex w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 items-center justify-center text-2xl mb-2.5">
+          ⚠️
+        </div>
+        <h3 class="text-lg font-bold text-white">高风险操作：确认注销账号</h3>
+        <p class="text-xs text-rose-300/80 mt-1">此操作不可逆，将永久删除您的所有研报资产</p>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-slate-300 space-y-1.5 text-[11px]">
+          <p class="font-bold text-rose-300">注销后您将放弃：</p>
+          <p>• 永久删除账号及所有历史生成的研报记录；</p>
+          <p>• 清空所有每日可用额度，且不可恢复；</p>
+          <p>• 原绑定的手机号/邮箱将解除关联。</p>
+        </div>
+
+        <div>
+          <label class="block text-[11px] text-[var(--text-muted)] mb-1">
+            验证码将发送至已绑定的安全账号：<span id="del-acc-target-label" class="text-white font-mono font-bold"></span>
+          </label>
+          <div class="flex gap-2">
+            <input type="text" id="input-del-acc-code" class="input-field flex-1 text-xs font-mono tracking-widest" placeholder="输入验证码">
+            <button type="button" id="btn-send-del-code" onclick="sendDeleteAccountCode()" class="btn-secondary text-xs px-3 whitespace-nowrap">
+              获取验证码
+            </button>
+          </div>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button onclick="closeDeleteAccountModal()" class="btn-secondary flex-1 py-2 text-xs">放弃注销</button>
+          <button onclick="confirmDeleteAccount()" id="btn-confirm-delete" class="flex-1 py-2 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/30 transition-colors">
+            ⚠️ 确认永久注销
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.pathname.startsWith('/you-insight') ? '/you-insight' : '';
+    let currentUser = null;
+    let token = localStorage.getItem('youinsight_jwt_token') || null;
+    let userReports = [];
+
+    async function initProfile() {
+      initTheme();
+      if (!token) {
+        window.location.href = 'index.html';
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) {
+          localStorage.removeItem('youinsight_jwt_token');
+          window.location.href = 'index.html';
+          return;
+        }
+        const data = await res.json();
+        currentUser = data.user;
+        renderUserData();
+        loadUserReports();
+      } catch (e) {
+        window.location.href = 'index.html';
+      }
+    }
+
+    function renderUserData() {
+      if (!currentUser) return;
+      document.getElementById('user-avatar-initial').textContent = (currentUser.username || 'U')[0].toUpperCase();
+      document.getElementById('card-username').textContent = currentUser.username;
+      document.getElementById('card-uid').textContent = `#${currentUser.id}`;
+
+      const userTier = currentUser.tier || (currentUser.daily_quota >= 400 ? 'pro' : (currentUser.daily_quota >= 100 ? 'standard' : 'basic'));
+      const tierBadge = {
+        basic: { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30', planName: '🌱 基础版会员', quotaDesc: '10 次 / 每天' },
+        standard: { name: '⚡ 标准版会员', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 font-bold', planName: '⚡ 标准版会员', quotaDesc: '100 次 / 每天' },
+        pro: { name: '👑 专业版会员', color: 'bg-amber-500/20 text-amber-300 border-amber-500/30 font-bold', planName: '👑 专业版会员', quotaDesc: '400 次 / 每天' },
+        vip: { name: '💎 无限特权会员', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30 font-bold', planName: '💎 无限特权会员', quotaDesc: '无限次 / 终身畅享' }
+      }[userTier] || { name: '🌱 基础版会员', color: 'bg-indigo-500/20 text-indigo-300', planName: '基础版会员', quotaDesc: '10 次 / 每天' };
+
+      if (currentUser.role === 'super_admin') {
+        tierBadge.name = '👑 超级管理员';
+        tierBadge.color = 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold';
+        tierBadge.planName = '👑 超级管理员 (无限特权)';
+        tierBadge.quotaDesc = '无限制畅享';
+      }
+
+      const roleBadge = document.getElementById('card-role-badge');
+      if (roleBadge) {
+        roleBadge.textContent = tierBadge.name;
+        roleBadge.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${tierBadge.color} mb-3`;
+      }
+
+      const planNameEl = document.getElementById('stat-plan-name');
+      if (planNameEl) planNameEl.textContent = tierBadge.planName;
+      const planQuotaEl = document.getElementById('stat-plan-quota');
+      if (planQuotaEl) planQuotaEl.textContent = tierBadge.quotaDesc;
+
+      const totalQuota = currentUser.daily_quota;
+      const usedToday = currentUser.used_today || 0;
+      const remaining = totalQuota === -1 ? 9999 : Math.max(0, totalQuota - usedToday);
+
+      const remainingEl = document.getElementById('stat-remaining');
+      if (remainingEl) remainingEl.textContent = totalQuota === -1 ? '无限次' : `${remaining} 次`;
+      
+      const totalCreatedEl = document.getElementById('stat-total-created');
+      if (totalCreatedEl) totalCreatedEl.textContent = `${currentUser.total_generations || 0} 篇`;
+
+      const usedDetailEl = document.getElementById('text-used-detail');
+      if (usedDetailEl) usedDetailEl.textContent = totalQuota === -1 ? `${usedToday} 次 (无限额度)` : `${usedToday} / ${totalQuota}`;
+      
+      const percent = totalQuota === -1 ? 100 : Math.min(100, Math.round((usedToday / (totalQuota || 1)) * 100));
+      const percentEl = document.getElementById('text-percent');
+      if (percentEl) percentEl.textContent = totalQuota === -1 ? '畅享中' : `${percent}%`;
+      
+      const progressBar = document.getElementById('quota-progress-bar');
+      if (progressBar) progressBar.style.width = `${percent}%`;
+
+      // Update 3-tier card active states
+      ['basic', 'standard', 'pro'].forEach(t => {
+        const card = document.getElementById(`tier-card-${t}`);
+        const statusBtn = document.getElementById(`btn-tier-${t}-status`);
+        if (card && statusBtn) {
+          if (userTier === t) {
+            card.classList.add('ring-2', 'ring-emerald-400/60', 'bg-emerald-950/20');
+            statusBtn.className = 'text-center py-1.5 px-3 rounded-xl text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+            statusBtn.textContent = '✓ 当前已生效';
+          } else {
+            card.classList.remove('ring-2', 'ring-emerald-400/60', 'bg-emerald-950/20');
+            statusBtn.className = 'text-center py-1.5 px-3 rounded-xl text-xs font-medium bg-slate-800 text-slate-400';
+            statusBtn.textContent = '联系管理员升级 ↗';
+          }
+        }
+      });
+
+      // Security Tab
+      const editUsername = document.getElementById('input-edit-username');
+      if (editUsername) editUsername.value = currentUser.username || '';
+      
+      const phoneLabel = document.getElementById('label-bound-phone');
+      const phoneBtn = document.getElementById('btn-toggle-bind-phone');
+      if (phoneLabel && phoneBtn) {
+        if (currentUser.phone) {
+          phoneLabel.textContent = `已绑定: ${maskPhone(currentUser.phone)}`;
+          phoneBtn.textContent = '更换手机号';
+        } else {
+          phoneLabel.textContent = '未绑定';
+          phoneBtn.textContent = '立即绑定';
+        }
+      }
+
+      const emailLabel = document.getElementById('label-bound-email');
+      const emailBtn = document.getElementById('btn-toggle-bind-email');
+      if (emailLabel && emailBtn) {
+        if (currentUser.email) {
+          emailLabel.textContent = `已绑定: ${maskEmail(currentUser.email)}`;
+          emailBtn.textContent = '更换邮箱';
+        } else {
+          emailLabel.textContent = '未绑定';
+          emailBtn.textContent = '立即绑定';
+        }
+      }
+    }
+
+    function maskPhone(p) {
+      if (!p || p.length < 11) return p;
+      return p.slice(0, 3) + '****' + p.slice(7);
+    }
+
+    function maskEmail(e) {
+      if (!e || !e.includes('@')) return e;
+      const [u, d] = e.split('@');
+      return (u.length > 2 ? u.slice(0, 2) + '***' : u) + '@' + d;
+    }
+
+    function switchTab(tab) {
+      ['overview', 'reports', 'security'].forEach(t => {
+        const p = document.getElementById(`tab-${t}`);
+        const n = document.getElementById(`nav-${t}`);
+        if (p) p.classList.toggle('hidden', t !== tab);
+        if (n) n.classList.toggle('active', t === tab);
+      });
+      if (tab === 'reports') loadUserReports();
+    }
+
+    // ==================== 手机 / 邮箱 绑定与换绑逻辑 ====================
+
+    function toggleBindBox(type) {
+      const box = document.getElementById(`box-bind-${type}`);
+      if (box) box.classList.toggle('hidden');
+    }
+
+    async function sendBindCode(type) {
+      const target = document.getElementById(`input-bind-${type}`)?.value.trim();
+      const btn = document.getElementById(`btn-send-${type}-code`);
+      if (!target) {
+        showToast(`请输入要绑定的新${type === 'phone' ? '手机号' : '邮箱'}`, 'info');
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = '发送中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, code_type: 'bind' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '验证码发送失败');
+
+        showToast(data.message || '验证码已发送！', 'success');
+
+        let cd = 60;
+        btn.textContent = `${cd}s 后重试`;
+        const interval = setInterval(() => {
+          cd--;
+          if (cd <= 0) {
+            clearInterval(interval);
+            btn.disabled = false;
+            btn.textContent = '获取验证码';
+          } else {
+            btn.textContent = `${cd}s 后重试`;
+          }
+        }, 1000);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '获取验证码';
+      }
+    }
+
+    async function submitBindTarget(type) {
+      const target = document.getElementById(`input-bind-${type}`)?.value.trim();
+      const code = document.getElementById(`input-code-${type}`)?.value.trim();
+      if (!target || !code) {
+        showToast('请完整输入账号及收到的验证码', 'info');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/bind-target`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ target, code })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '绑定失败');
+
+        showToast(data.message, 'success');
+        currentUser = data.user;
+        renderUserData();
+        toggleBindBox(type);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // ==================== 账号注销逻辑 ====================
+
+    function openDeleteAccountModal() {
+      const target = currentUser.phone || currentUser.email;
+      if (!target) {
+        showToast('请先绑定手机或邮箱以完成注销验证', 'error');
+        return;
+      }
+      document.getElementById('del-acc-target-label').textContent = currentUser.phone ? maskPhone(currentUser.phone) : maskEmail(currentUser.email);
+      document.getElementById('delete-account-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteAccountModal() {
+      document.getElementById('delete-account-modal').classList.add('hidden');
+    }
+
+    async function sendDeleteAccountCode() {
+      const target = currentUser.phone || currentUser.email;
+      const btn = document.getElementById('btn-send-del-code');
+      btn.disabled = true;
+      btn.textContent = '发送中...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target, code_type: 'delete_account' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '验证码发送失败');
+
+        showToast('注销确认验证码已下发！', 'info');
+
+        let cd = 60;
+        btn.textContent = `${cd}s 后重试`;
+        const timer = setInterval(() => {
+          cd--;
+          if (cd <= 0) {
+            clearInterval(timer);
+            btn.disabled = false;
+            btn.textContent = '获取验证码';
+          } else {
+            btn.textContent = `${cd}s 后重试`;
+          }
+        }, 1000);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '获取验证码';
+      }
+    }
+
+    async function confirmDeleteAccount() {
+      const code = document.getElementById('input-del-acc-code')?.value.trim();
+      if (!code) {
+        showToast('请输入注销确认验证码', 'info');
+        return;
+      }
+      const btn = document.getElementById('btn-confirm-delete');
+      btn.disabled = true;
+      btn.textContent = '正在注销抹除...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/delete-account`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '注销失败');
+
+        alert('您的账号及所有研报资产已成功注销并彻底清除。感谢您使用 YouInsight AI！');
+        localStorage.removeItem('youinsight_jwt_token');
+        window.location.href = 'index.html';
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '⚠️ 确认永久注销';
+      }
+    }
+
+    // ==================== 研报资产库与资料修改 ====================
+
+    async function loadUserReports() {
+      try {
+        const res = await fetch(`${API_BASE}/api/history?limit=100`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        userReports = data.data || [];
+        renderReportsList(userReports);
+      } catch (e) {}
+    }
+
+    function renderReportsList(items) {
+      const container = document.getElementById('reports-list-container');
+      if (!container) return;
+      if (!items || items.length === 0) {
+        container.innerHTML = '<div class="card p-12 text-center text-xs text-[var(--text-muted)]">暂无历史研报记录，快去工作台探索吧！</div>';
+        return;
+      }
+      container.innerHTML = items.map(r => `
+        <div class="card p-4 hover:border-indigo-500/30 transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <span class="px-2 py-0.5 rounded text-[11px] bg-indigo-500/20 text-indigo-300 font-medium">${escapeHtml(r.type)}</span>
+            <span class="text-[11px] text-[var(--text-muted)] font-mono">${r.created_at}</span>
+          </div>
+          <h4 class="font-bold text-white text-sm mb-2">${escapeHtml(r.title)}</h4>
+          <p class="text-xs text-[var(--text-secondary)] line-clamp-2 mb-3">${escapeHtml(r.excerpt || '')}</p>
+          <div class="flex items-center justify-between pt-2 border-t border-white/5">
+            <span class="text-[11px] text-[var(--text-muted)]">出处: 已交叉验证</span>
+            <div class="flex gap-2">
+              <button onclick="downloadReportDoc(${r.id})" class="btn-secondary text-[11px] py-1 px-2.5">📄 导出 Word</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterReports() {
+      const q = document.getElementById('report-search')?.value.toLowerCase() || '';
+      const filtered = userReports.filter(r => (r.title || '').toLowerCase().includes(q) || (r.excerpt || '').toLowerCase().includes(q));
+      renderReportsList(filtered);
+    }
+
+    async function downloadReportDoc(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/history/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const rep = data.data;
+        if (!rep) return;
+        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${rep.title}</title>const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + (rep.title || '研报') + '</title></head><body><h1>' + (rep.title || '') + '</h1><div>' + marked.parse(rep.content || '') + '</div></body></html>'`;
+        const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${rep.title}_${rep.created_at.slice(0, 10)}.doc`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast('已导出 Word 文档！', 'success');
+      } catch (e) {
+        showToast('导出失败', 'error');
+      }
+    }
+
+    async function updateUsername() {
+      const username = document.getElementById('input-edit-username')?.value.trim();
+      if (!username) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/update-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ username })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '修改失败');
+        currentUser.username = username;
+        renderUserData();
+        showToast('个性昵称已更新！', 'success');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function updatePassword() {
+      const new_password = document.getElementById('input-new-pw')?.value;
+      const confirm_password = document.getElementById('input-confirm-pw')?.value;
+      if (!new_password || new_password.length < 6) {
+        showToast('新密码长度至少 6 位', 'info');
+        return;
+      }
+      if (new_password !== confirm_password) {
+        showToast('两次输入的新密码不一致', 'error');
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/update-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ new_password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '密码修改失败');
+        document.getElementById('input-new-pw').value = '';
+        document.getElementById('input-confirm-pw').value = '';
+        showToast('登录密码已成功修改！', 'success');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // ==================== 屏幕正中央弹窗提示 (Centered Toast Modal) ====================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      container.innerHTML = '';
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      const icons = { success: '✅', error: '⚠️', info: '💡' };
+      toast.innerHTML = `<span style="font-size: 1.25rem;">${icons[type] || '✨'}</span><span style="flex: 1;">${escapeHtml(message)}</span>`;
+      toast.onclick = () => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'scale(0.8) translateY(-15px)';
+        setTimeout(() => toast.remove(), 250);
+      };
+      container.appendChild(toast);
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.style.opacity = '0';
+          toast.style.transform = 'scale(0.8) translateY(-15px)';
+          setTimeout(() => toast.remove(), 250);
+        }
+      }, 2600);
+    }
+
+    // ==================== 白天/黑夜主题切换 (Theme Switcher) ====================
+    function initTheme() {
+      const savedTheme = localStorage.getItem('youinsight_theme') || 'dark';
+      applyTheme(savedTheme, false);
+    }
+
+    function applyTheme(theme, notify = true) {
+      const html = document.documentElement;
+      const icon = document.getElementById('theme-icon');
+      if (theme === 'light') {
+        html.classList.remove('dark');
+        html.setAttribute('data-theme', 'light');
+        if (icon) icon.textContent = '☀️';
+      } else {
+        html.classList.add('dark');
+        html.setAttribute('data-theme', 'dark');
+        if (icon) icon.textContent = '🌙';
+      }
+      localStorage.setItem('youinsight_theme', theme);
+      if (notify) {
+        showToast(theme === 'light' ? '已切换至 ☀️ 白天模式' : '已切换至 🌙 黑夜模式', 'info');
+      }
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const nextTheme = current === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme, true);
+    }
+
+    function handleLogout() {
+      localStorage.removeItem('youinsight_jwt_token');
+      window.location.href = 'index.html';
+    }
+
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span><span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3200);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    document.addEventListener('DOMContentLoaded', initProfile);
+  </script>
+</body>
+</html>

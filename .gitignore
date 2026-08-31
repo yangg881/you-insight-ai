@@ -3,10 +3,3 @@ __pycache__
 *.pyc
 .env
 .DS_Store
-*.db
-*.db-wal
-*.db-shm
-*.log
-*.bak*
-.build-tools/
-static.disabled/

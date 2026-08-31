@@ -1587,15 +1587,8 @@ async function restoreHistory(id) {
       let targetEl = document.getElementById(targetElId);
       if (targetEl) {
         let mdText = full.content || full.excerpt || '';
-        let heroHtml = '';
-        try {
-          const parsed = typeof full.content === 'string' && full.content.startsWith('{') ? JSON.parse(full.content) : (typeof full.content === 'object' ? full.content : null);
-          if (parsed) {
-            if (parsed.markdown || parsed.content) mdText = parsed.markdown || parsed.content;
-            if (parsed.image_url) heroHtml = renderAiHeroImage(parsed.image_url, `【${full.title}】AI 商业全景信息图`);
-          }
-        } catch(e) {}
-        targetEl.innerHTML = heroHtml + renderMarkdown(mdText);
+        if (typeof mdText === 'object' && mdText.markdown) mdText = mdText.markdown;
+        targetEl.innerHTML = renderMarkdown(mdText);
       }
       if (type === '深度研报') {
         const sourcesEl = document.getElementById('research-sources');
@@ -1902,8 +1895,7 @@ async function executeDigest() {
 
     const content = data.brief_report?.output?.content || '暂无研报正文';
     const sources = data.brief_report?.output?.sources || [];
-    const heroHtml = data.image_url ? renderAiHeroImage(data.image_url, `【${query}】SenseNova 行业早报视觉海报`) : '';
-    document.getElementById('digest-content').innerHTML = heroHtml + renderMarkdown(content);
+    document.getElementById('digest-content').innerHTML = renderMarkdown(content);
 
     const newsItems = data.search_results?.results?.web || [];
     const newsGrid = document.getElementById('digest-news');
@@ -1918,7 +1910,7 @@ async function executeDigest() {
       </div>
     `).join('');
 
-    await saveHistory('行业早报', query, { markdown: content, image_url: data.image_url }, sources);
+    await saveHistory('行业早报', query, content, sources);
     showToast('早报生成成功！', 'success');
     progress.classList.add('hidden'); result.classList.remove('hidden');
     checkAuth(); // 刷新剩余额度
@@ -1987,10 +1979,9 @@ async function executeResearchStream() {
         if (stageEl) stageEl.textContent = data.stage;
       } else if (data.type === 'done') {
         finalSources = data.sources || [];
-        const heroHtml = data.image_url ? renderAiHeroImage(data.image_url, `【${input}】SenseNova AI 商业全景信息图`) : '';
-        contentEl.innerHTML = heroHtml + renderMarkdown(fullContent);
+        contentEl.innerHTML = renderMarkdown(fullContent);
         renderSources(sourcesEl, finalSources);
-        await saveHistory('深度研报', input, { markdown: fullContent, image_url: data.image_url }, JSON.stringify(finalSources));
+        await saveHistory('深度研报', input, fullContent, JSON.stringify(finalSources));
         showToast('深度研报与商业全景信息图生成完毕！', 'success');
       } else if (data.type === 'error') {
         throw new Error(data.message);
@@ -3428,9 +3419,8 @@ async function executeDeepResearchStream() {
           } else if (data.type === 'done') {
             finalSources = data.sources || [];
             if (sourcesEl) renderSources(sourcesEl, finalSources);
-            const heroHtml = data.image_url ? renderAiHeroImage(data.image_url, `【${topic}】SenseNova AI 长程深度调研全景图`) : '';
-            contentEl.innerHTML = heroHtml + renderMarkdown(fullContent);
-            await saveHistory('长程调研', topic, { markdown: fullContent, image_url: data.image_url }, JSON.stringify(finalSources));
+            contentEl.innerHTML = renderMarkdown(fullContent);
+            await saveHistory('长程调研', topic, fullContent, JSON.stringify(finalSources));
             checkAuth();
             showToast('AI 长程深度调研与全景大图已完成！', 'success');
           } else if (data.type === 'error') {
