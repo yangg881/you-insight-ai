@@ -9,7 +9,7 @@
   <script src="vendor/purify.min.js?v=2.4.2"></script>
   <script src="theme.js?v=2.4.2"></script>
   <link rel="stylesheet" href="tailwind.css?v=2.4.2">
-  <link rel="stylesheet" href="style.css?v=2.9.6">
+  <link rel="stylesheet" href="style.css?v=2.9.7">
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
@@ -102,9 +102,9 @@
               </div>
               <div class="flex-1 min-w-0 text-left">
                 <div class="flex items-center justify-between">
-                  <span class="nav-title block text-xs font-bold">🕵️‍♂️ 长程深度调研</span>
+                  <span class="nav-title block text-xs font-bold">📑 深度研报智库</span>
                 </div>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">多跳自主探查 · 机构级研报</span>
+                <span class="text-[10px] text-[var(--text-muted)] block truncate">全景研报 · 竞品大表 · 财务体检</span>
               </div>
             </button>
 
@@ -114,8 +114,8 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
               </div>
               <div class="flex-1 min-w-0 text-left">
-                <span class="nav-title block text-xs font-bold">📈 商业情报中心</span>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">行业早报 · 社媒口碑 · 企业财报</span>
+                <span class="nav-title block text-xs font-bold">⚡ 舆情早报中心</span>
+                <span class="text-[10px] text-[var(--text-muted)] block truncate">24h 行业早报 · 全网社媒口碑</span>
               </div>
             </button>
 
@@ -217,24 +217,24 @@
           <div class="template-card p-3.5 flex flex-col justify-between cursor-pointer hover:border-purple-500/50 transition-all group" onclick="setDeliveryMode('deepresearch'); document.getElementById('global-search').focus();">
             <div class="text-2xl mb-2">📑</div>
             <div>
-              <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-purple-300 transition-colors">万字全景研报</h3>
-              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">长程多跳探查 · 机构级尽调</p>
+              <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-purple-300 transition-colors">深度研报智库</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">全景研报 · 竞品大表 · 财务体检</p>
             </div>
           </div>
 
-          <div class="template-card p-3.5 flex flex-col justify-between cursor-pointer hover:border-amber-500/50 transition-all group" onclick="setDeliveryMode('compare'); document.getElementById('global-search').focus();">
-            <div class="text-2xl mb-2">🥊</div>
-            <div>
-              <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-amber-300 transition-colors">两强对决横评</h3>
-              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">A vs B 商业模式与优劣 PK</p>
-            </div>
-          </div>
-
-          <div class="template-card p-3.5 flex flex-col justify-between cursor-pointer hover:border-cyan-500/50 transition-all group" onclick="setDeliveryMode('digest'); document.getElementById('global-search').focus();">
+          <div class="template-card p-3.5 flex flex-col justify-between cursor-pointer hover:border-amber-500/50 transition-all group" onclick="setDeliveryMode('digest'); document.getElementById('global-search').focus();">
             <div class="text-2xl mb-2">⚡</div>
             <div>
-              <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-cyan-300 transition-colors">24h 行业早报</h3>
-              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">突发事件速览 · 7天时序演进</p>
+              <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-amber-300 transition-colors">24h 行业早报</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">突发大事件 · 7天脉络演进</p>
+            </div>
+          </div>
+
+          <div class="template-card p-3.5 flex flex-col justify-between cursor-pointer hover:border-pink-500/50 transition-all group" onclick="setDeliveryMode('social'); document.getElementById('global-search').focus();">
+            <div class="text-2xl mb-2">💬</div>
+            <div>
+              <h3 class="font-bold text-white text-xs sm:text-sm group-hover:text-pink-300 transition-colors">社媒口碑舆情</h3>
+              <p class="text-[11px] text-[var(--text-muted)] mt-0.5">小红书/微博/B站 · 真实评价</p>
             </div>
           </div>
         </div>
@@ -267,17 +267,11 @@
             <p class="text-xs text-[var(--text-secondary)]">整合商业研报、财报洞察、社媒声量与行业早报多源情报</p>
           </div>
           <div class="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)]" id="intel-subtab-container">
-            <button onclick="switchIntelSubtab('research')" id="subtab-research" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm">
-              📈 深度研报
-            </button>
-            <button onclick="switchIntelSubtab('finance')" id="subtab-finance" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all">
-              📑 财报洞察
+            <button onclick="switchIntelSubtab('digest')" id="subtab-digest" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm">
+              📰 24h 行业早报
             </button>
             <button onclick="switchIntelSubtab('social')" id="subtab-social" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all">
-              💬 社媒舆情
-            </button>
-            <button onclick="switchIntelSubtab('digest')" id="subtab-digest" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all">
-              📰 行业早报
+              💬 全网社媒口碑
             </button>
           </div>
         </div>
@@ -405,43 +399,67 @@
       <section id="panel-deepresearch" class="workspace-panel hidden">
         <div class="mb-6">
           <div class="flex items-center gap-2 mb-1 flex-wrap">
-            <h2 class="font-h1 text-white">🕵️‍♂️ AI 代跑长程深度多跳调研</h2>
+            <h2 class="font-h1 text-white">📑 深度商业研报智库</h2>
             <span class="px-2.5 py-0.5 rounded-full text-[11px] bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-500/30 font-medium">
-              ⚡ Parallel.ai 多跳高密索引 + 机构级战略智库 Agent
+              ⚡ 整合：行业全景 (TAM) + 竞品横评大表 + 财务估值体检
             </span>
           </div>
-          <p class="text-[var(--text-secondary)]">输入复杂课题，AI 智能体自动多步拆解、多跳并发全网深挖、提取各标的白皮书与报价底稿，生成包含多维对比大表与商业尽调的万字长文报告</p>
+          <p class="text-[var(--text-secondary)]">输入任何产业赛道、竞品标的或企业名称，AI 自动拆解多步探查，一站式交付包含宏观空间、多维横评大表与财务估值穿透的机构级综合尽调案卷</p>
         </div>
 
-        <!-- 输入控制卡片 -->
+        <!-- 统一输入控制卡片 -->
         <div class="card p-5 mb-6 space-y-4">
           <!-- 预设灵感标签 -->
           <div class="flex items-center gap-2 flex-wrap">
-            <span class="text-[11px] text-[var(--text-muted)] font-medium">💡 典型长程调研课题:</span>
-            <button type="button" onclick="setDeepResearchPreset('国内排名前20的人形机器人公司零部件供应商、核心技术路线与商业报价对比')" class="quick-chip">🤖 人形机器人 20 强供应链对比</button>
-            <button type="button" onclick="setDeepResearchPreset('全球全固态电池量产先锋企业、电解质技术路线与量产成本测算')" class="quick-chip">🔋 固态电池量产与成本测算</button>
-            <button type="button" onclick="setDeepResearchPreset('中美主流大模型厂商 API 定价策略、推理算力成本与降价趋势全景剖析')" class="quick-chip">💰 大模型算力与 Token 定价模型</button>
-            <button type="button" onclick="setDeepResearchPreset('高阶智能驾驶芯片算力方案与主要车企定点落地横向对比')" class="quick-chip">🚗 智驾芯片算力与车企定点</button>
+            <span class="text-[11px] text-[var(--text-muted)] font-medium">💡 典型尽调课题:</span>
+            <button type="button" onclick="setDeepResearchPreset('国内排名前20的人形机器人公司零部件供应商、核心技术路线与商业报价对比')" class="quick-chip">🤖 人形机器人 20 强全维对比</button>
+            <button type="button" onclick="setDeepResearchPreset('理想汽车 vs 问界：商业模式、定价策略、智驾护城河与核心财务横评')" class="quick-chip">🚗 理想 vs 问界 全维横评</button>
+            <button type="button" onclick="setDeepResearchPreset('英伟达 NVDA 2025 年度最新财报穿透、数据中心营收结构与估值体检')" class="quick-chip">💰 英伟达 财报与估值体检</button>
+            <button type="button" onclick="setDeepResearchPreset('全球全固态电池量产先锋企业、电解质技术路线与量产成本测算')" class="quick-chip">🔋 固态电池量产与成本</button>
           </div>
 
           <!-- 输入区域 -->
           <div class="space-y-3">
-            <textarea id="deepresearch-input" rows="3" class="input-field w-full resize-none text-sm" placeholder="输入复杂的深度调研需求，如：调研国内做储能温控的核心厂商名单、主要客户、单价与技术方案横向对比大表..."></textarea>
+            <textarea id="deepresearch-input" rows="3" class="input-field w-full resize-none text-sm" placeholder="输入产业课题或企业名称，如：调研国内储能温控的核心厂商名单、主要客户、单价、财务指标与横向对比大表..."></textarea>
             
+            <!-- 核心维度自由开关 (3 大支柱一体化) -->
+            <div class="flex items-center gap-3 flex-wrap text-xs text-slate-300 py-1.5 px-2.5 rounded-lg bg-[var(--surface-tertiary)] border border-[var(--border-subtle)]">
+              <span class="text-[11px] text-[var(--text-muted)] font-semibold flex items-center gap-1"><span>🎯</span> 交付维度:</span>
+              <label class="flex items-center gap-1.5 cursor-pointer hover:text-white select-none">
+                <input type="checkbox" id="dim-market" checked class="rounded border-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span>📊 行业全景与TAM空间</span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer hover:text-white select-none">
+                <input type="checkbox" id="dim-matrix" checked class="rounded border-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span>📋 标的/竞品横评大表</span>
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer hover:text-white select-none">
+                <input type="checkbox" id="dim-finance" checked class="rounded border-slate-700 text-indigo-500 focus:ring-indigo-400">
+                <span>💰 核心财务与估值体检</span>
+              </label>
+            </div>
+
             <div class="flex items-center justify-between flex-wrap gap-2 pt-1">
               <div class="flex items-center gap-2">
-                <span class="text-xs text-[var(--text-muted)]">调研纵深:</span>
+                <span class="text-xs text-[var(--text-muted)]">研报深度:</span>
                 <select id="deepresearch-depth" class="bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] text-xs text-white rounded-lg px-2.5 py-1.5 outline-none">
-                  <option value="deep">🚀 深度多跳穿透 (2-3分钟自主调研)</option>
-                  <option value="exhaustive">👑 极限全网穷举 (多轮并发全维穿透)</option>
+                  <option value="deep">🚀 快速全景研报 (约1-2分钟)</option>
+                  <option value="exhaustive">👑 极限多跳穷举 (约2-3分钟机构级案卷)</option>
                 </select>
               </div>
 
               <button onclick="executeDeepResearchStream()" id="deepresearch-submit-btn" class="btn-primary flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 font-bold border-none shadow-lg shadow-purple-500/20">
-                <span>🕵️‍♂️</span><span>启动 AI 长程深度调研</span>
+                <span>📑</span><span>启动全景商业尽调</span>
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- 进度与任务状态 -->
+        <div id="deepresearch-progress" class="card p-10 text-center space-y-4 hidden">
+          <div class="loading-spinner mx-auto"></div>
+          <p id="deepresearch-stage" class="text-sm font-medium text-white">规划引擎启动中...</p>
+          <p id="deepresearch-timer" class="text-xs text-[var(--text-muted)] font-mono">已耗时: 0s</p>
         </div>
 
         <!-- 结果展示区域 -->
@@ -449,11 +467,11 @@
           <div class="card p-6 md:p-8">
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
               <h3 class="font-semibold text-white flex items-center gap-2">
-                <span>📑</span><span>长程多维深度调研报告</span>
+                <span>📑</span><span>商业深度研报与综合尽调案卷</span>
               </h3>
               <div class="flex items-center gap-2">
-                <button onclick="exportWord('deepresearch-content', '长程深度调研报告')" class="btn-secondary text-xs">📄 导出 Word</button>
-                <button onclick="exportPDF('deepresearch-content', '长程深度调研报告')" class="btn-secondary text-xs">📑 导出 PDF</button>
+                <button onclick="exportWord('deepresearch-content', '深度研报尽调报告')" class="btn-secondary text-xs">📄 导出 Word</button>
+                <button onclick="exportPDF('deepresearch-content', '深度研报尽调报告')" class="btn-secondary text-xs">📑 导出 PDF</button>
                 <button onclick="copyContent('deepresearch-content')" class="btn-secondary text-xs">📋 复制</button>
               </div>
             </div>
@@ -470,25 +488,11 @@
 
         <!-- 空状态 -->
         <div id="deepresearch-empty" class="card p-12 text-center text-[var(--text-muted)]">
-          <div class="text-4xl mb-3">🕵️‍♂️</div>
-          <p class="text-sm font-medium text-white mb-1">交代复杂调研任务，AI 智能体代跑全网</p>
-          <p class="text-xs">自动裂变子课题、多跳搜寻官方白皮书与报价底稿，生成带横向对比大表的机构级长文</p>
+          <div class="text-4xl mb-3">📑</div>
+          <p class="text-sm font-medium text-white mb-1">输入任何行业、标的或企业，交付机构级全景案卷</p>
+          <p class="text-xs">一站式覆盖宏观 TAM 空间、头部玩家多维横向参数对比大表与企业财报健康度分析</p>
         </div>
 
-        <!-- 进度与 Agent 思考轨迹 -->
-        <div id="deepresearch-progress" class="card p-10 text-center space-y-4 hidden">
-          <div class="loading-spinner mx-auto"></div>
-          <div>
-            <p id="deepresearch-stage" class="text-sm font-semibold text-purple-300 mb-1.5">🧭 [Step 1] 智能体规划引擎启动中...</p>
-            <p id="deepresearch-timer" class="text-xs text-[var(--text-muted)] font-mono">已耗时: 0s</p>
-          </div>
-          <div class="max-w-md mx-auto p-3 rounded-xl bg-[var(--surface-tertiary)]/60 border border-white/5 text-left text-xs text-slate-300 space-y-1">
-            <div class="flex items-center gap-1.5 text-purple-400 font-bold">
-              <span>⚡</span><span>智能体执行轨迹 (Agent Execution):</span>
-            </div>
-            <p class="text-[11px] text-[var(--text-muted)]">通过 Parallel.ai 专有索引穿透全网各标的官网、财报与参数底稿，自动交叉核验...</p>
-          </div>
-        </div>
       </section>
 
       <section id="panel-search" class="workspace-panel hidden">
@@ -1288,7 +1292,7 @@
   
 
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js?v=2.9.6"></script>
+  <script src="app.js?v=2.9.7"></script>
 <!-- 移动端侧边抽屉导航 (Slide-Over Mobile Sidebar Drawer) -->
   <div id="mobile-nav-overlay" onclick="toggleMobileNavDrawer()"></div>
   <div id="mobile-nav-drawer">

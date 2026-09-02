@@ -1534,11 +1534,14 @@ function switchTab(tabId) {
   const coreTabs = ['home', 'findall', 'deepresearch', 'intelligence'];
   const allPanels = ['home', 'findall', 'deepresearch', 'intelligence', 'digest', 'research', 'search', 'social', 'news', 'finance', 'contents', 'admin'];
   
-  // 处理子标签路由重定向至 intelligence
+  // 处理标签路由重定向
   let activeNavTab = tabId;
-  if (['research', 'finance', 'social', 'digest', 'search', 'news', 'contents'].includes(tabId)) {
+  if (['research', 'finance', 'deepresearch'].includes(tabId)) {
+    activeNavTab = 'deepresearch';
+    tabId = 'deepresearch';
+  } else if (['social', 'digest', 'news'].includes(tabId)) {
     activeNavTab = 'intelligence';
-    currentIntelSubtab = (tabId === 'search' || tabId === 'contents') ? 'research' : (tabId === 'news' ? 'digest' : tabId);
+    currentIntelSubtab = (tabId === 'news') ? 'digest' : tabId;
   }
 
   // 1. 切换侧边栏与底部高亮
@@ -1575,7 +1578,7 @@ function switchTab(tabId) {
 
 function switchIntelSubtab(subId) {
   currentIntelSubtab = subId;
-  const subtabs = ['research', 'finance', 'social', 'digest'];
+  const subtabs = ['digest', 'social'];
   
   // 1. 切换顶部子胶囊按钮样式
   subtabs.forEach(id => {
@@ -3741,10 +3744,20 @@ async function executeDeepResearchStream() {
   deepResearchAbortController = new AbortController();
 
   try {
+    const incMarket = document.getElementById('dim-market')?.checked ?? true;
+    const incMatrix = document.getElementById('dim-matrix')?.checked ?? true;
+    const incFinance = document.getElementById('dim-finance')?.checked ?? true;
+
     const res = await fetchWithAuth(`${API_BASE}/api/deepresearch/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic, depth }),
+      body: JSON.stringify({ 
+        topic, 
+        depth,
+        include_market: incMarket,
+        include_matrix: incMatrix,
+        include_finance: incFinance
+      }),
       signal: deepResearchAbortController.signal
     });
 

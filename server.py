@@ -1992,7 +1992,10 @@ class EnrichRequest(BaseModel):
 
 class DeepResearchRequest(BaseModel):
     topic: str = Field(min_length=1, max_length=500)
-    depth: Optional[str] = 'deep' # 'deep' 深度穿透 (2-3分钟) | 'exhaustive' 极限穷举
+    depth: Optional[str] = 'deep' # 'deep' 深度穿透 (1-2分钟) | 'exhaustive' 极限穷举 (2-3分钟)
+    include_market: Optional[bool] = True
+    include_matrix: Optional[bool] = True
+    include_finance: Optional[bool] = True
 
 class FindAllRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
@@ -3238,13 +3241,18 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
             yield f'data: {json.dumps({"type": "start", "stage": "🧭 [Step 1] 智能体规划引擎启动，正在将长程课题拆解为 6 个纵深子方向...", "quota": quota_res})}\n\n'
             await asyncio.sleep(0.5)
 
-            sub_queries = [
-                f"{req.topic} 行业现状 竞争格局 TOP企业",
-                f"{req.topic} 核心技术方案 关键零部件 供应链体系",
-                f"{req.topic} 商业报价 采购成本 定价模型 对比",
-                f"{req.topic} 龙头公司 优缺点 测评 对照表",
-                f"{req.topic} 投资风险 政策壁垒 发展趋势 预测"
-            ]
+            sub_queries = []
+            if req.include_market:
+                sub_queries.append(f"{req.topic} 行业现状 市场规模TAM 竞争格局 TOP企业")
+            sub_queries.append(f"{req.topic} 核心技术方案 关键零部件 供应链成熟度")
+            if req.include_matrix:
+                sub_queries.append(f"{req.topic} 龙头公司 对比大表 优缺点 商业模式 测评")
+                sub_queries.append(f"{req.topic} 商业报价 采购成本 定价策略 门槛")
+            if req.include_finance:
+                sub_queries.append(f"{req.topic} 财务报表 营业收入 净利润 毛利率 资产负债率 估值PE 财报拆解")
+            sub_queries.append(f"{req.topic} 商业壁垒 潜在风险 政策监管 投资建议")
+            if not sub_queries:
+                sub_queries = [f"{req.topic} 商业全景 核心标的 深度尽调"]
 
             # 阶段 2: 并发调度 Parallel.ai 顶级索引多跳探查
             yield f'data: {json.dumps({"type": "stage", "stage": "⚡ [Step 2] 正在并发调度 Parallel.ai 全网专有索引库，多跳穿透抓取各子维度权威事实..."})}\n\n'
@@ -3287,38 +3295,34 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
             # 阶段 4: 多维横向长文与对比大表合成
             yield f'data: {json.dumps({"type": "stage", "stage": "🧠 [Step 4] 正在启动顶级战略智库推理，合成包含多维横向参数大表与商业尽调长文..."})}\n\n'
 
-            agent_prompt = f"""你是一位顶级战略咨询顾问与产业投资总监。
-请根据以下通过 Parallel.ai 全网多跳采集的一手高密事实与参数，针对复杂课题【{req.topic}】生成一份 3000 字以上、具备机构级专业水准的【长程深度多维调研报告】。
+            sections_instruction = []
+            sections_instruction.append("## 一、 执行摘要与战略研判（提炼 3 大核心穿透性结论，明确市场成熟度与核心风向）")
+            if req.include_market:
+                sections_instruction.append("## 二、 📊 赛道全景与市场空间（包含行业演进、市场规模 TAM 测算、上下游产业链分工与核心增长引擎）")
+            if req.include_matrix:
+                sections_instruction.append("## 三、 📋 头部标的/核心玩家多维横向全景对比大表（【必须包含一份高密度的 Markdown 对比大表】，列名建议包含：企业名称 | 核心产品线 | 技术路线与关键零部件 | 预估单价/收费模式 | 核心护城河 | 劣势与挑战 | 综合评级）")
+            if req.include_finance:
+                sections_instruction.append("## 四、 💰 标的企业财务健康度与估值透视（深入拆解代表性标的的营业收入结构、毛利率变化、资产负债率、经营现金流安全性及行业估值 PE/PS 乘数）")
+            sections_instruction.append("## 五、 ⚠️ 核心壁垒、潜在风险预警与供应链断供瓶颈评估")
+            sections_instruction.append("## 六、 💡 投资尽调/选型采购落地决策指南（针对投资机构、采购方或决策者的落地策略）")
+
+            sections_text = "\n\n".join(sections_instruction)
+
+            agent_prompt = f"""你是一位拥有 15 年经验的顶级顶级产业战略顾问兼一级市场投资总监。
+请根据以下通过 Parallel.ai 全网多跳采集的一手高密事实、财报数据与行业参数，针对商业课题【{req.topic}】生成一份 3000 字以上、具备顶级券商研报与机构级尽调水准的【深度商业研报与综合尽调报告】。
 
 【全网一手高密数据与官方披露源】：
 {full_evidence}
 
 ---
-【深度调研报告结构规范（Markdown 格式，要求包含大量具体数据、价格区间、公司名、技术参数与横向对比 Markdown 大表）】：
+【深度研报结构规范（严格采用 Markdown 格式，具备极高信息密度与详实数据支持）】：
 
-# 🕵️‍♂️ 【{req.topic}】长程深度多维产业调研报告
+# 📑 【{req.topic}】商业深度研报与全景尽调案卷
 
-## 一、 执行摘要与核心战略研判
-（简明扼要提炼 3 大核心穿透性结论，明确市场阶段、核心壁垒与分化趋势）
-
-## 二、 📊 头部标的/核心玩家多维横向全景对比大表
-（必须包含一份高密度的 Markdown 对比大表，列名建议包含：企业/产品名称 | 核心产品线 | 关键技术路线与零部件 | 估算报价/价格区间 | 核心优势 | 商业化落地场景 | 综合评级）
-
-## 三、 🔧 核心技术架构与产业链上下游拆解
-1. **核心技术路线与核心零部件**（如芯片、传感器、控制器、电解质等关键组件）
-2. **供应链成熟度与主要供应商阵营**
-
-## 四、 💰 商业化落地、成本测算与采购报价分析
-（深入剖析各梯队的商业模式、客户采购门槛、全生命周期成本与定价策略）
-
-## 五、 ⚠️ 潜在商业风险与供应链瓶颈评估
-（包括技术攻坚风险、地缘政治与供应链断供风险、市场内卷降价压力）
-
-## 六、 💡 投资决策与商业落地建议
-（针对投资机构、采购方或入局创业者的具体可落地行动指南）
+{sections_text}
 
 ---
-*注：请严格依据数据源事实展开，观点鲜明，逻辑严密。*"""
+*注：严禁假大空，所有判断必须依托事实数据支撑，对比大表必须完整规范。*"""
 
             full_content = await call_you_research_resilient(agent_prompt, timeout_sec=120.0)
             if not full_content:
