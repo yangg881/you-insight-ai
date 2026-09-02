@@ -79,7 +79,8 @@ async def fetch_parallel_search(query: str, objective: str = None, count: int = 
             r = await c.post(
                 "https://api.parallel.ai/v1/search",
                 headers={"x-api-key": key, "Content-Type": "application/json"},
-                json=payload
+                json=payload,
+                timeout=httpx.Timeout(6.0, connect=3.0)
             )
             if r.status_code == 200:
                 return r.json()
@@ -3293,20 +3294,22 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
             if not sub_queries:
                 sub_queries = [f"{req.topic} 商业全景 核心标的 深度尽调"]
 
-            # 阶段 2: 并发调度 Parallel.ai 顶级索引多跳探查
-            yield f'data: {json.dumps({"type": "stage", "stage": "⚡ 正在并发调度 Parallel.ai 全网专有索引库，多跳深度抓取核心事实..."})}\n\n'
+            # 阶段 2: 极速调度 Brave 与 Parallel 核心索引探查 (严格 6.0s 超时熔断，绝不挂死)
+            yield f'data: {json.dumps({"type": "stage", "stage": "⚡ 正在穿透全网权威事实与底层财报，检索一手核心事实..."})}\n\n'
             
-            search_tasks = []
-            for sq in sub_queries:
-                search_tasks.append(fetch_parallel_search(
-                    sq,
-                    objective=f"全面穿透调研【{sq}】的详细事实、权威数据、核心参数大表与深度洞察",
-                    count=4
-                ))
-            # 补充 Brave 事实
-            search_tasks.append(fetch_brave_web_search(f"{req.topic} 深度研报 对比大表 供应链", count=8))
-
-            results = await asyncio.gather(*search_tasks, return_exceptions=True)
+            search_tasks = [
+                fetch_brave_web_search(f"{req.topic} 核心业务 市场规模 竞品对比 财报 发展战略", count=10),
+                fetch_parallel_search(
+                    f"{req.topic} 商业模式与核心标的",
+                    objective=f"全面检索【{req.topic}】的最新事实、技术评测大表、行业对比与核心参数",
+                    count=3
+                )
+            ]
+            try:
+                results = await asyncio.wait_for(asyncio.gather(*search_tasks, return_exceptions=True), timeout=6.0)
+            except Exception as se:
+                print(f"Search gather timeout ({se}), proceeding immediately to deep reasoning...")
+                results = []
             
             evidence_blocks = []
             sources = []
