@@ -9,7 +9,7 @@
   <script src="vendor/purify.min.js?v=2.4.2"></script>
   <script src="theme.js?v=2.4.2"></script>
   <link rel="stylesheet" href="tailwind.css?v=2.4.2">
-  <link rel="stylesheet" href="style.css?v=3.0.0">
+  <link rel="stylesheet" href="style.css?v=3.0.1">
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
@@ -279,7 +279,27 @@
 
         <!-- 嵌入的子视图容器 -->
         <div id="intel-subview-content" class="min-w-0">
-          <div id="panel-digest" class="space-y-4">
+                    <div id="panel-digest" class="space-y-4">
+            <!-- 行业早报输入卡片 -->
+            <div class="card p-4 sm:p-5 mb-4 space-y-3">
+              <div class="flex flex-col sm:flex-row gap-2.5">
+                <div class="relative flex-1 min-w-0">
+                  <input type="text" id="digest-input" class="input-field text-sm sm:text-base w-full pr-10 py-3 rounded-xl border-indigo-500/30 focus:border-indigo-400 font-medium" placeholder="输入关注的行业、赛道或主题，如：AI 具身智能、固态电池、半导体算力、跨境电商..." onkeydown="if(event.key==='Enter') executeDigest()">
+                  <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">⚡</span>
+                </div>
+                <button onclick="executeDigest()" id="digest-submit-btn" class="btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2 rounded-xl whitespace-nowrap flex-shrink-0 shadow-lg shadow-indigo-500/25">
+                  <span>⚡</span><span>生成 24h 早报</span>
+                </button>
+              </div>
+              <!-- 热门早报灵感 -->
+              <div class="flex items-center gap-2 flex-wrap text-xs pt-0.5">
+                <span class="text-[11px] text-[var(--text-muted)] font-medium">🔥 热门早报:</span>
+                <button type="button" onclick="quickFill('digest', 'AI 具身智能与人形机器人最新进展')" class="quick-chip">🤖 具身智能人形机器人</button>
+                <button type="button" onclick="quickFill('digest', '全球半导体、AI芯片与算力产业链')" class="quick-chip">⚡ 芯片与算力大盘</button>
+                <button type="button" onclick="quickFill('digest', '全固态电池商业化落地与产业动态')" class="quick-chip">🔋 固态电池产业</button>
+                <button type="button" onclick="quickFill('digest', '跨境出海电商合规与平台新政')" class="quick-chip">🌐 跨境出海新政</button>
+              </div>
+            </div>
         
         <div id="digest-result" class="space-y-6 hidden">
           <div class="card p-6">
@@ -309,29 +329,31 @@
           <p id="digest-timer" class="text-xs text-[var(--text-muted)] font-mono">耗时: 0s</p>
         </div>
       </div>
-          <div id="panel-social" class="space-y-4 hidden">
-        
+                    <div id="panel-social" class="space-y-4 hidden">
+            <div class="card p-4 sm:p-5 mb-4 space-y-4">
+              <!-- 关键词输入 (长输入框 + 紧凑按钮) -->
+              <div class="space-y-2">
+                <label class="block text-xs font-semibold text-slate-300">监测课题、品牌、产品或事件关键词</label>
+                <div class="flex flex-col sm:flex-row items-center gap-2.5 w-full">
+                  <div class="relative flex-1 min-w-0 w-full">
+                    <input type="text" id="social-keyword-input" class="input-field text-sm sm:text-base w-full pr-10 py-3 rounded-xl border-pink-500/30 focus:border-pink-400 font-medium" placeholder="输入要监测的品牌、产品或事件，如：小米SU7车主真实口碑、DeepSeek评测与反响、追觅扫地机吐槽..." onkeydown="if(event.key==='Enter') handleSocialSubmit()">
+                    <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">💬</span>
+                  </div>
+                  <button onclick="handleSocialSubmit()" id="btn-social-submit" class="btn-primary text-sm py-3 px-6 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 font-bold rounded-xl shadow-lg shadow-pink-500/20 whitespace-nowrap flex-shrink-0 flex items-center justify-center gap-1.5 w-full sm:w-auto">
+                    <span>🚀</span><span>启动社媒检索分析</span>
+                  </button>
+                </div>
+              </div>
 
-        <div class="card p-6 mb-6 space-y-4">
-          <!-- 关键词输入 -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-2">监测课题、品牌、产品或事件关键词</label>
-            <div class="flex flex-col sm:flex-row gap-2.5">
-              <input type="text" id="social-keyword-input" class="input-field text-sm flex-1" placeholder="输入要探查的品牌、产品或事件，如：小米SU7车主真实口碑、DeepSeek R1评测与反响...">
-              <button onclick="handleSocialSubmit()" id="btn-social-submit" class="btn-primary text-sm px-5 py-2.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 font-bold border-none shadow-lg shadow-pink-500/20 whitespace-nowrap w-full sm:w-auto flex items-center justify-center gap-1.5">
-                <span>🚀</span><span>启动社媒检索与分析</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 热门探查预设 Chip -->
-          <div class="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)]">
-            <span class="text-[11px] font-semibold text-slate-400">🔥 热门探索：</span>
-            <button type="button" onclick="setSocialPreset('小米SU7 真实车主体验与口碑吐槽')" class="quick-chip">小米SU7 车主真实口碑</button>
-            <button type="button" onclick="setSocialPreset('DeepSeek R1 开源大模型 开发者评测与反响')" class="quick-chip">DeepSeek R1 开发者评测</button>
-            <button type="button" onclick="setSocialPreset('人形机器人 具身智能 2026 商业化落地讨论')" class="quick-chip">具身智能 落地讨论</button>
-            <button type="button" onclick="setSocialPreset('某大牌美妆 避雷好评 与 成分争议')" class="quick-chip">美妆护肤 好评与避雷</button>
-          </div>
+              <!-- 热门探查预设 Chip -->
+              <div class="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)]">
+                <span class="text-[11px] font-semibold text-slate-400">🔥 热门探索：</span>
+                <button type="button" onclick="setSocialPreset('小米SU7 真实车主体验与口碑吐槽')" class="quick-chip">小米SU7 真实口碑</button>
+                <button type="button" onclick="setSocialPreset('DeepSeek R1 开源大模型 开发者评测与反响')" class="quick-chip">DeepSeek 开发者评测</button>
+                <button type="button" onclick="setSocialPreset('人形机器人 具身智能 2026 商业化落地讨论')" class="quick-chip">具身智能 真实讨论</button>
+                <button type="button" onclick="setSocialPreset('扫地机器人 用户痛点与真实评价')" class="quick-chip">扫地机 用户痛点</button>
+              </div>
+              </div>
 
           <!-- 平台勾选矩阵 -->
           <div class="pt-3 border-t border-[var(--border-subtle)]">
@@ -1261,7 +1283,7 @@
   
 
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js?v=3.0.0"></script>
+  <script src="app.js?v=3.0.1"></script>
 <!-- 移动端侧边抽屉导航 (Slide-Over Mobile Sidebar Drawer) -->
   <div id="mobile-nav-overlay" onclick="toggleMobileNavDrawer()"></div>
   <div id="mobile-nav-drawer">
