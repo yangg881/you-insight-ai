@@ -9,7 +9,7 @@
   <script src="vendor/purify.min.js?v=2.4.2"></script>
   <script src="theme.js?v=2.4.2"></script>
   <link rel="stylesheet" href="tailwind.css?v=2.4.2">
-  <link rel="stylesheet" href="style.css?v=2.9.7">
+  <link rel="stylesheet" href="style.css?v=3.0.0">
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
@@ -22,16 +22,19 @@
   <!-- Top Navigation Header (移动端极简自适应 · 用户名不外显) -->
   <header class="sticky top-0 z-40 bg-[var(--surface-secondary)]/95 backdrop-blur-xl border-b border-[var(--border-subtle)] px-2.5 sm:px-4 h-12 sm:h-14 flex items-center">
     <div class="flex items-center justify-between max-w-7xl mx-auto w-full">
-      <!-- Left: ☰ + Logo -->
-      <div class="flex items-center gap-1.5 flex-shrink-0">
+      <!-- Left: ☰ + Brand Logo (与左侧功能导航栏完美对齐) -->
+      <div class="flex items-center gap-2 md:w-72 flex-shrink-0">
         <button type="button" onclick="toggleMobileNavDrawer()" class="md:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 active:scale-90 transition-all" title="导航菜单">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
-        <div class="flex items-center gap-1.5 cursor-pointer" onclick="switchTab('home')">
-          <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md flex-shrink-0">
+        <div class="flex items-center gap-2.5 cursor-pointer py-1 px-1 group" onclick="switchTab('home')">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-500/25 group-hover:scale-105 transition-transform flex-shrink-0">
             <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
           </div>
-          <span class="font-display text-white text-sm sm:text-base font-bold whitespace-nowrap">商探 AI</span>
+          <div class="flex items-center gap-2">
+            <span class="font-display text-white text-base sm:text-lg font-black tracking-tight whitespace-nowrap">商探 AI</span>
+            <span class="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-300 font-mono font-bold rounded border border-indigo-500/30">PRO</span>
+          </div>
         </div>
       </div>
 
@@ -53,23 +56,23 @@
 
   <main class="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto w-full min-w-0 pb-8 md:pb-6 px-3 sm:px-4">
         <!-- Desktop Sidebar (4 大核心商业引擎 · 极简专业 SaaS 风格) -->
-    <aside class="flex flex-col w-64 border-r border-[var(--border-subtle)] p-3.5 flex-shrink-0 desktop-sidebar select-none justify-between">
+    <aside class="flex flex-col w-72 border-r border-[var(--border-subtle)] p-3.5 flex-shrink-0 desktop-sidebar select-none justify-between">
       <div class="space-y-4">
         
         <!-- Group 1: 统一总入口 -->
         <div>
-          <div class="px-2.5 mb-1.5 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase flex items-center justify-between">
+          <div class="px-2.5 mb-1.5 text-xs font-extrabold text-slate-400 tracking-wider uppercase flex items-center justify-between">
             <span>核心工作台</span>
             <span class="text-[9px] px-1.5 py-0.2 bg-indigo-500/15 text-indigo-300 rounded-full font-mono">v2.7 Pro</span>
           </div>
           <div class="space-y-1">
             <button onclick="switchTab('home')" id="tab-home" class="sidebar-nav-item active">
-              <div class="sidebar-icon-box bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+              <div class="sidebar-icon-box bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-indigo-300 border border-indigo-500/35 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
               </div>
               <div class="flex-1 min-w-0 text-left">
-                <span class="nav-title block text-xs font-bold">⚡ AI 统一总调度</span>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">全局搜索 · 智能意图分流</span>
+                <span class="nav-title block text-[15px] font-bold tracking-tight">⚡ AI 统一工作台</span>
+                <span class="text-xs text-[var(--text-muted)] block truncate mt-0.5">全局检索 · 智能意图路由</span>
               </div>
             </button>
           </div>
@@ -77,45 +80,41 @@
 
         <!-- Group 2: 三大专项商业引擎 -->
         <div>
-          <div class="px-2.5 mb-1.5 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase">
+          <div class="px-2.5 mb-1.5 text-xs font-extrabold text-slate-400 tracking-wider uppercase">
             <span>商业情报三大引擎</span>
           </div>
           <div class="space-y-1">
             
             <!-- 1. 实体与商机挖掘 -->
             <button onclick="switchTab('findall')" id="tab-findall" class="sidebar-nav-item">
-              <div class="sidebar-icon-box bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+              <div class="sidebar-icon-box bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-cyan-300 border border-cyan-500/35 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
               </div>
               <div class="flex-1 min-w-0 text-left">
-                <div class="flex items-center justify-between">
-                  <span class="nav-title block text-xs font-bold">🏢 实体大表挖掘</span>
-                </div>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">企业清单 · 供应链 · 官网穿透</span>
+                <span class="nav-title block text-[15px] font-bold tracking-tight">🏢 实体大表挖掘</span>
+                <span class="text-xs text-[var(--text-muted)] block truncate mt-0.5">企业清单 · 供应链 · 导出 Excel</span>
               </div>
             </button>
 
             <!-- 2. AI 长程深度调研 Agent -->
             <button onclick="switchTab('deepresearch')" id="tab-deepresearch" class="sidebar-nav-item">
-              <div class="sidebar-icon-box bg-purple-500/15 text-purple-400 border border-purple-500/25">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+              <div class="sidebar-icon-box bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-500/35 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
               </div>
               <div class="flex-1 min-w-0 text-left">
-                <div class="flex items-center justify-between">
-                  <span class="nav-title block text-xs font-bold">📑 深度研报智库</span>
-                </div>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">全景研报 · 竞品大表 · 财务体检</span>
+                <span class="nav-title block text-[15px] font-bold tracking-tight">📑 深度研报智库</span>
+                <span class="text-xs text-[var(--text-muted)] block truncate mt-0.5">全景尽调 · 竞品大表 · 财务体检</span>
               </div>
             </button>
 
             <!-- 3. 商业研报与情报中心 (聚合研报/财报/社媒/早报) -->
             <button onclick="switchTab('intelligence')" id="tab-intelligence" class="sidebar-nav-item">
-              <div class="sidebar-icon-box bg-cyan-500/15 text-cyan-400 border border-cyan-500/25">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              <div class="sidebar-icon-box bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/35 shadow-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
               </div>
               <div class="flex-1 min-w-0 text-left">
-                <span class="nav-title block text-xs font-bold">⚡ 舆情早报中心</span>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">24h 行业早报 · 全网社媒口碑</span>
+                <span class="nav-title block text-[15px] font-bold tracking-tight">⚡ 舆情早报中心</span>
+                <span class="text-xs text-[var(--text-muted)] block truncate mt-0.5">24h 行业早报 · 全网社媒口碑</span>
               </div>
             </button>
 
@@ -258,13 +257,15 @@
       </section>
 
       
-      <!-- ================= 4. 商业研报与情报中心 (Market Intelligence Hub) ================= -->
+            <!-- ================= 4. 舆情早报中心 (Intelligence Hub) ================= -->
       <section id="panel-intelligence" class="workspace-panel hidden space-y-4">
         <!-- Top Sub-Navigation Pills -->
         <div class="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 flex-wrap gap-2">
           <div>
-            <h2 class="font-h1 text-white text-base sm:text-lg">📊 商业研报与情报中心</h2>
-            <p class="text-xs text-[var(--text-secondary)]">整合商业研报、财报洞察、社媒声量与行业早报多源情报</p>
+            <h2 class="font-h1 text-white text-base sm:text-lg flex items-center gap-2">
+              <span>⚡</span><span>舆情早报中心</span>
+            </h2>
+            <p class="text-xs text-[var(--text-secondary)]">24 小时行业动态追踪与全网社媒一手真实口碑</p>
           </div>
           <div class="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--surface-tertiary)] border border-[var(--border-subtle)]" id="intel-subtab-container">
             <button onclick="switchIntelSubtab('digest')" id="subtab-digest" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm">
@@ -276,31 +277,10 @@
           </div>
         </div>
 
-        <!-- Dynamic Subview Container -->
+        <!-- 嵌入的子视图容器 -->
         <div id="intel-subview-content" class="min-w-0">
-          <!-- Populated by switchIntelSubtab -->
-        </div>
-      </section>
-
-      <!-- ================= 1. 行业早报 ================= -->
-      <section id="panel-digest" class="workspace-panel hidden">
-        <div class="mb-6">
-          <h2 class="font-h1 text-white mb-2">📰 行业情报早报</h2>
-          <p class="text-[var(--text-secondary)]">组合实时检索与多源交叉分析，生成结构化篇报</p>
-        </div>
-        <div class="card p-4 mb-6">
-          <div class="flex flex-col sm:flex-row gap-3">
-            <input type="text" id="digest-input" class="input-field flex-1" placeholder="输入行业/领域主题，如：AI 具身智能、芯片与算力、美联储决议..." onkeydown="if(event.key==='Enter') executeDigest()">
-            <button onclick="executeDigest()" id="digest-submit-btn" class="btn-primary flex items-center justify-center gap-2">
-              <span>⚡</span><span>生成早报</span>
-            </button>
-          </div>
-          <div class="flex flex-wrap gap-2 mt-3">
-            <button onclick="quickFill('digest', 'AI 具身智能最新进展')" class="quick-chip">🤖 AI 具身智能</button>
-            <button onclick="quickFill('digest', '全球半导体与算力产业链')" class="quick-chip">⚡ 芯片与算力</button>
-            <button onclick="quickFill('digest', '美联储利率决议与宏观走向')" class="quick-chip">📈 宏观走向</button>
-          </div>
-        </div>
+          <div id="panel-digest" class="space-y-4">
+        
         <div id="digest-result" class="space-y-6 hidden">
           <div class="card p-6">
             <div class="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border-subtle)] flex-wrap gap-2">
@@ -323,10 +303,139 @@
           <p class="text-sm font-medium text-white mb-1">一键探索行业情报</p>
           <p class="text-xs">输入主题，AI 全网搜集并提炼研报</p>
         </div>
-        <div id="digest-progress" class="card p-12 text-center hidden">
+        <div id="digest-progress" class="mb-6 hidden">
           <div class="loading-spinner mx-auto mb-4"></div>
           <p id="digest-stage" class="text-sm font-medium text-white mb-2">正在检索最新行业情报...</p>
           <p id="digest-timer" class="text-xs text-[var(--text-muted)] font-mono">耗时: 0s</p>
+        </div>
+      </div>
+          <div id="panel-social" class="space-y-4 hidden">
+        
+
+        <div class="card p-6 mb-6 space-y-4">
+          <!-- 关键词输入 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">监测课题、品牌、产品或事件关键词</label>
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <input type="text" id="social-keyword-input" class="input-field text-sm flex-1" placeholder="输入要探查的品牌、产品或事件，如：小米SU7车主真实口碑、DeepSeek R1评测与反响...">
+              <button onclick="handleSocialSubmit()" id="btn-social-submit" class="btn-primary text-sm px-5 py-2.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 font-bold border-none shadow-lg shadow-pink-500/20 whitespace-nowrap w-full sm:w-auto flex items-center justify-center gap-1.5">
+                <span>🚀</span><span>启动社媒检索与分析</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 热门探查预设 Chip -->
+          <div class="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)]">
+            <span class="text-[11px] font-semibold text-slate-400">🔥 热门探索：</span>
+            <button type="button" onclick="setSocialPreset('小米SU7 真实车主体验与口碑吐槽')" class="quick-chip">小米SU7 车主真实口碑</button>
+            <button type="button" onclick="setSocialPreset('DeepSeek R1 开源大模型 开发者评测与反响')" class="quick-chip">DeepSeek R1 开发者评测</button>
+            <button type="button" onclick="setSocialPreset('人形机器人 具身智能 2026 商业化落地讨论')" class="quick-chip">具身智能 落地讨论</button>
+            <button type="button" onclick="setSocialPreset('某大牌美妆 避雷好评 与 成分争议')" class="quick-chip">美妆护肤 好评与避雷</button>
+          </div>
+
+          <!-- 平台勾选矩阵 -->
+          <div class="pt-3 border-t border-[var(--border-subtle)]">
+            <div class="flex items-center justify-between mb-2.5">
+              <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>🌐</span><span>选择数据来源平台（可多选）</span>
+              </label>
+              <div class="flex items-center gap-2 text-xs">
+                <button type="button" onclick="selectAllSocialPlatforms()" class="text-indigo-400 hover:text-indigo-300 font-medium">全选</button>
+                <span class="text-slate-600">|</span>
+                <button type="button" onclick="clearSocialPlatforms()" class="text-slate-400 hover:text-slate-300">清空</button>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2" id="social-platform-chips">
+              <span class="social-chip active" data-platform="xiaohongshu" onclick="toggleSocialPlatform('xiaohongshu')">
+                <span>📕</span><span>小红书</span>
+              </span>
+              <span class="social-chip active" data-platform="bilibili" onclick="toggleSocialPlatform('bilibili')">
+                <span>📺</span><span>B站 (Bilibili)</span>
+              </span>
+              <span class="social-chip active" data-platform="weibo" onclick="toggleSocialPlatform('weibo')">
+                <span>🧣</span><span>微博</span>
+              </span>
+              <span class="social-chip active" data-platform="twitter" onclick="toggleSocialPlatform('twitter')">
+                <span>🐦</span><span>Twitter / X</span>
+              </span>
+              <span class="social-chip" data-platform="douyin" onclick="toggleSocialPlatform('douyin')">
+                <span>🎵</span><span>抖音</span>
+              </span>
+              <span class="social-chip" data-platform="wechat_mp" onclick="toggleSocialPlatform('wechat_mp')">
+                <span>💬</span><span>微信公众号</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- 分析模式与排序 -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-[var(--border-subtle)]">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">分析模式</label>
+              <select id="social-mode-select" class="input-field text-xs w-full">
+                <option value="comprehensive">📊 综合社媒舆情与口碑洞察研报</option>
+                <option value="competitor">⚔️ 竞品口碑对比与受众认知分野</option>
+                <option value="risk">⚠️ 负面舆情排查与公关风险预警</option>
+                <option value="marketing">🔥 爆款内容传播路径与营销拆解</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">抓取偏好</label>
+              <select id="social-sort-select" class="input-field text-xs w-full">
+                <option value="general">✨ 综合推荐（热度与相关度兼顾）</option>
+                <option value="hot">🔥 最热高赞（头部博主与高互动爆款）</option>
+                <option value="latest">⏱️ 最新发布（突发与即时一手动态）</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 检索与流式研报结果展示区 -->
+        <div id="social-result-container" class="space-y-4 hidden">
+          <!-- 实时进度状态条 -->
+          <div id="social-progress-bar" class="card p-3.5 bg-gradient-to-r from-pink-950/40 via-purple-950/30 to-slate-900 border-pink-500/30 flex items-center gap-3">
+            <div class="loading-spinner w-5 h-5 border-2 border-pink-400/20 border-t-pink-400 flex-shrink-0"></div>
+            <span id="social-progress-text" class="text-xs text-pink-200 font-medium">正在调度多平台并行检索一手数据...</span>
+          </div>
+
+          <!-- 双视图切换导航卡 -->
+          <div class="flex items-center justify-between flex-wrap gap-2 border-b border-[var(--border-subtle)] pb-2">
+            <div class="flex items-center gap-2">
+              <button onclick="switchSocialResultTab('report')" id="subtab-social-report" class="btn-secondary text-xs py-1.5 px-3 bg-white/10 text-white font-bold border-pink-500/40">
+                <span>📊 深度舆情研报</span>
+              </button>
+              <button onclick="switchSocialResultTab('cards')" id="subtab-social-cards" class="btn-secondary text-xs py-1.5 px-3 text-[var(--text-muted)] hover:text-white">
+                <span>📱 原始社媒切片 (<span id="social-raw-count" class="font-mono">0</span> 条)</span>
+              </button>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="copySocialReport()" class="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1" title="复制研报全文">
+                <span>📋</span><span class="hidden sm:inline">复制</span>
+              </button>
+              <button onclick="exportSocialMarkdown()" class="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1" title="导出 Markdown">
+                <span>📄</span><span class="hidden sm:inline">MD</span>
+              </button>
+              <button onclick="exportSocialPdf()" class="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1" title="打印/导出 PDF">
+                <span>📑</span><span class="hidden sm:inline">PDF</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 视图 1: Markdown 深度舆情研报 -->
+          <div id="social-view-report" class="card p-6 md:p-8">
+            <div id="social-report-markdown" class="markdown-body">
+              <!-- Dynamically populated via SSE -->
+            </div>
+          </div>
+
+          <!-- 视图 2: 原始社媒切片卡片瀑布流 -->
+          <div id="social-view-cards" class="hidden">
+            <div id="social-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
         </div>
       </section>
 
@@ -387,7 +496,7 @@
           <p class="text-sm font-medium text-white mb-1">输入复杂课题，开启深度研究</p>
           <p class="text-xs">支持竞品分析、技术选型、投资尽调与政策研判</p>
         </div>
-        <div id="research-progress" class="card p-12 text-center hidden">
+        <div id="research-progress" class="mb-6 hidden">
           <div class="loading-spinner mx-auto mb-4"></div>
           <p id="research-stage" class="text-sm font-medium text-white mb-2">初始化检索通道...</p>
           <p id="research-timer" class="text-xs text-[var(--text-muted)] font-mono">耗时: 0s</p>
@@ -456,7 +565,7 @@
         </div>
 
         <!-- 进度与任务状态 -->
-        <div id="deepresearch-progress" class="card p-10 text-center space-y-4 hidden">
+        <div id="deepresearch-progress" class="mb-6 hidden">
           <div class="loading-spinner mx-auto"></div>
           <p id="deepresearch-stage" class="text-sm font-medium text-white">规划引擎启动中...</p>
           <p id="deepresearch-timer" class="text-xs text-[var(--text-muted)] font-mono">已耗时: 0s</p>
@@ -768,154 +877,14 @@
         </div>
 
         <!-- 加载进度条 -->
-        <div id="findall-progress" class="card p-12 text-center hidden">
+        <div id="findall-progress" class="mb-6 hidden">
           <div class="loading-spinner mx-auto mb-4"></div>
           <p id="findall-stage" class="text-sm font-medium text-white mb-2">⚡ 正在调度 Parallel.ai 深度语义检索全网高密企业与产品信源...</p>
           <p id="findall-timer" class="text-xs text-[var(--text-muted)] font-mono">已耗时: 0s</p>
         </div>
       </section>
 
-      <section id="panel-social" class="workspace-panel hidden">
-        <div class="mb-6">
-          <div class="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h2 class="font-h1 text-pink-400 mb-1 flex items-center gap-2">
-                <span>📱</span><span>全网社媒声量与舆情洞察</span>
-              </h2>
-              <p class="text-xs text-[var(--text-muted)]">穿透小红书、B站、微博、抖音、微信、Twitter 真实用户声音，智能聚类口碑与舆情态势</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="px-2.5 py-1 rounded-full text-xs font-mono bg-pink-500/10 text-pink-300 border border-pink-500/25">
-                ⚡ 多平台实时抓取
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div class="card p-6 mb-6 space-y-4">
-          <!-- 关键词输入 -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-2">监测课题、品牌、产品或事件关键词</label>
-            <div class="flex flex-col sm:flex-row gap-2.5">
-              <input type="text" id="social-keyword-input" class="input-field text-sm flex-1" placeholder="输入要探查的品牌、产品或事件，如：小米SU7车主真实口碑、DeepSeek R1评测与反响...">
-              <button onclick="handleSocialSubmit()" id="btn-social-submit" class="btn-primary text-sm px-5 py-2.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 font-bold border-none shadow-lg shadow-pink-500/20 whitespace-nowrap w-full sm:w-auto flex items-center justify-center gap-1.5">
-                <span>🚀</span><span>启动社媒检索与分析</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 热门探查预设 Chip -->
-          <div class="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)]">
-            <span class="text-[11px] font-semibold text-slate-400">🔥 热门探索：</span>
-            <button type="button" onclick="setSocialPreset('小米SU7 真实车主体验与口碑吐槽')" class="quick-chip">小米SU7 车主真实口碑</button>
-            <button type="button" onclick="setSocialPreset('DeepSeek R1 开源大模型 开发者评测与反响')" class="quick-chip">DeepSeek R1 开发者评测</button>
-            <button type="button" onclick="setSocialPreset('人形机器人 具身智能 2026 商业化落地讨论')" class="quick-chip">具身智能 落地讨论</button>
-            <button type="button" onclick="setSocialPreset('某大牌美妆 避雷好评 与 成分争议')" class="quick-chip">美妆护肤 好评与避雷</button>
-          </div>
-
-          <!-- 平台勾选矩阵 -->
-          <div class="pt-3 border-t border-[var(--border-subtle)]">
-            <div class="flex items-center justify-between mb-2.5">
-              <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                <span>🌐</span><span>选择数据来源平台（可多选）</span>
-              </label>
-              <div class="flex items-center gap-2 text-xs">
-                <button type="button" onclick="selectAllSocialPlatforms()" class="text-indigo-400 hover:text-indigo-300 font-medium">全选</button>
-                <span class="text-slate-600">|</span>
-                <button type="button" onclick="clearSocialPlatforms()" class="text-slate-400 hover:text-slate-300">清空</button>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap gap-2" id="social-platform-chips">
-              <span class="social-chip active" data-platform="xiaohongshu" onclick="toggleSocialPlatform('xiaohongshu')">
-                <span>📕</span><span>小红书</span>
-              </span>
-              <span class="social-chip active" data-platform="bilibili" onclick="toggleSocialPlatform('bilibili')">
-                <span>📺</span><span>B站 (Bilibili)</span>
-              </span>
-              <span class="social-chip active" data-platform="weibo" onclick="toggleSocialPlatform('weibo')">
-                <span>🧣</span><span>微博</span>
-              </span>
-              <span class="social-chip active" data-platform="twitter" onclick="toggleSocialPlatform('twitter')">
-                <span>🐦</span><span>Twitter / X</span>
-              </span>
-              <span class="social-chip" data-platform="douyin" onclick="toggleSocialPlatform('douyin')">
-                <span>🎵</span><span>抖音</span>
-              </span>
-              <span class="social-chip" data-platform="wechat_mp" onclick="toggleSocialPlatform('wechat_mp')">
-                <span>💬</span><span>微信公众号</span>
-              </span>
-            </div>
-          </div>
-
-          <!-- 分析模式与排序 -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-[var(--border-subtle)]">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1.5">分析模式</label>
-              <select id="social-mode-select" class="input-field text-xs w-full">
-                <option value="comprehensive">📊 综合社媒舆情与口碑洞察研报</option>
-                <option value="competitor">⚔️ 竞品口碑对比与受众认知分野</option>
-                <option value="risk">⚠️ 负面舆情排查与公关风险预警</option>
-                <option value="marketing">🔥 爆款内容传播路径与营销拆解</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1.5">抓取偏好</label>
-              <select id="social-sort-select" class="input-field text-xs w-full">
-                <option value="general">✨ 综合推荐（热度与相关度兼顾）</option>
-                <option value="hot">🔥 最热高赞（头部博主与高互动爆款）</option>
-                <option value="latest">⏱️ 最新发布（突发与即时一手动态）</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- 检索与流式研报结果展示区 -->
-        <div id="social-result-container" class="space-y-4 hidden">
-          <!-- 实时进度状态条 -->
-          <div id="social-progress-bar" class="card p-3.5 bg-gradient-to-r from-pink-950/40 via-purple-950/30 to-slate-900 border-pink-500/30 flex items-center gap-3">
-            <div class="loading-spinner w-5 h-5 border-2 border-pink-400/20 border-t-pink-400 flex-shrink-0"></div>
-            <span id="social-progress-text" class="text-xs text-pink-200 font-medium">正在调度多平台并行检索一手数据...</span>
-          </div>
-
-          <!-- 双视图切换导航卡 -->
-          <div class="flex items-center justify-between flex-wrap gap-2 border-b border-[var(--border-subtle)] pb-2">
-            <div class="flex items-center gap-2">
-              <button onclick="switchSocialResultTab('report')" id="subtab-social-report" class="btn-secondary text-xs py-1.5 px-3 bg-white/10 text-white font-bold border-pink-500/40">
-                <span>📊 深度舆情研报</span>
-              </button>
-              <button onclick="switchSocialResultTab('cards')" id="subtab-social-cards" class="btn-secondary text-xs py-1.5 px-3 text-[var(--text-muted)] hover:text-white">
-                <span>📱 原始社媒切片 (<span id="social-raw-count" class="font-mono">0</span> 条)</span>
-              </button>
-            </div>
-            <div class="flex items-center gap-1.5">
-              <button onclick="copySocialReport()" class="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1" title="复制研报全文">
-                <span>📋</span><span class="hidden sm:inline">复制</span>
-              </button>
-              <button onclick="exportSocialMarkdown()" class="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1" title="导出 Markdown">
-                <span>📄</span><span class="hidden sm:inline">MD</span>
-              </button>
-              <button onclick="exportSocialPdf()" class="btn-secondary text-xs py-1 px-2.5 flex items-center gap-1" title="打印/导出 PDF">
-                <span>📑</span><span class="hidden sm:inline">PDF</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 视图 1: Markdown 深度舆情研报 -->
-          <div id="social-view-report" class="card p-6 md:p-8">
-            <div id="social-report-markdown" class="markdown-body">
-              <!-- Dynamically populated via SSE -->
-            </div>
-          </div>
-
-          <!-- 视图 2: 原始社媒切片卡片瀑布流 -->
-          <div id="social-view-cards" class="hidden">
-            <div id="social-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <!-- Dynamically populated -->
-            </div>
-          </div>
-        </div>
-      </section>
+      
 
     </div>
   
@@ -1292,7 +1261,7 @@
   
 
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js?v=2.9.7"></script>
+  <script src="app.js?v=3.0.0"></script>
 <!-- 移动端侧边抽屉导航 (Slide-Over Mobile Sidebar Drawer) -->
   <div id="mobile-nav-overlay" onclick="toggleMobileNavDrawer()"></div>
   <div id="mobile-nav-drawer">

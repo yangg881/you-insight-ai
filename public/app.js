@@ -1525,7 +1525,7 @@ async function loadSystemAnnouncement() {
 
 // ==================== 页面导航与 4 大核心 Tab 切换 (Tier-1 SaaS 架构) ====================
 
-let currentIntelSubtab = 'research';
+let currentIntelSubtab = 'digest';
 
 function switchTab(tabId) {
   currentTab = tabId;
@@ -1539,9 +1539,15 @@ function switchTab(tabId) {
   if (['research', 'finance', 'deepresearch'].includes(tabId)) {
     activeNavTab = 'deepresearch';
     tabId = 'deepresearch';
-  } else if (['social', 'digest', 'news'].includes(tabId)) {
+  } else if (['intelligence', 'social', 'digest', 'news'].includes(tabId)) {
     activeNavTab = 'intelligence';
-    currentIntelSubtab = (tabId === 'news') ? 'digest' : tabId;
+    tabId = 'intelligence';
+    if (['social', 'digest'].includes(currentIntelSubtab) === false) {
+      currentIntelSubtab = 'digest';
+    }
+    if (activeNavTab === 'intelligence' && (tabId === 'social' || tabId === 'digest')) {
+      currentIntelSubtab = tabId;
+    }
   }
 
   // 1. 切换侧边栏与底部高亮
@@ -1577,34 +1583,28 @@ function switchTab(tabId) {
 }
 
 function switchIntelSubtab(subId) {
+  if (!['digest', 'social'].includes(subId)) subId = 'digest';
   currentIntelSubtab = subId;
-  const subtabs = ['digest', 'social'];
   
   // 1. 切换顶部子胶囊按钮样式
-  subtabs.forEach(id => {
-    const btn = document.getElementById(`subtab-${id}`);
-    if (btn) {
-      if (id === subId) {
-        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm';
-      } else {
-        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all';
-      }
-    }
-  });
+  const btnDigest = document.getElementById('subtab-digest');
+  const btnSocial = document.getElementById('subtab-social');
+  if (btnDigest) {
+    btnDigest.className = (subId === 'digest') 
+      ? 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm'
+      : 'px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all';
+  }
+  if (btnSocial) {
+    btnSocial.className = (subId === 'social') 
+      ? 'px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-indigo-600 text-white shadow-sm'
+      : 'px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white transition-all';
+  }
 
-  // 2. 将对应的子 section 挂载/展示在 intel-subview-content 容器中
-  subtabs.forEach(id => {
-    const panel = document.getElementById(`panel-${id}`);
-    if (panel) panel.classList.toggle('hidden', id !== subId);
-  });
-
-  // 辅助独立面板
-  const searchPanel = document.getElementById('panel-search');
-  const newsPanel = document.getElementById('panel-news');
-  const contentsPanel = document.getElementById('panel-contents');
-  if (searchPanel) searchPanel.classList.add('hidden');
-  if (newsPanel) newsPanel.classList.add('hidden');
-  if (contentsPanel) contentsPanel.classList.add('hidden');
+  // 2. 切换子容器显示
+  const panelDigest = document.getElementById('panel-digest');
+  const panelSocial = document.getElementById('panel-social');
+  if (panelDigest) panelDigest.classList.toggle('hidden', subId !== 'digest');
+  if (panelSocial) panelSocial.classList.toggle('hidden', subId !== 'social');
 }
 
 // ==================== 智能工作台 · AI 意图自动识别与分流路由引擎 ====================
@@ -2323,7 +2323,8 @@ async function executeResearchStream() {
     let fullContent = '';
     let finalSources = [];
 
-    progress.classList.add('hidden'); result.classList.remove('hidden');
+    // 保持进度条持续高显！当收到第一段正文时再展示结果区
+    progress.classList.remove('hidden');
     contentEl.innerHTML = '<span class="stream-cursor"></span>';
 
     const handleMessage = async (line) => {
@@ -2331,6 +2332,12 @@ async function executeResearchStream() {
       let data;
       try { data = JSON.parse(line.slice(6)); } catch (e) { return; }
       if (data.type === 'content') {
+        if (result.classList.contains('hidden')) {
+          result.classList.remove('hidden');
+        }
+        if (typeof researchPBar !== 'undefined' && researchPBar) {
+          researchPBar.setStage('🧠 多源交叉验证完毕，正在流式撰写研报...', 80);
+        }
         fullContent += data.chunk;
         contentEl.innerHTML = renderMarkdown(fullContent) + '<span class="stream-cursor"></span>';
       } else if (data.type === 'stage') {
@@ -3772,8 +3779,8 @@ async function executeDeepResearchStream() {
     let fullContent = '';
     let finalSources = [];
 
-    progress?.classList.add('hidden');
-    result?.classList.remove('hidden');
+    // 保持进度条持续高显！当收到第一段正文时再平滑展示结果区
+    progress?.classList.remove('hidden');
 
     while (true) {
       const { value, done } = await reader.read();
