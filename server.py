@@ -3324,7 +3324,25 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
 ---
 *注：严禁假大空，所有判断必须依托事实数据支撑，对比大表必须完整规范。*"""
 
-            full_content = await call_you_research_resilient(agent_prompt, timeout_sec=120.0)
+            # 并发执行长程战略智库推理，同时以 4 秒间隔向前端推送实时分析演进阶段与保活心跳
+            llm_task = asyncio.create_task(call_you_research_resilient(agent_prompt, timeout_sec=120.0))
+            
+            sub_stages = [
+                "⚡ 正在多跳穿透企业官网披露、工信部备案与技术白皮书...",
+                "📊 正在交叉比对营收结构、毛利率变化与核心估值乘数...",
+                "🧠 正在构建多维横向参数对比大表与产品攻防矩阵...",
+                "🔍 正在核验供应链依赖度、地缘政治与潜在风险预警...",
+                "📑 正在结构化组织与格式化万字全景尽调案卷..."
+            ]
+            stage_idx = 0
+            while not llm_task.done():
+                await asyncio.sleep(4.0)
+                if not llm_task.done():
+                    cur_stage = sub_stages[stage_idx % len(sub_stages)]
+                    stage_idx += 1
+                    yield f'data: {json.dumps({"type": "stage", "stage": cur_stage})}\n\n'
+
+            full_content = await llm_task
             if not full_content:
                 raise HTTPException(status_code=502, detail="长程推理服务暂时繁忙，请稍后重试")
 
