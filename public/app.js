@@ -3856,11 +3856,26 @@ async function executeDeepResearchStream() {
             if (typeof deepPBar !== 'undefined' && deepPBar) deepPBar.setStage(data.stage);
           } else if (data.type === 'content') {
             fullContent += data.chunk;
+            if (result && result.classList.contains('hidden')) {
+              result.classList.remove('hidden');
+              empty?.classList.add('hidden');
+              result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            if (typeof deepPBar !== 'undefined' && deepPBar) {
+              deepPBar.setContentStreaming();
+            }
             contentEl.innerHTML = renderMarkdown(fullContent);
           } else if (data.type === 'done') {
             finalSources = data.sources || [];
             if (sourcesEl) renderSources(sourcesEl, finalSources);
+            if (result && result.classList.contains('hidden')) {
+              result.classList.remove('hidden');
+              empty?.classList.add('hidden');
+            }
             contentEl.innerHTML = renderMarkdown(fullContent);
+            if (typeof deepPBar !== 'undefined' && deepPBar) {
+              deepPBar.complete(true, 'AI 商业全景深度尽调案卷已顺利交付！');
+            }
             await saveHistory('长程调研', topic, fullContent, JSON.stringify(finalSources));
             checkAuth();
             showToast('AI 长程深度调研与全景大图已完成！', 'success');
@@ -3880,7 +3895,6 @@ async function executeDeepResearchStream() {
     }
   } finally {
     clearInterval(timer);
-    progress?.classList.add('hidden');
     btn.disabled = false;
     btn.innerHTML = '<span>🕵️‍♂️</span><span>启动 AI 长程深度调研</span>';
   }
