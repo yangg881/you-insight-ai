@@ -3245,7 +3245,7 @@ async def stream_deepseek_research_generator(prompt: str, system_prompt: str = N
         "stream": True
     }
     # 直连国内低延迟节点，不走海外代理，杜绝超时与挂起
-    async with httpx.AsyncClient(timeout=60.0) as c:
+    async with httpx.AsyncClient(timeout=60.0, trust_env=False) as c:
         async with c.stream("POST", url, json=payload, headers=headers) as resp:
             if resp.status_code != 200:
                 err_text = await resp.aread()
@@ -3298,13 +3298,17 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
             yield f'data: {json.dumps({"type": "stage", "stage": "⚡ 正在穿透全网权威事实与底层财报，检索一手核心事实..."})}\n\n'
             
             search_tasks = [
-                fetch_brave_web_search(f"{req.topic} 核心业务 市场规模 竞品对比 财报 发展战略", count=10),
+                fetch_brave_web_search(f"{req.topic} 核心业务 市场规模 竞品对比 发展战略", count=8),
                 fetch_parallel_search(
                     f"{req.topic} 商业模式与核心标的",
                     objective=f"全面检索【{req.topic}】的最新事实、技术评测大表、行业对比与核心参数",
                     count=3
                 )
             ]
+            if req.include_finance:
+                search_tasks.append(
+                    fetch_brave_web_search(f"{req.topic} 财报 营业收入 净利润 毛利率 研发费用 现金储备 资产负债率 估值", count=8)
+                )
             try:
                 results = await asyncio.wait_for(asyncio.gather(*search_tasks, return_exceptions=True), timeout=6.0)
             except Exception as se:
@@ -3344,7 +3348,37 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
             if req.include_matrix:
                 sections_instruction.append("## 三、 📋 头部标的/核心玩家多维横向全景对比大表（【必须包含一份高密度的 Markdown 对比大表】，列名建议包含：企业名称 | 核心产品线 | 技术路线与关键零部件 | 预估单价/收费模式 | 核心护城河 | 劣势与挑战 | 综合评级）")
             if req.include_finance:
-                sections_instruction.append("## 四、 💰 标的企业财务健康度与估值透视（深入拆解代表性标的的营业收入结构、毛利率变化、资产负债率、经营现金流安全性及行业估值 PE/PS 乘数）")
+                sections_instruction.append("""## 四、 💰 标的企业财务健康度与估值透视（机构级三表透视与财务模型深度体检）
+
+### 4.1 核心财务三表与关键经营指标全景纵览大表
+【必须包含一份标准 Markdown 财务大表，严禁少于 8~10 项核心科目，包含权威实际披露数值】：
+| 核心财务科目 / 关键指标 | 2023年全年 | 2024年全年 | 2025年最新期/预测 | 同比/环比变化 | 行业平均水平 | 机构专业诊断与评级 |
+必须包含的科目行：
+1. 营业总收入 (Total Revenue)
+2. 营收按业务板块拆解 (Revenue by Segment: 各主营业务构成与占比)
+3. 归母净利润 / 净亏损 (Net Profit / Loss)
+4. 综合毛利率与主营业务毛利率 (Gross Margin)
+5. 净利率 (Net Margin)
+6. 研发投入及研发费用率 (R&D Expense & Ratio)
+7. 销售及行政管理费用率 (SG&A Expense Ratio)
+8. 经营活动产生的现金流量净额 (Operating Cash Flow)
+9. 期末现金及等价物储备 (Cash Reserves)
+10. 资产负债率与总有息负债规模 (Debt-to-Asset Ratio)
+11. 核心估值乘数 (PE / PS / EV-to-Sales)
+
+### 4.2 营收动能与盈利质量穿透诊断（DuPont 杜邦拆解）
+- 驱动因素量价拆解（销量扩张 vs 单价变化，主营基本盘 vs 创新业务增长极）
+- 成本费用控制力与经营杠杆（供应链采购承压情况、三费控制与研发资本化率）
+- 盈亏平衡点（BEP）静态测算与拐点预期窗口
+
+### 4.3 现金流安全性与安全跑道体检（企业生命线评估）
+- 自由现金流（FCF）自我造血能力评估
+- 现金跑道（Cash Runway）测算：按季度净现金消耗速率（Burn Rate），测算当前现金储备可维持的运营月数
+- 存货周转天数与应收账款风险敞口
+
+### 4.4 行业估值对比与一二级市场定价研判
+- 与同行头部竞品横向估值对标大表（PE、PS、EV/Sales 对比）
+- 当前估值体系核心折溢价动因剖析与投资评级总结""")
             sections_instruction.append("## 五、 ⚠️ 核心壁垒、潜在风险预警与供应链断供瓶颈评估")
             sections_instruction.append("## 六、 💡 投资尽调/选型采购落地决策指南（针对投资机构、采购方或决策者的落地策略）")
 
