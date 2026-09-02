@@ -2505,31 +2505,42 @@ async def api_social_stream(req: SocialRequest, request: Request, user: Optional
 请确保语言专业精炼、观点客观扎实、排版清晰美观，全面体现基于真实社媒大数据的洞察深度。"""
 
         try:
-            async with client(timeout=180.0) as c:
-                payload = {'input': prompt, 'chat_history': []}
-                resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': get_current_you_api_key()})
-                if resp.status_code != 200:
-                    record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), f'upstream_{resp.status_code}')
-                    raise RuntimeError("社媒舆情分析上游服务暂时不可用（本次未扣除额度）")
-                    
-                data = resp.json()
-                content = data.get('output', {}).get('content', '')
-                you_sources = data.get('output', {}).get('sources', [])
+            safe_prompt = prompt[:2800]
+            minimal_prompt = f"请针对关键词【{req.keyword}】，分析当前全网社交媒体（微博、小红书、B站等）上的舆论关注焦点与用户口碑评价。"
+            data = None
+            async with client(timeout=120.0) as c:
+                for attempt in range(2):
+                    payload = {'input': safe_prompt if attempt == 0 else minimal_prompt, 'chat_history': []}
+                    resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': get_current_you_api_key()})
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        break
+                    elif resp.status_code == 422 and attempt == 0:
+                        continue
+                    elif attempt == 1:
+                        record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), f'upstream_{resp.status_code}')
+                        raise RuntimeError("社媒舆情分析上游服务暂时不可用（本次未扣除额度）")
+                        
+            if not data or not data.get('output'):
+                raise RuntimeError("社媒舆情分析服务响应异常，请重试")
                 
-                # 组合多源出处
-                social_sources = [
+            content = data.get('output', {}).get('content', '')
+            you_sources = data.get('output', {}).get('sources', [])
+            
+            # 组合多源出处
+            social_sources = [
                     {"title": f"[{it['platform_name']}] {it['title']}", "url": it['url'], "name": it['platform_name']}
-                    for it in deduped_items[:8]
-                ] + you_sources[:3]
+                for it in deduped_items[:8]
+            ] + you_sources[:3]
                 
-                quota_final = consume_quota_success(user, ip)
-                chunk_size = 60
-                for i in range(0, len(content), chunk_size):
-                    yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
-                    await asyncio.sleep(0.015)
+            quota_final = consume_quota_success(user, ip)
+            chunk_size = 60
+            for i in range(0, len(content), chunk_size):
+                yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
+                await asyncio.sleep(0.015)
                     
-                yield f'data: {json.dumps({"type": "done", "sources": social_sources, "full_content": content, "raw_items": deduped_items[:24], "quota": quota_final})}\n\n'
-                record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), 'success')
+            yield f'data: {json.dumps({"type": "done", "sources": social_sources, "full_content": content, "raw_items": deduped_items[:24], "quota": quota_final})}\n\n'
+            record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), 'success')
         except Exception as e:
             record_gen_log(user, ip, '社媒舆情', req.keyword, int((time.time() - t0)*1000), 'failed')
             message = str(e) if isinstance(e, HTTPException) else "社媒舆情研报生成失败，请稍后重试"
@@ -2580,11 +2591,21 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
 
 必须确保事实准确、出处权威。"""
             
-            research_resp = await c.post('https://api.you.com/v1/research', json={'input': prompt}, headers={'X-API-Key': get_current_you_api_key()})
-            if research_resp.status_code != 200:
-                record_gen_log(user, ip, '行业早报', req.topic, int((time.time() - t0)*1000), f'upstream_{research_resp.status_code}')
-                raise HTTPException(status_code=502, detail="早报上游服务暂时不可用（本次未扣除额度）")
-            res_data = research_resp.json() if research_resp.status_code == 200 else {}
+            # 严格控制输入长度并增加容错重试
+            safe_prompt = prompt[:2800]
+            minimal_prompt = f"请生成关于【{req.topic}】的最新行业动态早报。"
+            res_data = {}
+            for attempt in range(2):
+                p_in = safe_prompt if attempt == 0 else minimal_prompt
+                research_resp = await c.post('https://api.you.com/v1/research', json={'input': p_in}, headers={'X-API-Key': get_current_you_api_key()})
+                if research_resp.status_code == 200:
+                    res_data = research_resp.json()
+                    break
+                elif research_resp.status_code == 422 and attempt == 0:
+                    continue
+                elif attempt == 1:
+                    record_gen_log(user, ip, '行业早报', req.topic, int((time.time() - t0)*1000), f'upstream_{research_resp.status_code}')
+                    raise HTTPException(status_code=502, detail="早报上游服务暂时不可用（本次未扣除额度）")
             
             # 合并展示的关联新闻列表
             combined_news = items_24h[:4] + items_7d[:3] + news_items[:3]
@@ -2598,7 +2619,6 @@ async def api_digest(req: DigestRequest, request: Request, user: Optional[Dict[s
                 'status': 'success',
                 'topic': req.topic,
                 'brief_report': res_data,
-                'image_url': img_url,
                 'search_results': {'results': {'web': combined_news}},
                 'duration_ms': duration,
                 'quota': quota_res
