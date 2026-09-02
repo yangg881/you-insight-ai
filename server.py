@@ -3224,6 +3224,45 @@ async def api_research_followup(req: FollowupRequest, request: Request, user: Op
 
 # ==================== 8.2 AI 代跑长程深度多跳调研 (Deep Long-Horizon Research Stream) ====================
 
+# ==================== SenseNova / DeepSeek-V4-Flash 高速原生流式推理引擎 ====================
+SENSENOVA_BASE_URL = os.getenv('SENSENOVA_BASE_URL', 'https://token.sensenova.cn/v1')
+SENSENOVA_API_KEY = os.getenv('SENSENOVA_API_KEY', 'sk-ZuZghWayQ2tNUQ5BDklYaszFPmB8ICDH')
+SENSENOVA_MODEL = os.getenv('SENSENOVA_REWRITE_MODEL', 'deepseek-v4-flash')
+
+async def stream_deepseek_research_generator(prompt: str, system_prompt: str = None):
+    """通过直连国内低延迟 DeepSeek-V4-Flash 实现全量 Token 级原生流式长文输出"""
+    url = f"{SENSENOVA_BASE_URL}/chat/completions"
+    headers = {"Authorization": f"Bearer {SENSENOVA_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": SENSENOVA_MODEL,
+        "messages": [
+            {"role": "system", "content": system_prompt or "你是一位拥有 15 年经验的顶级产业战略顾问兼一级市场投资总监。"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3,
+        "max_tokens": 4096,
+        "stream": True
+    }
+    # 直连国内低延迟节点，不走海外代理，杜绝超时与挂起
+    async with httpx.AsyncClient(timeout=60.0) as c:
+        async with c.stream("POST", url, json=payload, headers=headers) as resp:
+            if resp.status_code != 200:
+                err_text = await resp.aread()
+                raise RuntimeError(f"DeepSeek Stream Error ({resp.status_code}): {err_text.decode(errors='ignore')[:200]}")
+            async for line in resp.aiter_lines():
+                if line.startswith("data: "):
+                    d_str = line[6:].strip()
+                    if d_str == "[DONE]":
+                        break
+                    try:
+                        d = json.loads(d_str)
+                        chunk = d["choices"][0]["delta"].get("content", "")
+                        if chunk:
+                            yield chunk
+                    except Exception:
+                        pass
+
+
 @app.post('/api/deepresearch/stream')
 async def api_deep_research_stream(req: DeepResearchRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
     """AI 代跑长程深度多跳调研 (多步自主探查 + Parallel 全网高密索引 + 机构级对比研报流式生成)"""
@@ -3324,32 +3363,32 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
 ---
 *注：严禁假大空，所有判断必须依托事实数据支撑，对比大表必须完整规范。*"""
 
-            # 并发执行长程战略智库推理，同时以 4 秒间隔向前端推送实时分析演进阶段与保活心跳
-            llm_task = asyncio.create_task(call_you_research_resilient(agent_prompt, timeout_sec=120.0))
-            
-            sub_stages = [
-                "⚡ 正在多跳穿透企业官网披露、工信部备案与技术白皮书...",
-                "📊 正在交叉比对营收结构、毛利率变化与核心估值乘数...",
-                "🧠 正在构建多维横向参数对比大表与产品攻防矩阵...",
-                "🔍 正在核验供应链依赖度、地缘政治与潜在风险预警...",
-                "📑 正在结构化组织与格式化万字全景尽调案卷..."
-            ]
-            stage_idx = 0
-            while not llm_task.done():
-                await asyncio.sleep(4.0)
-                if not llm_task.done():
-                    cur_stage = sub_stages[stage_idx % len(sub_stages)]
-                    stage_idx += 1
-                    yield f'data: {json.dumps({"type": "stage", "stage": cur_stage})}\n\n'
+            # 阶段 4: 直连高速原生流式引擎，首字 2~4 秒实时输出，彻底告别 120s 假死与 93% 停滞
+            yield f'data: {json.dumps({"type": "stage", "stage": "🧠 战略智库已接入一手事实矩阵，正在实时流式撰写全景案卷与横评大表..."})}\n\n'
 
-            full_content = await llm_task
+            full_content = ""
+            try:
+                # 优先使用国内低延迟 DeepSeek-V4-Flash 进行原生流式生成
+                async for token_chunk in stream_deepseek_research_generator(
+                    agent_prompt,
+                    system_prompt="你是一位拥有 15 年经验的顶级产业战略顾问兼一级市场投资总监，精通券商深度研报与一级市场投资尽调案卷撰写。"
+                ):
+                    full_content += token_chunk
+                    yield f'data: {json.dumps({"type": "content", "chunk": token_chunk})}\n\n'
+            except Exception as stream_err:
+                print(f"DeepSeek stream failed, falling back to resilient generator: {stream_err}")
+                # 备用容灾降级
+                fallback_content = await call_you_research_resilient(f"商业尽调研报：{req.topic}", timeout_sec=40.0)
+                if not fallback_content:
+                    raise stream_err
+                full_content = fallback_content
+                chunk_size = 60
+                for i in range(0, len(fallback_content), chunk_size):
+                    yield f'data: {json.dumps({"type": "content", "chunk": fallback_content[i:i+chunk_size]})}\n\n'
+                    await asyncio.sleep(0.015)
+
             if not full_content:
                 raise HTTPException(status_code=502, detail="长程推理服务暂时繁忙，请稍后重试")
-
-            chunk_size = 60
-            for i in range(0, len(full_content), chunk_size):
-                yield f'data: {json.dumps({"type": "content", "chunk": full_content[i:i+chunk_size]})}\n\n'
-                await asyncio.sleep(0.015)
 
             # 阶段 5: 完成并输出信源
             duration_ms = int((time.time() - t0) * 1000)
