@@ -9,7 +9,7 @@
   <script src="vendor/purify.min.js?v=2.4.2"></script>
   <script src="theme.js?v=2.4.2"></script>
   <link rel="stylesheet" href="tailwind.css?v=2.4.2">
-  <link rel="stylesheet" href="style.css?v=2.9.4">
+  <link rel="stylesheet" href="style.css?v=2.9.5">
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
@@ -68,8 +68,8 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
               </div>
               <div class="flex-1 min-w-0 text-left">
-                <span class="nav-title block text-xs font-bold">🚀 智能工作台</span>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">全局搜索 · 智能意图路由</span>
+                <span class="nav-title block text-xs font-bold">⚡ AI 统一总调度</span>
+                <span class="text-[10px] text-[var(--text-muted)] block truncate">全局搜索 · 智能意图分流</span>
               </div>
             </button>
           </div>
@@ -89,10 +89,10 @@
               </div>
               <div class="flex-1 min-w-0 text-left">
                 <div class="flex items-center justify-between">
-                  <span class="nav-title block text-xs font-bold">🎯 实体挖掘与穿透</span>
+                  <span class="nav-title block text-xs font-bold">🏢 企业与供应链挖掘</span>
                   <span class="text-[8px] px-1.5 py-0.2 bg-gradient-to-r from-indigo-500/30 to-purple-500/30 text-indigo-300 rounded font-mono">CORE</span>
                 </div>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">找公司 · 挖供应商 · 扒官网</span>
+                <span class="text-[10px] text-[var(--text-muted)] block truncate">找公司 · 批量对比 · 扒官网底细</span>
               </div>
             </button>
 
@@ -103,10 +103,10 @@
               </div>
               <div class="flex-1 min-w-0 text-left">
                 <div class="flex items-center justify-between">
-                  <span class="nav-title block text-xs font-bold">🤖 深度调研 Agent</span>
+                  <span class="nav-title block text-xs font-bold">🕵️‍♂️ 长程产业深度智库</span>
                   <span class="text-[8px] px-1.5 py-0.2 bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-purple-300 rounded font-mono">AGENT</span>
                 </div>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">多跳自主调研 · 对比大表</span>
+                <span class="text-[10px] text-[var(--text-muted)] block truncate">多跳自主探查 · 机构级万字长文</span>
               </div>
             </button>
 
@@ -116,8 +116,8 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
               </div>
               <div class="flex-1 min-w-0 text-left">
-                <span class="nav-title block text-xs font-bold">📊 商业研报与智库</span>
-                <span class="text-[10px] text-[var(--text-muted)] block truncate">深度研报 · 财报 · 社媒舆情</span>
+                <span class="nav-title block text-xs font-bold">📈 舆情·财报·行业早报</span>
+                <span class="text-[10px] text-[var(--text-muted)] block truncate">24h时序早报 · 社媒口碑 · 财报洞察</span>
               </div>
             </button>
 
@@ -127,7 +127,18 @@
       </div>
 
       <!-- Bottom User / Quota Banner in Sidebar -->
-      <div class="pt-3 border-t border-[var(--border-subtle)] space-y-2">
+              <!-- 新手极速向导卡片 (消除选择困难) -->
+        <div class="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-[11px] text-[var(--text-muted)] space-y-1 mb-2">
+          <div class="flex items-center gap-1.5 font-bold text-indigo-300 text-[11px]">
+            <span>💡</span><span>新手极速向导</span>
+          </div>
+          <div class="text-[10px] leading-relaxed text-slate-300 space-y-0.5">
+            <div>• <b class="text-indigo-300">查一批企业？</b> 选企业挖掘</div>
+            <div>• <b class="text-purple-300">做全景研报？</b> 选长程深度智库</div>
+            <div>• <b class="text-cyan-300">看动态舆情？</b> 选早报与舆情</div>
+          </div>
+        </div>
+        <div class="pt-3 border-t border-[var(--border-subtle)] space-y-2">
         <a href="profile.html" class="flex items-center justify-between p-2.5 rounded-xl bg-[var(--surface-tertiary)] hover:bg-[var(--surface-elevated)] border border-[var(--border-subtle)] transition-colors group">
           <div class="flex items-center gap-2 min-w-0">
             <span class="text-base">💼</span>
@@ -152,10 +163,38 @@
           <p class="text-[var(--text-secondary)]">选择场景开始，或直接使用全局搜索</p>
         </div>
         <!-- Super Workbench Search Hub (AI Intent Router) -->
-        <div class="card p-5 mb-6 space-y-3 bg-gradient-to-b from-[var(--surface-secondary)] to-[var(--surface-primary)] border border-indigo-500/25 shadow-xl shadow-indigo-950/20">
+        <div class="card p-5 mb-6 space-y-3.5 bg-gradient-to-b from-[var(--surface-secondary)] to-[var(--surface-primary)] border border-indigo-500/25 shadow-xl shadow-indigo-950/20">
+          
+          <!-- 1. 期望交付物目标单选器 (消除选择困难) -->
+          <div class="flex items-center gap-1.5 flex-wrap pb-1">
+            <span class="text-[11px] text-[var(--text-muted)] font-bold mr-1 flex items-center gap-1"><span>🎯</span> 期望交付物:</span>
+            <button type="button" onclick="setDeliveryMode('auto')" id="mode-tab-auto" class="delivery-mode-tab active" title="系统根据输入内容自动匹配最佳引擎与呈现形式">
+              <span>✨</span><span>智能意图路由 (推荐)</span>
+            </button>
+            <button type="button" onclick="setDeliveryMode('findall')" id="mode-tab-findall" class="delivery-mode-tab" title="直接生成包含企业名称、核心优势、融资规模、官网的高密大表">
+              <span>📊</span><span>找清单 / 行业大表</span>
+            </button>
+            <button type="button" onclick="setDeliveryMode('deepresearch')" id="mode-tab-deepresearch" class="delivery-mode-tab" title="多跳自主探查，生成带 TAM 空间、竞争格局、技术壁垒的万字长文">
+              <span>📑</span><span>万字全景研报</span>
+            </button>
+            <button type="button" onclick="setDeliveryMode('compare')" id="mode-tab-compare" class="delivery-mode-tab" title="两强深度 PK，生成商业模式、产品力、护城河横向对比大表">
+              <span>🥊</span><span>双标的 / 竞品对比</span>
+            </button>
+            <button type="button" onclick="setDeliveryMode('digest')" id="mode-tab-digest" class="delivery-mode-tab" title="聚合过去 24 小时突发动态与近 7 天脉络演进">
+              <span>⚡</span><span>24h 行业早报</span>
+            </button>
+          </div>
+
+          <!-- 2. 防浏览器账密自动填充的隐藏陷阱 -->
+          <div style="position: absolute; left: -9999px; top: -9999px; opacity: 0; pointer-events: none;" aria-hidden="true">
+            <input type="text" name="fake_usernamenotused" tabindex="-1">
+            <input type="password" name="fake_passwordnotused" tabindex="-1">
+          </div>
+
+          <!-- 3. 主搜索输入框 -->
           <div class="flex flex-col sm:flex-row gap-2.5">
             <div class="relative flex-1">
-              <input type="text" id="global-search" class="input-field text-sm sm:text-base w-full pr-10 py-3.5 rounded-xl border-indigo-500/30 focus:border-indigo-400 font-medium" placeholder="输入任何商业问题、找公司需求、研报课题或公司名称（AI 自动识别意图调度最佳 API）..." onkeydown="if(event.key==='Enter') handleGlobalSearch()">
+              <input type="search" id="global-search" name="intelligence_workbench_query" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="input-field text-sm sm:text-base w-full pr-10 py-3.5 rounded-xl border-indigo-500/30 focus:border-indigo-400 font-medium" placeholder="输入任何商业问题、企业名单、竞品对比或课题（AI 自动识别意图调度最佳引擎）..." onkeydown="if(event.key==='Enter') handleGlobalSearch()">
               <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">✨</span>
             </div>
             <button onclick="handleGlobalSearch()" id="btn-global-search" class="btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2 rounded-xl whitespace-nowrap shadow-lg shadow-indigo-500/25">
@@ -163,58 +202,120 @@
             </button>
           </div>
 
-          <!-- Intent Selector Chips -->
-          <div class="flex items-center gap-1.5 flex-wrap pt-1 text-xs">
-            <span class="text-[11px] text-[var(--text-muted)] font-medium flex items-center gap-1"><span>🧭</span> 快捷场景直达:</span>
+          <!-- 4. 快捷场景直达灵感胶囊 -->
+          <div class="flex items-center gap-1.5 flex-wrap pt-0.5 text-xs">
+            <span class="text-[11px] text-[var(--text-muted)] font-medium flex items-center gap-1"><span>🧭</span> 快捷场景灵感:</span>
             <button type="button" onclick="setHomeSearch('找20家深圳具身智能人形机器人核心零部件与电机关联企业', 'findall')" class="quick-chip text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/20">🎯 找企业/供应商大表</button>
-            <button type="button" onclick="setHomeSearch('全面对比国内排名前五的算力租赁厂商商业模式、芯片储备及2025营收预估', 'deepresearch')" class="quick-chip text-purple-300 border-purple-500/30 hover:bg-purple-500/20">🤖 产业链长程对比调研</button>
-            <button type="button" onclick="setHomeSearch('太古可口可乐2025商业模式与供应链深度尽调研报', 'research')" class="quick-chip text-cyan-300 border-cyan-500/30 hover:bg-cyan-500/20">📊 商业深度尽调</button>
+            <button type="button" onclick="setHomeSearch('理想汽车 vs 问界：商业模式、定价策略与智驾护城河深度横评', 'compare')" class="quick-chip text-amber-300 border-amber-500/30 hover:bg-amber-500/20">🥊 理想 vs 问界 横向PK</button>
+            <button type="button" onclick="setHomeSearch('国内算力租赁核心厂商商业模式与2025营收预估', 'deepresearch')" class="quick-chip text-purple-300 border-purple-500/30 hover:bg-purple-500/20">🤖 产业链长程对比调研</button>
             <button type="button" onclick="setHomeSearch('小红书与微博关于追觅扫地机最新用户评价与舆情口碑', 'social')" class="quick-chip text-pink-300 border-pink-500/30 hover:bg-pink-500/20">💬 社媒声量口碑</button>
             <button type="button" onclick="setHomeSearch('万科A 2025年度核心财务指标与债务重组深度洞察', 'finance')" class="quick-chip text-rose-300 border-rose-500/30 hover:bg-rose-500/20">📑 企业财报洞察</button>
           </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div class="template-card" onclick="quickStart('competitor')">
-            <div class="text-2xl mb-2">⚔️</div>
-            <h3 class="font-semibold text-white mb-1">竞品分析</h3>
-            <p class="text-xs text-[var(--text-secondary)]">对比功能、定价、技术架构</p>
+        <!-- 商业尽调三阶任务流 (清晰化场景分类，杜绝认知混乱) -->
+        <div class="space-y-4 mb-6">
+          
+          <!-- 阶段一：宏观扫描与动态追踪 -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="workflow-phase-badge">阶段一 · 宏观扫描</span>
+              <span class="text-xs text-[var(--text-muted)]">掌握行业前沿动态、政策风向与宏观市场空间</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="template-card" onclick="switchTab('digest')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">⚡</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">时序新闻网</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">行业早报追踪</h3>
+                <p class="text-xs text-[var(--text-secondary)]">梳理24小时突发大事件与近7天核心脉络演进</p>
+              </div>
+
+              <div class="template-card" onclick="quickStart('investment')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">📑</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">机构级尽调</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">产业全景研报</h3>
+                <p class="text-xs text-[var(--text-secondary)]">市场空间(TAM)、产业链格局、核心壁垒与风险分析</p>
+              </div>
+
+              <div class="template-card" onclick="quickStart('academic')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">📚</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300">底层技术</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">学术前沿综述</h3>
+                <p class="text-xs text-[var(--text-secondary)]">梳理关键技术突破、科研成果转化与发展演进</p>
+              </div>
+            </div>
           </div>
-          <div class="template-card" onclick="quickStart('tech')">
-            <div class="text-2xl mb-2">🔧</div>
-            <h3 class="font-semibold text-white mb-1">技术选型</h3>
-            <p class="text-xs text-[var(--text-secondary)]">深度调研技术方案优缺点</p>
+
+          <!-- 阶段二：标的挖掘与深度横评 -->
+          <div class="space-y-2 pt-1">
+            <div class="flex items-center gap-2">
+              <span class="workflow-phase-badge" style="background: rgba(168, 85, 247, 0.12); color: #d8b4fe; border-color: rgba(168, 85, 247, 0.25);">阶段二 · 标的挖掘与横评</span>
+              <span class="text-xs text-[var(--text-muted)]">找出行业头部玩家、生成高密大表并进行攻防对比</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="template-card" onclick="switchTab('findall')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">🎯</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">Excel / 卡片</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">全网实体挖掘大表</h3>
+                <p class="text-xs text-[var(--text-secondary)]">批量筛选龙头企业、供应链供应商，一键导出 Excel</p>
+              </div>
+
+              <div class="template-card" onclick="quickStart('competitor')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">🥊</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-pink-500/20 text-pink-300">头部 PK</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">双标的 / 竞品对比</h3>
+                <p class="text-xs text-[var(--text-secondary)]">A vs B 商业模式、客单价、产品力与护城河全维横评</p>
+              </div>
+
+              <div class="template-card" onclick="switchTab('deepresearch')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">🕵️‍♂️</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">多跳 Agent</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">长程深度调研 Agent</h3>
+                <p class="text-xs text-[var(--text-secondary)]">AI 自主拆解 6 个子课题，多轮探查输出对比大表</p>
+              </div>
+            </div>
           </div>
-          <div class="template-card" onclick="quickStart('investment')">
-            <div class="text-2xl mb-2">💰</div>
-            <h3 class="font-semibold text-white mb-1">投资尽调</h3>
-            <p class="text-xs text-[var(--text-secondary)]">市场规模与竞争格局分析</p>
+
+          <!-- 阶段三：微观穿透与真实口碑 -->
+          <div class="space-y-2 pt-1">
+            <div class="flex items-center gap-2">
+              <span class="workflow-phase-badge" style="background: rgba(244, 63, 94, 0.12); color: #fda4af; border-color: rgba(244, 63, 94, 0.25);">阶段三 · 微观穿透与口碑</span>
+              <span class="text-xs text-[var(--text-muted)]">穿透单个企业核心财务报表与全网一手社媒口碑评价</span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div class="template-card" onclick="switchTab('finance')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">📊</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">财务尽调</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">企业财报与估值穿透</h3>
+                <p class="text-xs text-[var(--text-secondary)]">调取上市企业财报、营收利润结构、负债与经营健康度</p>
+              </div>
+
+              <div class="template-card" onclick="switchTab('social')">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-xl">💬</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-fuchsia-500/20 text-fuchsia-300">一手切片</span>
+                </div>
+                <h3 class="font-semibold text-white text-sm mb-1">全网社媒声量与真实口碑</h3>
+                <p class="text-xs text-[var(--text-secondary)]">采集小红书、B站、微博真实用户发帖与痛点爽点评价</p>
+              </div>
+            </div>
           </div>
-          <div class="template-card" onclick="quickStart('market')">
-            <div class="text-2xl mb-2">🌍</div>
-            <h3 class="font-semibold text-white mb-1">市场进入</h3>
-            <p class="text-xs text-[var(--text-secondary)]">监管环境与增长机会</p>
-          </div>
-          <div class="template-card" onclick="quickStart('academic')">
-            <div class="text-2xl mb-2">📚</div>
-            <h3 class="font-semibold text-white mb-1">学术综述</h3>
-            <p class="text-xs text-[var(--text-secondary)]">梳理发展脉络与关键突破</p>
-          </div>
-                              <div class="template-card" onclick="switchTab('deepresearch')">
-            <div class="text-2xl mb-2">🕵️‍♂️</div>
-            <h3 class="font-semibold text-white mb-1">长程深度调研</h3>
-            <p class="text-xs text-[var(--text-secondary)]">AI Agent 自主多步调研与对比大表</p>
-          </div>
-          <div class="template-card" onclick="switchTab('findall')">
-            <div class="text-2xl mb-2">🎯</div>
-            <h3 class="font-semibold text-white mb-1">实体挖掘</h3>
-            <p class="text-xs text-[var(--text-secondary)]">全网企业/竞品/融资大表一键生成</p>
-          </div>
-          <div class="template-card" onclick="switchTab('digest')">
-            <div class="text-2xl mb-2">⚡</div>
-            <h3 class="font-semibold text-white mb-1">早报定制</h3>
-            <p class="text-xs text-[var(--text-secondary)]">每日自动化行业动态追踪</p>
-          </div>
+
         </div>
+
         <div class="card p-4">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold text-white">最近研究</h3>
@@ -637,8 +738,8 @@
                 </div>
 
                 <input type="text" id="findall-filter-input" oninput="filterFindAllTable(this.value)" class="bg-[var(--surface-tertiary)] border border-[var(--border-subtle)] text-xs text-white rounded-lg px-2.5 py-1.5 outline-none placeholder:text-slate-500 w-36 sm:w-44" placeholder="🔍 表内快速过滤...">
-                <button onclick="exportFindAllCSV()" class="btn-secondary text-xs flex items-center gap-1 text-emerald-300 hover:text-emerald-200 border-emerald-500/30">
-                  <span>📥</span><span class="hidden sm:inline">导出 Excel</span>
+                <button onclick="exportFindAllExcel()" class="btn-secondary text-xs flex items-center gap-1 text-emerald-300 hover:text-emerald-200 border-emerald-500/30">
+                  <span>📥</span><span class="hidden sm:inline">导出 Excel (.xlsx)</span>
                 </button>
                 <button onclick="copyFindAllMarkdown()" class="btn-secondary text-xs flex items-center gap-1">
                   <span>📋</span><span class="hidden sm:inline">复制 Markdown</span>
@@ -1256,7 +1357,8 @@
     <!-- Mobile Bottom Tab Bar (4 大核心入口) -->
   
 
-  <script src="app.js?v=2.9.4"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="app.js?v=2.9.5"></script>
 <!-- 移动端侧边抽屉导航 (Slide-Over Mobile Sidebar Drawer) -->
   <div id="mobile-nav-overlay" onclick="toggleMobileNavDrawer()"></div>
   <div id="mobile-nav-drawer">

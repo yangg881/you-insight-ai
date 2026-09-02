@@ -1,4 +1,229 @@
 
+// ==================== 1. 交付物目标模式选择器 (Delivery Mode Tabs) ====================
+let currentDeliveryMode = 'auto';
+
+function setDeliveryMode(mode) {
+  currentDeliveryMode = mode;
+  const modes = ['auto', 'findall', 'deepresearch', 'compare', 'digest'];
+  modes.forEach(m => {
+    const el = document.getElementById(`mode-tab-${m}`);
+    if (el) {
+      if (m === mode) el.classList.add('active');
+      else el.classList.remove('active');
+    }
+  });
+
+  const input = document.getElementById('global-search');
+  if (!input) return;
+
+  const placeholders = {
+    auto: "输入任何商业问题、企业名单、竞品对比或课题（AI 自动识别意图调度最佳引擎）...",
+    findall: "输入需挖掘的赛道/标的（例如：全球跨境出海 DTC 独角兽 / 深圳人形机器人核心零部件供应商）...",
+    deepresearch: "输入需深度调研的产业课题（例如：国内算力租赁厂商商业模式与2025营收预估）...",
+    compare: "输入需要横向横评的双标的（例如：理想汽车 vs 问界 / SHEIN vs Temu / 36氪 vs 虎嗅）...",
+    digest: "输入需要追踪动态的行业或热点（例如：具身智能机器人 / 固态电池量产 / 跨境电商）..."
+  };
+  input.placeholder = placeholders[mode] || placeholders.auto;
+  input.focus();
+}
+
+// ==================== 2. 实体大表真实 Excel (.xlsx) 导出 ====================
+function exportFindAllExcel() {
+  if (!currentFindAllData || currentFindAllData.length === 0) {
+    showToast('暂无数据可导出', 'info');
+    return;
+  }
+
+  // 优先使用 SheetJS 导出标准 .xlsx 文件
+  if (typeof XLSX !== 'undefined') {
+    try {
+      const rows = currentFindAllData.map((item, idx) => ({
+        '综合排名': item.rank || (idx + 1),
+        '匹配度': `${item.score || 85}%`,
+        '企业/标的名称': item.name || '',
+        '赛道与标签': item.tag || '',
+        '排名依据与推荐原因': item.rank_reason || '',
+        '核心优势与业务亮点': item.highlight || '',
+        '融资规模/估值': item.funding || '',
+        '团队/负责人': item.leader || '',
+        '所在地区': item.location || '',
+        '官方网站/信源': item.url || ''
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      // 设置自适应列宽
+      ws['!cols'] = [
+        { wch: 10 }, // 排名
+        { wch: 10 }, // 匹配度
+        { wch: 22 }, // 企业名称
+        { wch: 18 }, // 赛道标签
+        { wch: 35 }, // 排名依据
+        { wch: 45 }, // 业务亮点
+        { wch: 18 }, // 融资规模
+        { wch: 16 }, // 团队
+        { wch: 14 }, // 地区
+        { wch: 35 }  // 网址
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "商业实体与供应商大表");
+
+      const fileName = `${currentFindAllQuery || '实体挖掘'}_商探AI_商业全景大表_${new Date().toISOString().slice(0,10)}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      showToast(`🎉 成功导出 ${rows.length} 条企业大表至 Excel (.xlsx)！`, 'success');
+      return;
+    } catch(err) {
+      console.error('XLSX export failed, fallback to CSV:', err);
+    }
+  }
+
+  // 降级使用 CSV 导出
+  exportFindAllCSV();
+}
+
+// ==================== 3. 研报多轮追问交互 (Follow-up Q&A) ====================
+let lastActiveReportTopic = '';
+let lastActiveReportContent = '';
+
+function renderFollowupBox(containerEl, topic, initialContent) {
+  if (!containerEl) return;
+  lastActiveReportTopic = topic || '';
+  lastActiveReportContent = initialContent || '';
+
+  // 移除旧的追问盒
+  const oldBox = document.getElementById('report-followup-container');
+  if (oldBox) oldBox.remove();
+
+  const box = document.createElement('div');
+  box.id = 'report-followup-container';
+  box.className = 'followup-container';
+  box.innerHTML = `
+    <div class="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-[var(--border-subtle)]">
+      <div class="flex items-center gap-2">
+        <span class="text-base">💬</span>
+        <span class="text-xs font-bold text-indigo-300">针对本篇研报深度追问 (多轮商业对话)</span>
+        <span class="text-[10px] text-[var(--text-muted)]">基于上述分析结论展开二次细化</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+        <span>💡 建议:</span>
+        <button type="button" onclick="setFollowupPrompt('请结合本报告，深入展开第三节中关于供应链与竞争壁垒的分析')" class="hover:text-indigo-300 transition-colors underline">展开供应链壁垒</button>
+        <span>·</span>
+        <button type="button" onclick="setFollowupPrompt('请针对报告中的核心竞品，补充一份客单价与营收规模估算表')" class="hover:text-indigo-300 transition-colors underline">补充定价与估算表</button>
+      </div>
+    </div>
+
+    <!-- 追问历史流 -->
+    <div id="followup-history-stream" class="space-y-3 pt-2"></div>
+
+    <!-- 追问输入框 -->
+    <div class="flex items-center gap-2 pt-2">
+      <input type="text" id="report-followup-input" class="input-field text-xs sm:text-sm flex-1 py-2.5 px-3.5 rounded-xl border-indigo-500/30 focus:border-indigo-400" placeholder="对本篇研报有何疑问？输入您想深入探讨的具体问题（按回车发送）..." onkeydown="if(event.key==='Enter') executeReportFollowup()">
+      <button onclick="executeReportFollowup()" id="btn-report-followup" class="btn-primary py-2.5 px-4 text-xs font-bold rounded-xl flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-indigo-500/20">
+        <span>🚀</span><span>追问</span>
+      </button>
+    </div>
+  `;
+  containerEl.appendChild(box);
+}
+
+function setFollowupPrompt(text) {
+  const input = document.getElementById('report-followup-input');
+  if (input) {
+    input.value = text;
+    input.focus();
+  }
+}
+
+async function executeReportFollowup() {
+  const input = document.getElementById('report-followup-input');
+  const question = input?.value.trim();
+  if (!question) {
+    showToast('请输入您的追问问题', 'info');
+    input?.focus();
+    return;
+  }
+
+  const streamContainer = document.getElementById('followup-history-stream');
+  if (!streamContainer) return;
+
+  input.value = '';
+  const btn = document.getElementById('btn-report-followup');
+  if (btn) btn.disabled = true;
+
+  // 1. 创建追问卡片
+  const itemEl = document.createElement('div');
+  itemEl.className = 'followup-q-item';
+  const qId = 'followup-ans-' + Date.now();
+  itemEl.innerHTML = `
+    <div class="followup-q-title">
+      <span>❓ 追问：</span>
+      <span class="text-white">${escapeHtml(question)}</span>
+    </div>
+    <div id="${qId}" class="prose max-w-none text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed pt-1">
+      <span class="text-indigo-400 animate-pulse">🧠 专家正在研读报告上下文并思考解答中...</span>
+    </div>
+  `;
+  streamContainer.appendChild(itemEl);
+
+  let fullAnswer = '';
+  try {
+    const token = localStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/api/research/followup`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        topic: lastActiveReportTopic,
+        original_report: lastActiveReportContent,
+        question: question
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const ansEl = document.getElementById(qId);
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'content') {
+              fullAnswer += data.chunk;
+              if (ansEl) ansEl.innerHTML = renderMarkdown(fullAnswer);
+            } else if (data.type === 'error') {
+              if (ansEl) ansEl.innerHTML = `<span class="text-rose-400">⚠️ ${escapeHtml(data.message)}</span>`;
+            } else if (data.type === 'done') {
+              if (ansEl) ansEl.innerHTML = renderMarkdown(data.full_content || fullAnswer);
+              showToast('追问解答完成', 'success');
+            }
+          } catch(e) {}
+        }
+      }
+    }
+  } catch (err) {
+    const ansEl = document.getElementById(qId);
+    if (ansEl) ansEl.innerHTML = `<span class="text-rose-400">⚠️ 追问请求失败: ${escapeHtml(err.message)}</span>`;
+  } finally {
+    if (btn) btn.disabled = false;
+    input?.focus();
+  }
+}
+
+
 // ==================== 移动端侧边抽屉导航调度 ====================
 
 window.toggleMobileNavDrawer = function() {
@@ -1276,9 +1501,27 @@ function switchIntelSubtab(subId) {
 function detectQueryIntent(q) {
   const query = (q || '').trim();
 
+  // 0. 优先尊重用户在首页顶部手动选中的期望交付物
+  if (typeof currentDeliveryMode !== 'undefined' && currentDeliveryMode !== 'auto') {
+    const modeMap = {
+      findall: { type: 'findall', label: '🎯 实体与商机挖掘大表', badge: 'Parallel FindAll 引擎', desc: '正在为您批量挖掘商业标的大表...' },
+      deepresearch: { type: 'deepresearch', label: '🕵️‍♂️ 长程产业深度智库', badge: 'Deep Research Agent', desc: 'AI Agent 正在全网自主多跳调研...' },
+      compare: { type: 'compare', label: '🥊 双标的横向对比 PK', badge: 'Comparison Engine', desc: '正在为您生成双标的横向多维对比大表...' },
+      digest: { type: 'digest', label: '⚡ 行业情报早报追踪', badge: 'Daily Intelligence', desc: '正在汇总过去 24 小时动态与脉络...' }
+    };
+    if (modeMap[currentDeliveryMode]) return modeMap[currentDeliveryMode];
+  }
+
   // 1. URL 链接提取
   if (/^https?:\/\//i.test(query)) {
     return { type: 'contents', label: '正文结构化提取', badge: '🌐 网页直提', action: 'extract' };
+  }
+
+  // 1.1 双标的横评对比 (Compare)
+  const isCompare = /(?:vs|VS|Vs|对比|横评|PK|pk|谁更强|优劣|区别|差异|哪个好)/i.test(query)
+    && (query.includes(' 与 ') || query.includes(' 和 ') || query.includes(' vs ') || query.includes(' VS ') || query.includes(' 对比 ') || query.includes(' 还是 '));
+  if (isCompare) {
+    return { type: 'compare', label: '🥊 双标的横向对比 PK', badge: 'Comparison Engine', desc: '已自动识别为【双标的横评对比】意图，正在生成深度对比大表...' };
   }
 
   // 2. 实体与商机挖掘 (FindAll)
@@ -1380,6 +1623,13 @@ async function handleGlobalSearch(forcedType) {
     if (contInput) {
       contInput.value = query;
       executeContents();
+    }
+  } else if (intent.type === 'compare') {
+    switchTab('research');
+    const resInput = document.getElementById('research-input');
+    if (resInput) {
+      resInput.value = `请对【${query}】进行机构级全维度横评与对决剖析，重点包括：1. 核心定位与市场份额差异；2. 【多维横评大表】（客单价/定价、核心产品力、商业模式、技术路线、目标客群、供应链体系）；3. 双方核心杀手锏优势与致命痛点短板；4. 投资与选型最终决策建议。`;
+      executeResearchStream();
     }
   } else {
     // Standard commercial research

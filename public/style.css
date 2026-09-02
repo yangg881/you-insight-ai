@@ -1044,3 +1044,75 @@ select option {
   background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
 }
+
+
+/* ==================== 交付物目标模式选择器 (Delivery Mode Tabs) ==================== */
+.delivery-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface-tertiary);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.delivery-mode-tab:hover {
+  color: #fff;
+  background: var(--surface-elevated);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+.delivery-mode-tab.active {
+  color: #c7d2fe;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.2) 100%);
+  border-color: rgba(129, 140, 248, 0.6);
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+  font-weight: 700;
+}
+
+/* ==================== 任务流阶段徽章 (Workflow Phase Badges) ==================== */
+.workflow-phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+/* ==================== 研报多轮追问交互盒 (Follow-up Q&A Container) ==================== */
+.followup-container {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, var(--surface-secondary) 0%, rgba(15, 23, 42, 0.75) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+.followup-q-item {
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  margin-top: 0.75rem;
+}
+.followup-q-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #93c5fd;
+  margin-bottom: 0.4rem;
+}

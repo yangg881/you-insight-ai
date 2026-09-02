@@ -1963,6 +1963,11 @@ class SearchRequest(BaseModel):
     lang: Optional[str] = 'zh'
     engine: Optional[str] = 'hybrid' # 'hybrid' 双擎混合, 'parallel' Parallel高密, 'brave' 极速
 
+class FollowupRequest(BaseModel):
+    topic: str = Field(min_length=1, max_length=500)
+    original_report: str = Field(min_length=1, max_length=50000)
+    question: str = Field(min_length=1, max_length=1000)
+
 class ResearchRequest(BaseModel):
     input: str = Field(min_length=1, max_length=10000)
     chat_history: Optional[List[dict]] = Field(default=None, max_length=20)
@@ -3070,6 +3075,75 @@ async def api_findall_enrich(req: EnrichRequest, request: Request, user: Optiona
         "sources": sources[:12]
     }
 
+
+# ==================== 8.4 研报多轮深度追问 (Research Follow-up Q&A Stream) ====================
+
+@app.post('/api/research/followup')
+async def api_research_followup(req: FollowupRequest, request: Request, user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)):
+    """基于当前研报上下文的多轮智能深度追问 (SSE 流式输出)"""
+    ip = get_client_ip(request)
+    quota_res = check_quota_available(user, ip)
+    if not quota_res["allowed"]:
+        async def err_gen():
+            yield f'data: {json.dumps({"type": "error", "message": "游客今日免费额度已用完，请登录解锁更多额度！" if quota_res["is_guest"] else "今日额度已达上限"})}\n\n'
+        return StreamingResponse(err_gen(), media_type='text/event-stream')
+
+    async def generate():
+        t0 = time.time()
+        # 截取原研报前 3500 字符作为核心上下文
+        context_slice = req.original_report[:3500]
+        prompt = f"""你是一位顶级商业尽调与行业投资研究专家。
+用户此前针对主题【{req.topic}】生成了一份商业研报，核心内容节选如下：
+---
+{context_slice}
+---
+
+现在用户针对本篇研报提出了针对性深入追问：
+【追问核心问题】：{req.question}
+
+请基于上述研报核心结论并结合权威事实与商业逻辑，对用户的追问进行透彻、严谨、有数据有观点的专项深度解答。
+要求：
+1. 直击痛点：紧扣追问本身，不讲空话套话，给出明确判断、逻辑推导或对比分析；
+2. 结构清晰：采用清晰的 Markdown 标题、要点列表或数据小表排版；
+3. 客观扎实：凡引用企业、数据或技术方案，务必准确严谨。"""
+
+        try:
+            safe_prompt = prompt[:2800]
+            data = None
+            async with client(timeout=120.0) as c:
+                for attempt in range(2):
+                    p_in = safe_prompt if attempt == 0 else f"请针对关于【{req.topic}】的研报，专项解答以下追问：{req.question}"
+                    payload = {'input': p_in, 'chat_history': []}
+                    resp = await c.post('https://api.you.com/v1/research', json=payload, headers={'X-API-Key': get_current_you_api_key()})
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        break
+                    elif resp.status_code == 422 and attempt == 0:
+                        continue
+                    elif attempt == 1:
+                        yield f'data: {json.dumps({"type": "error", "message": "追问上游服务暂时不可用，请稍后重试"})}\n\n'
+                        return
+                        
+            if not data or not data.get('output'):
+                yield f'data: {json.dumps({"type": "error", "message": "追问解答响应异常，请重试"})}\n\n'
+                return
+                
+            content = data.get('output', {}).get('content', '')
+            sources = data.get('output', {}).get('sources', [])
+            quota_final = consume_quota_success(user, ip)
+            
+            chunk_size = 50
+            for i in range(0, len(content), chunk_size):
+                yield f'data: {json.dumps({"type": "content", "chunk": content[i:i+chunk_size]})}\n\n'
+                await asyncio.sleep(0.015)
+                
+            duration = int((time.time() - t0) * 1000)
+            record_gen_log(user, ip, '研报追问', f"{req.topic[:20]}: {req.question[:20]}", duration, 'success')
+            yield f'data: {json.dumps({"type": "done", "full_content": content, "sources": sources[:4], "duration_ms": duration, "quota": quota_final})}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "error", "message": f"追问发生异常: {str(e)}"})}\n\n'
+
+    return StreamingResponse(generate(), media_type='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 # ==================== 8.2 AI 代跑长程深度多跳调研 (Deep Long-Horizon Research Stream) ====================
 
