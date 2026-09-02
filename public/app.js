@@ -5,31 +5,33 @@ function createTaskProgressBar(containerId, options = {}) {
   if (!container) return null;
 
   const title = options.title || 'AI 智能体正在执行任务';
+  const expectedSec = options.expectedDuration || 75; // 预期全流程基准耗时（秒）
   const defaultStages = options.stages || [
     { text: '🔍 正在解析课题结构，拆解纵深子方向与核心标的...', pct: 20 },
     { text: '⚡ 并发调度全球专有高密索引库，多跳检索权威披露与技术白皮书...', pct: 45 },
     { text: '📊 交叉核验官方数据底稿与企业核心财务指标...', pct: 65 },
-    { text: '🧠 构建多维横评大表与竞争优劣势矩阵...', pct: 80 },
-    { text: '📑 正在结构化撰写全景尽调案卷与投资决策建议...', pct: 90 }
+    { text: '🧠 正在构建多维横向参数对比大表与产品攻防矩阵...', pct: 80 },
+    { text: '📑 正在结构化组织与格式化万字全景尽调案卷...', pct: 90 }
   ];
 
   let currentStageIdx = 0;
   let initialStageText = options.initialStage || defaultStages[0].text;
-  let percent = options.initialPercent || defaultStages[0].pct;
+  let percent = options.initialPercent || 15;
   let startTime = Date.now();
+  let isStreamingContent = false;
 
   container.classList.remove('hidden');
   container.innerHTML = `
     <div class="task-progress-card">
       <div class="flex items-center justify-between mb-2.5">
         <div class="flex items-center gap-2">
-          <span class="inline-block w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping"></span>
           <span class="text-xs sm:text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
             <span>⚡</span><span id="${containerId}-p-title">${escapeHtml(title)}</span>
           </span>
         </div>
         <div class="flex items-center gap-2.5">
-          <span class="text-xs sm:text-sm font-black text-indigo-300 font-mono" id="${containerId}-p-pct">${Math.round(percent)}%</span>
+          <span class="text-xs sm:text-sm font-black text-indigo-300 font-mono tracking-tight" id="${containerId}-p-pct">${Math.round(percent)}%</span>
           <span class="text-[11px] text-[var(--text-muted)] font-mono" id="${containerId}-p-timer">⏱️ 0.0s</span>
         </div>
       </div>
@@ -38,11 +40,19 @@ function createTaskProgressBar(containerId, options = {}) {
         <div id="${containerId}-p-bar" class="progress-fill" style="width: ${percent}%;"></div>
       </div>
 
-      <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+      <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)] mb-2">
         <span class="truncate pr-2 flex items-center gap-1.5 text-slate-300 transition-all duration-300" id="${containerId}-p-stage">
           <span>⚙️</span><span>${escapeHtml(initialStageText)}</span>
         </span>
         <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono flex-shrink-0" id="${containerId}-p-status">RUNNING</span>
+      </div>
+
+      <div class="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400">
+        <span class="flex items-center gap-1.5 text-indigo-300/90 truncate">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0"></span>
+          <span class="truncate">多跳穿透检索与万字深度推演中，通常耗时 40~80 秒，请耐心等待</span>
+        </span>
+        <span class="text-[10px] text-slate-500 font-mono flex-shrink-0 pl-2">AI 战略智库</span>
       </div>
     </div>
   `;
@@ -54,28 +64,42 @@ function createTaskProgressBar(containerId, options = {}) {
     if (timerEl) timerEl.textContent = `⏱️ ${elapsed}s`;
   }, 100);
 
-  // 平滑百分比增长器
+  // 动态渐进算法：采用对数渐近推进，单调平滑递增，绝对不会在 93% 停滞卡死
   let targetPercent = percent;
   let autoIncrement = setInterval(() => {
-    if (percent < targetPercent) {
-      percent += 0.8;
-      updateUI();
-    } else if (percent < 93) {
-      percent += 0.15;
-      updateUI();
+    const elapsedSec = (Date.now() - startTime) / 1000;
+
+    if (isStreamingContent) {
+      if (percent < 98) {
+        percent += 0.35;
+      }
+    } else {
+      // 对数平滑曲线：随耗时自然向前推进
+      const timeRatio = 1 - Math.exp(-elapsedSec / (expectedSec * 0.45));
+      const timePct = 15 + timeRatio * 78;
+      const target = Math.max(targetPercent, timePct);
+
+      if (percent < target) {
+        const step = Math.max(0.08, (target - percent) * 0.15);
+        percent = Math.min(96.5, percent + step);
+      } else if (percent < 96.5) {
+        // 微速爬升保活，保证每一秒都有动态感，绝不静止
+        percent += 0.03;
+      }
     }
+    updateUI();
   }, 120);
 
-  // 智能阶段自动推进轮播（如果后端阶段较长，平滑轮播真实行动描述，杜绝单阶段卡死假象）
+  // 阶段动态轮播（每 4.5 秒平滑演进到下一个阶段）
   let stageRotator = setInterval(() => {
-    if (currentStageIdx < defaultStages.length - 1) {
+    if (currentStageIdx < defaultStages.length - 1 && !isStreamingContent) {
       currentStageIdx++;
       const nextStage = defaultStages[currentStageIdx];
       const stageEl = document.getElementById(`${containerId}-p-stage`);
       if (stageEl) {
         stageEl.innerHTML = `<span>⚙️</span><span>${escapeHtml(nextStage.text)}</span>`;
       }
-      targetPercent = Math.max(percent, nextStage.pct);
+      targetPercent = Math.max(targetPercent, nextStage.pct);
     }
   }, 4500);
 
@@ -89,12 +113,19 @@ function createTaskProgressBar(containerId, options = {}) {
 
   return {
     setStage: (stageText, newTargetPct) => {
-      // 净化掉机械的 [Step X] 标签
       const cleanText = (stageText || '').replace(/\[Step \d+\]\s*/g, '');
       const stageEl = document.getElementById(`${containerId}-p-stage`);
       if (stageEl) stageEl.innerHTML = `<span>⚙️</span><span>${escapeHtml(cleanText)}</span>`;
       if (typeof newTargetPct === 'number') {
-        targetPercent = Math.max(percent, newTargetPct);
+        targetPercent = Math.max(targetPercent, newTargetPct);
+      }
+    },
+    setContentStreaming: () => {
+      isStreamingContent = true;
+      targetPercent = 95;
+      const stageEl = document.getElementById(`${containerId}-p-stage`);
+      if (stageEl) {
+        stageEl.innerHTML = `<span>🧠</span><span class="text-indigo-300 font-medium">正在流式撰写全景长文与横评大表...</span>`;
       }
     },
     complete: (success = true, doneText = '任务已顺利交付') => {
