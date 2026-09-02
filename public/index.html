@@ -9,7 +9,7 @@
   <script src="vendor/purify.min.js?v=2.4.2"></script>
   <script src="theme.js?v=2.4.2"></script>
   <link rel="stylesheet" href="tailwind.css?v=2.4.2">
-  <link rel="stylesheet" href="style.css?v=3.0.1">
+  <link rel="stylesheet" href="style.css?v=3.0.2">
 </head>
 <body class="bg-[var(--surface-primary)] text-[var(--text-primary)] min-h-screen flex flex-col antialiased">
   <div id="toast-container" class="fixed top-4 right-4 z-[99999] flex flex-col gap-2 max-w-sm"></div>
@@ -334,12 +334,12 @@
               <!-- 关键词输入 (长输入框 + 紧凑按钮) -->
               <div class="space-y-2">
                 <label class="block text-xs font-semibold text-slate-300">监测课题、品牌、产品或事件关键词</label>
-                <div class="flex flex-col sm:flex-row items-center gap-2.5 w-full">
-                  <div class="relative flex-1 min-w-0 w-full">
+                <div class="flex flex-col sm:flex-row gap-2.5">
+                  <div class="relative flex-1 min-w-0">
                     <input type="text" id="social-keyword-input" class="input-field text-sm sm:text-base w-full pr-10 py-3 rounded-xl border-pink-500/30 focus:border-pink-400 font-medium" placeholder="输入要监测的品牌、产品或事件，如：小米SU7车主真实口碑、DeepSeek评测与反响、追觅扫地机吐槽..." onkeydown="if(event.key==='Enter') handleSocialSubmit()">
                     <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">💬</span>
                   </div>
-                  <button onclick="handleSocialSubmit()" id="btn-social-submit" class="btn-primary text-sm py-3 px-6 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 font-bold rounded-xl shadow-lg shadow-pink-500/20 whitespace-nowrap flex-shrink-0 flex items-center justify-center gap-1.5 w-full sm:w-auto">
+                  <button onclick="handleSocialSubmit()" id="btn-social-submit" class="btn-primary py-3 px-6 text-sm font-bold bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 rounded-xl shadow-lg shadow-pink-500/20 whitespace-nowrap flex-shrink-0 flex items-center justify-center gap-1.5">
                     <span>🚀</span><span>启动社媒检索分析</span>
                   </button>
                 </div>
@@ -1283,7 +1283,7 @@
   
 
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js?v=3.0.1"></script>
+  <script src="app.js?v=3.0.2"></script>
 <!-- 移动端侧边抽屉导航 (Slide-Over Mobile Sidebar Drawer) -->
   <div id="mobile-nav-overlay" onclick="toggleMobileNavDrawer()"></div>
   <div id="mobile-nav-drawer">

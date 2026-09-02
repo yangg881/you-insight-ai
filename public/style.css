@@ -1229,3 +1229,23 @@ select option {
   color: #fb7185;
   border: 1px solid rgba(244, 63, 94, 0.3);
 }
+
+
+/* 社交媒体检索输入框与按钮黄金比例约束 */
+#panel-social .relative {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+#social-keyword-input {
+  width: 100% !important;
+  min-width: 240px !important;
+}
+
+#btn-social-submit {
+  flex-shrink: 0 !important;
+  width: auto !important;
+  min-width: 170px !important;
+  max-width: 220px !important;
+}

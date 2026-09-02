@@ -3238,7 +3238,7 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
         t0 = time.time()
         try:
             # 阶段 1: 智能体规划与课题拆解
-            yield f'data: {json.dumps({"type": "start", "stage": "🧭 [Step 1] 智能体规划引擎启动，正在将长程课题拆解为 6 个纵深子方向...", "quota": quota_res})}\n\n'
+            yield f'data: {json.dumps({"type": "start", "stage": "🧭 智能体规划引擎启动，正在将课题拆解为多个纵深子方向与核心标的...", "quota": quota_res})}\n\n'
             await asyncio.sleep(0.5)
 
             sub_queries = []
@@ -3255,7 +3255,7 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
                 sub_queries = [f"{req.topic} 商业全景 核心标的 深度尽调"]
 
             # 阶段 2: 并发调度 Parallel.ai 顶级索引多跳探查
-            yield f'data: {json.dumps({"type": "stage", "stage": "⚡ [Step 2] 正在并发调度 Parallel.ai 全网专有索引库，多跳穿透抓取各子维度权威事实..."})}\n\n'
+            yield f'data: {json.dumps({"type": "stage", "stage": "⚡ 正在并发调度 Parallel.ai 全网专有索引库，多跳深度抓取核心事实..."})}\n\n'
             
             search_tasks = []
             for sq in sub_queries:
@@ -3285,7 +3285,7 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
                             sources.append({"title": it.get("title"), "url": it.get("url"), "name": "Brave 搜索"})
 
             # 阶段 3: 提取关键企业与官网深挖
-            yield f'data: {json.dumps({"type": "stage", "stage": "📑 [Step 3] 正在交叉核验核心标的官网白皮书与技术参数，构建多维对比矩阵..."})}\n\n'
+            yield f'data: {json.dumps({"type": "stage", "stage": "📑 正在交叉核验标的企业官网白皮书与技术参数，提取核心指标..."})}\n\n'
             await asyncio.sleep(0.5)
 
             full_evidence = "\n\n".join(evidence_blocks[:24])
@@ -3293,7 +3293,7 @@ async def api_deep_research_stream(req: DeepResearchRequest, request: Request, u
                 full_evidence = f"全网关于【{req.topic}】的公开深度研究数据库。"
 
             # 阶段 4: 多维横向长文与对比大表合成
-            yield f'data: {json.dumps({"type": "stage", "stage": "🧠 [Step 4] 正在启动顶级战略智库推理，合成包含多维横向参数大表与商业尽调长文..."})}\n\n'
+            yield f'data: {json.dumps({"type": "stage", "stage": "🧠 战略智库深度推理中，正在合成全景横评大表与尽调案卷..."})}\n\n'
 
             sections_instruction = []
             sections_instruction.append("## 一、 执行摘要与战略研判（提炼 3 大核心穿透性结论，明确市场成熟度与核心风向）")

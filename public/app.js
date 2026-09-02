@@ -5,8 +5,17 @@ function createTaskProgressBar(containerId, options = {}) {
   if (!container) return null;
 
   const title = options.title || 'AI 智能体正在执行任务';
-  const initialStage = options.initialStage || '正在连接专有引擎与检索通道...';
-  let percent = options.initialPercent || 10;
+  const defaultStages = options.stages || [
+    { text: '🔍 正在解析课题结构，拆解纵深子方向与核心标的...', pct: 20 },
+    { text: '⚡ 并发调度全球专有高密索引库，多跳检索权威披露与技术白皮书...', pct: 45 },
+    { text: '📊 交叉核验官方数据底稿与企业核心财务指标...', pct: 65 },
+    { text: '🧠 构建多维横评大表与竞争优劣势矩阵...', pct: 80 },
+    { text: '📑 正在结构化撰写全景尽调案卷与投资决策建议...', pct: 90 }
+  ];
+
+  let currentStageIdx = 0;
+  let initialStageText = options.initialStage || defaultStages[0].text;
+  let percent = options.initialPercent || defaultStages[0].pct;
   let startTime = Date.now();
 
   container.classList.remove('hidden');
@@ -30,20 +39,22 @@ function createTaskProgressBar(containerId, options = {}) {
       </div>
 
       <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-        <span class="truncate pr-2 flex items-center gap-1.5 text-slate-300" id="${containerId}-p-stage">
-          <span>⚙️</span><span>${escapeHtml(initialStage)}</span>
+        <span class="truncate pr-2 flex items-center gap-1.5 text-slate-300 transition-all duration-300" id="${containerId}-p-stage">
+          <span>⚙️</span><span>${escapeHtml(initialStageText)}</span>
         </span>
         <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono flex-shrink-0" id="${containerId}-p-status">RUNNING</span>
       </div>
     </div>
   `;
 
+  // 毫秒级真实计时器
   const timerInterval = setInterval(() => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
     const timerEl = document.getElementById(`${containerId}-p-timer`);
     if (timerEl) timerEl.textContent = `⏱️ ${elapsed}s`;
   }, 100);
 
+  // 平滑百分比增长器
   let targetPercent = percent;
   let autoIncrement = setInterval(() => {
     if (percent < targetPercent) {
@@ -55,6 +66,19 @@ function createTaskProgressBar(containerId, options = {}) {
     }
   }, 120);
 
+  // 智能阶段自动推进轮播（如果后端阶段较长，平滑轮播真实行动描述，杜绝单阶段卡死假象）
+  let stageRotator = setInterval(() => {
+    if (currentStageIdx < defaultStages.length - 1) {
+      currentStageIdx++;
+      const nextStage = defaultStages[currentStageIdx];
+      const stageEl = document.getElementById(`${containerId}-p-stage`);
+      if (stageEl) {
+        stageEl.innerHTML = `<span>⚙️</span><span>${escapeHtml(nextStage.text)}</span>`;
+      }
+      targetPercent = Math.max(percent, nextStage.pct);
+    }
+  }, 4500);
+
   function updateUI() {
     const bar = document.getElementById(`${containerId}-p-bar`);
     const pctEl = document.getElementById(`${containerId}-p-pct`);
@@ -65,8 +89,10 @@ function createTaskProgressBar(containerId, options = {}) {
 
   return {
     setStage: (stageText, newTargetPct) => {
+      // 净化掉机械的 [Step X] 标签
+      const cleanText = (stageText || '').replace(/\[Step \d+\]\s*/g, '');
       const stageEl = document.getElementById(`${containerId}-p-stage`);
-      if (stageEl) stageEl.innerHTML = `<span>⚙️</span><span>${escapeHtml(stageText)}</span>`;
+      if (stageEl) stageEl.innerHTML = `<span>⚙️</span><span>${escapeHtml(cleanText)}</span>`;
       if (typeof newTargetPct === 'number') {
         targetPercent = Math.max(percent, newTargetPct);
       }
@@ -74,6 +100,7 @@ function createTaskProgressBar(containerId, options = {}) {
     complete: (success = true, doneText = '任务已顺利交付') => {
       clearInterval(timerInterval);
       clearInterval(autoIncrement);
+      clearInterval(stageRotator);
       percent = 100;
       const bar = document.getElementById(`${containerId}-p-bar`);
       const pctEl = document.getElementById(`${containerId}-p-pct`);
@@ -102,6 +129,7 @@ function createTaskProgressBar(containerId, options = {}) {
     destroy: () => {
       clearInterval(timerInterval);
       clearInterval(autoIncrement);
+      clearInterval(stageRotator);
     }
   };
 }
@@ -3794,7 +3822,7 @@ async function executeDeepResearchStream() {
         try {
           const data = JSON.parse(line.slice(6));
           if (data.type === 'start' || data.type === 'stage') {
-            if (stageEl) stageEl.textContent = data.stage;
+            if (typeof deepPBar !== 'undefined' && deepPBar) deepPBar.setStage(data.stage);
           } else if (data.type === 'content') {
             fullContent += data.chunk;
             contentEl.innerHTML = renderMarkdown(fullContent);
