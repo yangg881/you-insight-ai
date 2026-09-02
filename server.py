@@ -3076,6 +3076,80 @@ async def api_findall_enrich(req: EnrichRequest, request: Request, user: Optiona
     }
 
 
+# ==================== 8.5 用户中心任务审计与状态记录 (Task Logs) ====================
+
+@app.get('/api/user/task-logs')
+async def get_user_task_logs(
+    limit: int = 50,
+    offset: int = 0,
+    request: Request = None,
+    user: Optional[Dict[str, Any]] = Depends(get_current_user_optional)
+):
+    """获取当前用户的任务执行记录（包含成功/失败状态、耗时、类型）"""
+    ip = get_client_ip(request)
+    conn = get_db()
+    if user:
+        rows = conn.execute(
+            """SELECT id, type, title, duration_ms, status, created_at 
+               FROM generation_logs 
+               WHERE user_id = ? 
+               ORDER BY id DESC LIMIT ? OFFSET ?""",
+            (user["id"], limit, offset)
+        ).fetchall()
+        total = conn.execute(
+            "SELECT COUNT(*) as c FROM generation_logs WHERE user_id = ?",
+            (user["id"],)
+        ).fetchone()["c"]
+        success_count = conn.execute(
+            "SELECT COUNT(*) as c FROM generation_logs WHERE user_id = ? AND status = 'success'",
+            (user["id"],)
+        ).fetchone()["c"]
+        failed_count = conn.execute(
+            "SELECT COUNT(*) as c FROM generation_logs WHERE user_id = ? AND status != 'success'",
+            (user["id"],)
+        ).fetchone()["c"]
+        avg_row = conn.execute(
+            "SELECT AVG(duration_ms) as avg_ms FROM generation_logs WHERE user_id = ?",
+            (user["id"],)
+        ).fetchone()
+    else:
+        rows = conn.execute(
+            """SELECT id, type, title, duration_ms, status, created_at 
+               FROM generation_logs 
+               WHERE ip = ? 
+               ORDER BY id DESC LIMIT ? OFFSET ?""",
+            (ip, limit, offset)
+        ).fetchall()
+        total = conn.execute(
+            "SELECT COUNT(*) as c FROM generation_logs WHERE ip = ?",
+            (ip,)
+        ).fetchone()["c"]
+        success_count = conn.execute(
+            "SELECT COUNT(*) as c FROM generation_logs WHERE ip = ? AND status = 'success'",
+            (ip,)
+        ).fetchone()["c"]
+        failed_count = conn.execute(
+            "SELECT COUNT(*) as c FROM generation_logs WHERE ip = ? AND status != 'success'",
+            (ip,)
+        ).fetchone()["c"]
+        avg_row = conn.execute(
+            "SELECT AVG(duration_ms) as avg_ms FROM generation_logs WHERE ip = ?",
+            (ip,)
+        ).fetchone()
+
+    avg_ms = avg_row["avg_ms"] if avg_row and avg_row["avg_ms"] else 0
+    avg_s = round(avg_ms / 1000.0, 1) if avg_ms else 0.0
+
+    conn.close()
+    return {
+        "status": "success",
+        "total": total,
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "avg_duration_s": avg_s,
+        "logs": [dict(r) for r in rows]
+    }
+
 # ==================== 8.4 研报多轮深度追问 (Research Follow-up Q&A Stream) ====================
 
 @app.post('/api/research/followup')

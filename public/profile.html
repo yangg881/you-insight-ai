@@ -109,6 +109,12 @@
           </div>
           <span class="text-xs font-semibold whitespace-nowrap">我的研报资产库</span>
         </button>
+                <button onclick="switchTab('tasklogs')" id="nav-tasklogs" class="prof-nav-item flex-shrink-0">
+          <div class="sidebar-icon-box bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+            <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          </div>
+          <span class="text-xs font-semibold whitespace-nowrap">任务审计与状态</span>
+        </button>
         <button onclick="switchTab('security')" id="nav-security" class="prof-nav-item flex-shrink-0">
           <div class="sidebar-icon-box bg-sky-500/15 text-sky-400 border border-sky-500/25">
             <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
@@ -642,6 +648,7 @@
         if (n) n.classList.toggle('active', t === tab);
       });
       if (tab === 'reports') loadUserReports();
+      if (tab === 'tasklogs') loadUserTaskLogs();
     }
 
     // ==================== 手机 / 邮箱 绑定与换绑逻辑 ====================

@@ -1,4 +1,112 @@
 
+// ==================== 全局通用高科技任务进度条引擎 (Universal Task Progress Engine) ====================
+function createTaskProgressBar(containerId, options = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return null;
+
+  const title = options.title || 'AI 智能体正在执行任务';
+  const initialStage = options.initialStage || '正在连接专有引擎与检索通道...';
+  let percent = options.initialPercent || 10;
+  let startTime = Date.now();
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="task-progress-card">
+      <div class="flex items-center justify-between mb-2.5">
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+          <span class="text-xs sm:text-sm font-bold text-white tracking-wide flex items-center gap-1.5">
+            <span>⚡</span><span id="${containerId}-p-title">${escapeHtml(title)}</span>
+          </span>
+        </div>
+        <div class="flex items-center gap-2.5">
+          <span class="text-xs sm:text-sm font-black text-indigo-300 font-mono" id="${containerId}-p-pct">${Math.round(percent)}%</span>
+          <span class="text-[11px] text-[var(--text-muted)] font-mono" id="${containerId}-p-timer">⏱️ 0.0s</span>
+        </div>
+      </div>
+
+      <div class="progress-track mb-2">
+        <div id="${containerId}-p-bar" class="progress-fill" style="width: ${percent}%;"></div>
+      </div>
+
+      <div class="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+        <span class="truncate pr-2 flex items-center gap-1.5 text-slate-300" id="${containerId}-p-stage">
+          <span>⚙️</span><span>${escapeHtml(initialStage)}</span>
+        </span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono flex-shrink-0" id="${containerId}-p-status">RUNNING</span>
+      </div>
+    </div>
+  `;
+
+  const timerInterval = setInterval(() => {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const timerEl = document.getElementById(`${containerId}-p-timer`);
+    if (timerEl) timerEl.textContent = `⏱️ ${elapsed}s`;
+  }, 100);
+
+  let targetPercent = percent;
+  let autoIncrement = setInterval(() => {
+    if (percent < targetPercent) {
+      percent += 0.8;
+      updateUI();
+    } else if (percent < 93) {
+      percent += 0.15;
+      updateUI();
+    }
+  }, 120);
+
+  function updateUI() {
+    const bar = document.getElementById(`${containerId}-p-bar`);
+    const pctEl = document.getElementById(`${containerId}-p-pct`);
+    const displayPct = Math.min(99, Math.round(percent));
+    if (bar) bar.style.width = `${displayPct}%`;
+    if (pctEl) pctEl.textContent = `${displayPct}%`;
+  }
+
+  return {
+    setStage: (stageText, newTargetPct) => {
+      const stageEl = document.getElementById(`${containerId}-p-stage`);
+      if (stageEl) stageEl.innerHTML = `<span>⚙️</span><span>${escapeHtml(stageText)}</span>`;
+      if (typeof newTargetPct === 'number') {
+        targetPercent = Math.max(percent, newTargetPct);
+      }
+    },
+    complete: (success = true, doneText = '任务已顺利交付') => {
+      clearInterval(timerInterval);
+      clearInterval(autoIncrement);
+      percent = 100;
+      const bar = document.getElementById(`${containerId}-p-bar`);
+      const pctEl = document.getElementById(`${containerId}-p-pct`);
+      const stageEl = document.getElementById(`${containerId}-p-stage`);
+      const statusEl = document.getElementById(`${containerId}-p-status`);
+
+      if (bar) {
+        bar.style.width = '100%';
+        bar.style.background = success 
+          ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+          : 'linear-gradient(90deg, #f43f5e 0%, #e11d48 100%)';
+      }
+      if (pctEl) pctEl.textContent = '100%';
+      if (statusEl) {
+        statusEl.textContent = success ? 'COMPLETED' : 'FAILED';
+        statusEl.className = success 
+          ? 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono flex-shrink-0'
+          : 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono flex-shrink-0';
+      }
+      if (stageEl) {
+        stageEl.innerHTML = success 
+          ? `<span class="text-emerald-400 font-medium">✅ ${escapeHtml(doneText)}</span>`
+          : `<span class="text-rose-400 font-medium">❌ ${escapeHtml(doneText)}</span>`;
+      }
+    },
+    destroy: () => {
+      clearInterval(timerInterval);
+      clearInterval(autoIncrement);
+    }
+  };
+}
+
+
 // ==================== 1. 交付物目标模式选择器 (Delivery Mode Tabs) ====================
 let currentDeliveryMode = 'auto';
 
@@ -2185,13 +2293,11 @@ async function executeResearchStream() {
   empty.classList.add('hidden'); result.classList.add('hidden'); progress.classList.remove('hidden'); btn.disabled = true;
   contentEl.innerHTML = ''; sourcesEl.innerHTML = ''; currentSources = [];
 
-  const timer = startTimer('research-timer');
-  const rotator = startStageRotation('research-stage', 'research-timer', [
-    '🦁 Brave 全球独立索引库毫秒级检索中 (0.2s)...',
-    '🧠 双引擎多源交叉验证与深度逻辑推理中...',
-    '🔗 事实溯源与高密上下文切片结构化提炼...',
-    '📑 研报正文生成中，约需 1-2 分钟...'
-  ]);
+  const researchPBar = createTaskProgressBar('research-progress', {
+    title: `深度商业研报：${input.slice(0, 24)}`,
+    initialStage: '🦁 Brave 全球独立索引库并发检索权威事实...',
+    initialPercent: 15
+  });
 
   try {
     const res = await fetchWithAuth(`${API_BASE}/api/research/stream`, {
@@ -2857,6 +2963,13 @@ async function executeFindAll() {
   emptyEl?.classList.add('hidden');
   resultEl?.classList.add('hidden');
   progressEl?.classList.remove('hidden');
+  const faPBar = createTaskProgressBar('findall-progress', {
+    title: `实体与商机大表挖掘：${query.slice(0, 24)}`,
+    initialStage: '⚡ 并发调度 Parallel.ai 专有模型筛选全网实体...',
+    initialPercent: 18
+  });
+  setTimeout(() => { if (faPBar) faPBar.setStage('🔍 正在穿透企业官网与工商数据库...', 50); }, 2500);
+  setTimeout(() => { if (faPBar) faPBar.setStage('📊 正在计算匹配指数并提取商业融资指标...', 80); }, 5500);
 
   let seconds = 0;
   timerEl.textContent = '已耗时: 0s';
@@ -3619,12 +3732,11 @@ async function executeDeepResearchStream() {
   progress?.classList.remove('hidden');
   contentEl.innerHTML = '';
 
-  let seconds = 0;
-  timerEl.textContent = '已耗时: 0s';
-  const timer = setInterval(() => {
-    seconds++;
-    timerEl.textContent = `已耗时: ${seconds}s`;
-  }, 1000);
+  const deepPBar = createTaskProgressBar('deepresearch-progress', {
+    title: `AI 长程深度调研：${topic.slice(0, 24)}`,
+    initialStage: '🧭 [Step 1] 智能体启动，正在将长程课题拆解为多个纵深子方向...',
+    initialPercent: 12
+  });
 
   deepResearchAbortController = new AbortController();
 
